@@ -16,7 +16,7 @@ study 模式翻开卡片后，不再显示 phrases 列表，改为显示 2-3 条
 
 贫血模式
 
-在最后一张词（N/N）已 revealed 的情况下按 Enter → 进入贫血屏，只有"随手拼？"标题和操作说明
+在最后一张词（N/N）已 revealed 的情况下按 Enter → 进入贫血屏，只有「随手拼？」标题和操作说明
 贫血屏：Enter → 回到第 1 张继续刷词，Space → 进入随手拼
 随手拼
 
@@ -29,3 +29,11 @@ Backspace 逐字删除
 拼完所有词 → 自动回普通刷词
 Esc → 随时退出随手拼
 shake 动画：用 key={shakeKey} 每次递增让 React 重新挂载元素，CSS animation 自动从头播，不用 setTimeout。
+
+循环洗牌
+
+每轮从头开始时默认自动打乱词序（Fisher-Yates），新首卡不会是刚看完的那张
+触发点：Next 末卡绕回、贫血屏 Enter 回刷词、拼完所有词自动回刷词
+底部控制栏新增 Shuffle Loop: On / Off 按钮，关闭后循环保持当前顺序
+Reset Deck 恢复原始顺序，不立即洗
+随手拼沿用当前词序，不在拼写中途打乱

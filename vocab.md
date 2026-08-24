@@ -11,7 +11,7 @@
 - Meaning (EN): the state of being near; closeness
 - Sentence 1: Our school is in close proximity to the library.
 - Focus 1: in close proximity to
-- Sentence 2: I like the apartment's proximity to the subway.
+- Sentence 2: I like the apartment’s proximity to the subway.
 - Focus 2: proximity to
 
 [Devise]
@@ -67,8 +67,8 @@
 - Meaning (EN): the quality of being believable or trustworthy
 - Sentence 1: He began to lose credibility after he lied.
 - Focus 1: lose credibility
-- Sentence 2: The false story hurt the website's credibility.
-- Focus 2: website's credibility
+- Sentence 2: The false story hurt the website’s credibility.
+- Focus 2: website’s credibility
 
 [Lucid]
 
