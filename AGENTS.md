@@ -30,6 +30,8 @@ Bottom progress bar and count follow the study card position in this mode.
 - `Delete` / `Backspace` — remove current card from deck
 - `ArrowLeft` — previous card
 
+**Loop shuffle:** by default, every time a new pass starts from card 1 (Next wrapping past the last card, returning from `rest` mode, or finishing `spell` mode), the deck order is shuffled once with a Fisher-Yates shuffle; the new first card is never the card that was just on screen. The `Shuffle Loop: On / Off` button in the bottom control bar toggles this off (state is session-only, default on). `Reset Deck` restores the original order without shuffling. The shuffle only reorders the deck for study passes; `spell` mode uses the deck in its current order.
+
 ### `rest` mode (贫血模式)
 
 Triggered after completing a full round (last card, revealed, Enter pressed). Clears all word details and shows a minimal screen:

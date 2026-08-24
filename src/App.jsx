@@ -442,6 +442,22 @@ const cloneDeck = () =>
     examples: (item.examples ?? []).map((example) => ({ ...example })),
   }));
 
+// Fisher-Yates shuffle; keeps the old last card away from the new first slot
+// so a fresh pass never opens with the card that was just on screen.
+const shuffleDeck = (deckArr) => {
+  const next = [...deckArr];
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+  const lastCard = deckArr[deckArr.length - 1];
+  if (next.length > 1 && lastCard && next[0] === lastCard) {
+    const swapIndex = 1 + Math.floor(Math.random() * (next.length - 1));
+    [next[0], next[swapIndex]] = [next[swapIndex], next[0]];
+  }
+  return next;
+};
+
 const findTextRange = (source, query) => {
   const text = typeof source === "string" ? source : "";
   const needle = typeof query === "string" ? query.trim() : "";
@@ -715,6 +731,7 @@ export default function App() {
   const [revealed, setRevealed] = useState(false);
   const [lastRemoved, setLastRemoved] = useState(null);
   const [noAnim, setNoAnim] = useState(false);
+  const [shuffleOnLoop, setShuffleOnLoop] = useState(true);
   const [guideOpen, setGuideOpen] = useState(false);
   const [importMessage, setImportMessage] = useState("");
   const [pasteText, setPasteText] = useState("");
@@ -793,10 +810,14 @@ export default function App() {
   const nextCard = useCallback(() => {
     if (!deck.length) return;
     runInstantly(() => {
+      // Wrapping past the last card starts a new pass — shuffle it first.
+      if (shuffleOnLoop && deck.length > 1 && index === deck.length - 1) {
+        setDeck((prev) => shuffleDeck(prev));
+      }
       setIndex((prev) => (prev + 1) % deck.length);
       setRevealed(false);
     });
-  }, [deck.length, runInstantly]);
+  }, [deck.length, index, shuffleOnLoop, runInstantly]);
 
   const prevCard = useCallback(() => {
     if (!deck.length) return;
@@ -813,10 +834,15 @@ export default function App() {
   }, []);
 
   const enterStudyMode = useCallback(() => {
+    // Fresh pass from card 1 (from rest or after finishing spell) — shuffle
+    // when the toggle is on.
+    if (shuffleOnLoop && deck.length > 1) {
+      setDeck((prev) => shuffleDeck(prev));
+    }
     setMode("study");
     setIndex(0);
     setRevealed(false);
-  }, []);
+  }, [deck.length, shuffleOnLoop]);
 
   const enterSpellMode = useCallback(() => {
     setMode("spell");
@@ -1364,6 +1390,9 @@ export default function App() {
                     <li>
                       刷完最后一张后按 <kbd>Enter</kbd> — 进入休息屏
                     </li>
+                    <li>
+                      每轮从头开始时自动打乱顺序，底部 Shuffle Loop 按钮可关闭
+                    </li>
                   </ul>
                   <p className="guide-mobile-tip">
                     📱 手机：直接点卡片翻面，用底部按钮切换。
@@ -1541,6 +1570,14 @@ export default function App() {
           </button>
           <button type="button" onClick={undoRemove} disabled={!lastRemoved}>
             Undo Remove
+          </button>
+          <button
+            type="button"
+            className={shuffleOnLoop ? "primary" : undefined}
+            aria-pressed={shuffleOnLoop}
+            onClick={() => setShuffleOnLoop((prev) => !prev)}
+          >
+            Shuffle Loop: {shuffleOnLoop ? "On" : "Off"}
           </button>
           <button type="button" onClick={resetDeck}>
             Reset Deck
