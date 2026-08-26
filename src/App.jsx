@@ -1,5 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import deepUnderstandingPrompt from "./prompts/deep-understanding.md?raw";
+import {
+  LEARNING_STORAGE_KEY,
+  LEARNING_STORAGE_VERSION,
+  buildRoundCardIds,
+  createCardIds,
+  findNextUnscoredCardIndex,
+  getModeProgress,
+  readStoredLearningState,
+  recordReview,
+  restoreQueue,
+} from "./learningAlgorithm.js";
 
 const baseDeck = [
   {
@@ -443,22 +454,6 @@ const cloneDeck = () =>
     examples: (item.examples ?? []).map((example) => ({ ...example })),
   }));
 
-// Fisher-Yates shuffle; keeps the old last card away from the new first slot
-// so a fresh pass never opens with the card that was just on screen.
-const shuffleDeck = (deckArr) => {
-  const next = [...deckArr];
-  for (let i = next.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [next[i], next[j]] = [next[j], next[i]];
-  }
-  const lastCard = deckArr[deckArr.length - 1];
-  if (next.length > 1 && lastCard && next[0] === lastCard) {
-    const swapIndex = 1 + Math.floor(Math.random() * (next.length - 1));
-    [next[0], next[swapIndex]] = [next[swapIndex], next[0]];
-  }
-  return next;
-};
-
 const findTextRange = (source, query) => {
   const text = typeof source === "string" ? source : "";
   const needle = typeof query === "string" ? query.trim() : "";
@@ -735,14 +730,94 @@ const readImportFile = async (file) => {
   return file.text();
 };
 
+const createInitialAppSnapshot = () => {
+  const stored = readStoredLearningState();
+  const storedDeck = Array.isArray(stored?.sourceDeck)
+    ? normalizeDeck(stored.sourceDeck)
+    : [];
+  const sourceDeck = storedDeck.length ? storedDeck : cloneDeck();
+  const cardIds = createCardIds(sourceDeck);
+  const removedCardIds = Array.isArray(stored?.removedCardIds)
+    ? stored.removedCardIds
+    : [];
+  const learningState = stored?.learningState ?? {};
+  const completedRounds = {
+    study: Number.isInteger(stored?.completedRounds?.study)
+      ? stored.completedRounds.study
+      : 0,
+    spell: Number.isInteger(stored?.completedRounds?.spell)
+      ? stored.completedRounds.spell
+      : 0,
+  };
+  const shuffleOnLoop = stored?.shuffleOnLoop ?? true;
+  const defaultStudyIds = buildRoundCardIds({
+    cardIds,
+    removedCardIds,
+    learningState,
+    mode: "study",
+    round: completedRounds.study + 1,
+    shuffleOnLoop: false,
+  });
+  const studyDeck = Array.isArray(stored?.studyQueueIds)
+    ? restoreQueue(sourceDeck, cardIds, stored.studyQueueIds)
+    : restoreQueue(sourceDeck, cardIds, defaultStudyIds);
+  const spellDeck = Array.isArray(stored?.spellQueueIds)
+    ? restoreQueue(sourceDeck, cardIds, stored.spellQueueIds)
+    : [];
+  const mode = ["study", "rest", "spell"].includes(stored?.mode)
+    ? stored.mode
+    : "study";
+  const lastRemoved =
+    typeof stored?.lastRemoved?.cardId === "string" &&
+    removedCardIds.includes(stored.lastRemoved.cardId)
+      ? stored.lastRemoved
+      : null;
+
+  return {
+    sourceDeck,
+    studyDeck,
+    spellDeck,
+    removedCardIds,
+    learningState,
+    completedRounds,
+    shuffleOnLoop,
+    mode,
+    lastRemoved,
+    index: Math.min(
+      Math.max(Number.isInteger(stored?.index) ? stored.index : 0, 0),
+      Math.max(studyDeck.length - 1, 0),
+    ),
+    spellIndex: Math.min(
+      Math.max(
+        Number.isInteger(stored?.spellIndex) ? stored.spellIndex : 0,
+        0,
+      ),
+      Math.max(spellDeck.length - 1, 0),
+    ),
+  };
+};
+
 export default function App() {
-  const [sourceDeck, setSourceDeck] = useState(() => cloneDeck());
-  const [deck, setDeck] = useState(sourceDeck);
-  const [index, setIndex] = useState(0);
+  const [initialSnapshot] = useState(createInitialAppSnapshot);
+  const [sourceDeck, setSourceDeck] = useState(initialSnapshot.sourceDeck);
+  const [deck, setDeck] = useState(initialSnapshot.studyDeck);
+  const [spellDeck, setSpellDeck] = useState(initialSnapshot.spellDeck);
+  const [index, setIndex] = useState(initialSnapshot.index);
   const [revealed, setRevealed] = useState(false);
-  const [lastRemoved, setLastRemoved] = useState(null);
+  const [lastRemoved, setLastRemoved] = useState(initialSnapshot.lastRemoved);
   const [noAnim, setNoAnim] = useState(false);
-  const [shuffleOnLoop, setShuffleOnLoop] = useState(true);
+  const [shuffleOnLoop, setShuffleOnLoop] = useState(
+    initialSnapshot.shuffleOnLoop,
+  );
+  const [removedCardIds, setRemovedCardIds] = useState(
+    initialSnapshot.removedCardIds,
+  );
+  const [learningState, setLearningState] = useState(
+    initialSnapshot.learningState,
+  );
+  const [completedRounds, setCompletedRounds] = useState(
+    initialSnapshot.completedRounds,
+  );
   const [guideOpen, setGuideOpen] = useState(false);
   const [importMessage, setImportMessage] = useState("");
   const [pasteText, setPasteText] = useState("");
@@ -752,11 +827,51 @@ export default function App() {
 
   // ── Mode state ──────────────────────────────────────
   // 'study' | 'rest' | 'spell'
-  const [mode, setMode] = useState("study");
-  const [spellIndex, setSpellIndex] = useState(0);
+  const [mode, setMode] = useState(initialSnapshot.mode);
+  const [spellIndex, setSpellIndex] = useState(initialSnapshot.spellIndex);
   const [spellInput, setSpellInput] = useState("");
   const [spellResult, setSpellResult] = useState(null); // null | 'correct' | 'wrong'
   const [shakeKey, setShakeKey] = useState(0);
+
+  const cardIds = useMemo(() => createCardIds(sourceDeck), [sourceDeck]);
+  const cardIdByItem = useMemo(
+    () =>
+      new Map(
+        sourceDeck.map((entry, entryIndex) => [entry, cardIds[entryIndex]]),
+      ),
+    [cardIds, sourceDeck],
+  );
+  const sourceItemById = useMemo(
+    () =>
+      new Map(
+        cardIds.map((cardId, entryIndex) => [cardId, sourceDeck[entryIndex]]),
+      ),
+    [cardIds, sourceDeck],
+  );
+  const currentStudyRound = completedRounds.study + 1;
+  const currentSpellRound = completedRounds.spell + 1;
+
+  const buildModeDeck = useCallback(
+    (targetMode, round, avoidFirstCardId = null) => {
+      const queueIds = buildRoundCardIds({
+        cardIds,
+        removedCardIds,
+        learningState,
+        mode: targetMode,
+        round,
+        shuffleOnLoop,
+        avoidFirstCardId,
+      });
+      return restoreQueue(sourceDeck, cardIds, queueIds);
+    },
+    [
+      cardIds,
+      learningState,
+      removedCardIds,
+      shuffleOnLoop,
+      sourceDeck,
+    ],
+  );
 
   const promptText = `你是英语词汇整理助手。请把用户提供的单词逐个补全为以下字段，并输出为可导入的 JSON 数组：
 
@@ -807,6 +922,39 @@ export default function App() {
 
 一定记得需要以代码块的方式输出 JSON 文件以便用户导入。`;
 
+  useEffect(() => {
+    const snapshot = {
+      version: LEARNING_STORAGE_VERSION,
+      sourceDeck,
+      removedCardIds,
+      learningState,
+      completedRounds,
+      shuffleOnLoop,
+      mode,
+      lastRemoved,
+      studyQueueIds: deck.map((entry) => cardIdByItem.get(entry)).filter(Boolean),
+      spellQueueIds: spellDeck
+        .map((entry) => cardIdByItem.get(entry))
+        .filter(Boolean),
+      index,
+      spellIndex,
+    };
+    window.localStorage.setItem(LEARNING_STORAGE_KEY, JSON.stringify(snapshot));
+  }, [
+    cardIdByItem,
+    completedRounds,
+    deck,
+    index,
+    learningState,
+    lastRemoved,
+    mode,
+    removedCardIds,
+    shuffleOnLoop,
+    sourceDeck,
+    spellDeck,
+    spellIndex,
+  ]);
+
   const runInstantly = useCallback((action) => {
     setNoAnim(true);
     action();
@@ -822,17 +970,14 @@ export default function App() {
     setRevealed((prev) => !prev);
   }, [deck.length]);
 
-  const nextCard = useCallback(() => {
-    if (!deck.length) return;
-    runInstantly(() => {
-      // Wrapping past the last card starts a new pass — shuffle it first.
-      if (shuffleOnLoop && deck.length > 1 && index === deck.length - 1) {
-        setDeck((prev) => shuffleDeck(prev));
-      }
-      setIndex((prev) => (prev + 1) % deck.length);
-      setRevealed(false);
-    });
-  }, [deck.length, index, shuffleOnLoop, runInstantly]);
+  const enterRestMode = useCallback(() => {
+    setCompletedRounds((previous) => ({
+      ...previous,
+      study: currentStudyRound,
+    }));
+    setMode("rest");
+    setRevealed(false);
+  }, [currentStudyRound]);
 
   const prevCard = useCallback(() => {
     if (!deck.length) return;
@@ -842,74 +987,244 @@ export default function App() {
     });
   }, [deck.length, runInstantly]);
 
-  // ── Mode helpers ────────────────────────────────────
-  const enterRestMode = useCallback(() => {
-    setMode("rest");
-    setRevealed(false);
-  }, []);
-
   const enterStudyMode = useCallback(() => {
-    // Fresh pass from card 1 (from rest or after finishing spell) — shuffle
-    // when the toggle is on.
-    if (shuffleOnLoop && deck.length > 1) {
-      setDeck((prev) => shuffleDeck(prev));
+    const nextRound = completedRounds.study + 1;
+    const previousLastItem = deck[deck.length - 1];
+    const nextDeck = buildModeDeck(
+      "study",
+      nextRound,
+      cardIdByItem.get(previousLastItem) ?? null,
+    );
+    if (!nextDeck.length) {
+      setCompletedRounds((previous) => ({
+        ...previous,
+        study: nextRound,
+      }));
+      setMode("rest");
+      setImportMessage(`辨识第 ${nextRound} 轮暂无返场词，已跳过。`);
+      return;
     }
+    setDeck(nextDeck);
     setMode("study");
     setIndex(0);
     setRevealed(false);
-  }, [deck.length, shuffleOnLoop]);
+  }, [buildModeDeck, cardIdByItem, completedRounds.study, deck]);
 
   const enterSpellMode = useCallback(() => {
+    const nextRound = completedRounds.spell + 1;
+    const nextDeck = buildModeDeck("spell", nextRound);
+    if (!nextDeck.length) {
+      setCompletedRounds((previous) => ({
+        ...previous,
+        spell: nextRound,
+      }));
+      setMode("rest");
+      setImportMessage(`拼写第 ${nextRound} 轮暂无返场词，已跳过。`);
+      return;
+    }
+    setSpellDeck(nextDeck);
     setMode("spell");
     setSpellIndex(0);
     setSpellInput("");
     setSpellResult(null);
-  }, []);
+  }, [buildModeDeck, completedRounds.spell]);
+
+  const recordModeReview = useCallback(
+    (entry, targetMode, round, correct) => {
+      const cardId = cardIdByItem.get(entry);
+      if (!cardId) return;
+      setLearningState((previous) =>
+        recordReview({
+          learningState: previous,
+          cardId,
+          mode: targetMode,
+          round,
+          correct,
+        }),
+      );
+    },
+    [cardIdByItem],
+  );
+
+  const completeStudyAnswer = useCallback(
+    (correct) => {
+      const currentItem = deck[index];
+      if (!currentItem || !revealed) return;
+      const nextUnscoredIndex = findNextUnscoredCardIndex({
+        queueIds: deck.map((entry) => cardIdByItem.get(entry)),
+        currentIndex: index,
+        learningState,
+        mode: "study",
+        round: currentStudyRound,
+      });
+      recordModeReview(currentItem, "study", currentStudyRound, correct);
+      if (nextUnscoredIndex === -1) {
+        enterRestMode();
+      } else {
+        runInstantly(() => {
+          setIndex(nextUnscoredIndex);
+          setRevealed(false);
+        });
+      }
+    },
+    [
+      cardIdByItem,
+      currentStudyRound,
+      deck,
+      enterRestMode,
+      index,
+      learningState,
+      recordModeReview,
+      revealed,
+      runInstantly,
+    ],
+  );
 
   const removeCard = useCallback(() => {
-    if (!deck.length) return;
+    const targetItem =
+      mode === "spell" ? spellDeck[spellIndex] : deck[index];
+    const cardId = cardIdByItem.get(targetItem);
+    if (!targetItem || !cardId) return;
     runInstantly(() => {
-      setMode("study");
-      setDeck((prev) => {
-        if (!prev.length) return prev;
-        const next = [...prev];
-        const removedIndex = index;
-        const [removed] = next.splice(removedIndex, 1);
-        setLastRemoved({ item: removed, index: removedIndex });
-        let nextIndex = removedIndex;
-        if (nextIndex >= next.length) {
-          nextIndex = 0;
-        }
-        setIndex(nextIndex);
-        return next;
+      const studyPosition = deck.indexOf(targetItem);
+      const spellPosition = spellDeck.indexOf(targetItem);
+      setLastRemoved({
+        cardId,
+        studyPosition: mode === "study" ? studyPosition : -1,
+        spellPosition: mode === "spell" ? spellPosition : -1,
+        studyRound: mode === "study" ? currentStudyRound : null,
+        spellRound: mode === "spell" ? currentSpellRound : null,
       });
+      const nextRemovedCardIds = removedCardIds.includes(cardId)
+        ? removedCardIds
+        : [...removedCardIds, cardId];
+      setRemovedCardIds((previous) =>
+        previous.includes(cardId) ? previous : [...previous, cardId],
+      );
+      let nextStudyDeck = deck.filter((entry) => entry !== targetItem);
+      if (mode !== "study") {
+        const nextStudyIds = buildRoundCardIds({
+          cardIds,
+          removedCardIds: nextRemovedCardIds,
+          learningState,
+          mode: "study",
+          round: currentStudyRound,
+          shuffleOnLoop,
+          avoidFirstCardId: cardIdByItem.get(deck[deck.length - 1]) ?? null,
+        });
+        nextStudyDeck = restoreQueue(sourceDeck, cardIds, nextStudyIds);
+      }
+      const nextSpellDeck = spellDeck.filter((entry) => entry !== targetItem);
+      const nextRemovedCount = new Set(nextRemovedCardIds).size;
+      const remainingSourceCount = sourceDeck.length - nextRemovedCount;
+      setMode(
+        nextStudyDeck.length || remainingSourceCount === 0 ? "study" : "rest",
+      );
+      setDeck(nextStudyDeck);
+      setSpellDeck(nextSpellDeck);
+      setIndex((previous) => {
+        if (!nextStudyDeck.length) return 0;
+        return mode === "study"
+          ? Math.min(previous, nextStudyDeck.length - 1)
+          : 0;
+      });
+      setSpellIndex((previous) =>
+        nextSpellDeck.length ? Math.min(previous, nextSpellDeck.length - 1) : 0,
+      );
       setRevealed(false);
     });
-  }, [deck.length, index, runInstantly]);
+  }, [
+    cardIdByItem,
+    cardIds,
+    currentSpellRound,
+    currentStudyRound,
+    deck,
+    index,
+    learningState,
+    mode,
+    removedCardIds,
+    runInstantly,
+    shuffleOnLoop,
+    sourceDeck,
+    spellDeck,
+    spellIndex,
+  ]);
 
   const undoRemove = useCallback(() => {
     if (!lastRemoved) return;
+    const restoredItem = sourceItemById.get(lastRemoved.cardId);
+    if (!restoredItem) return;
+    const studyProgress = getModeProgress(
+      learningState,
+      lastRemoved.cardId,
+      "study",
+    );
+    const spellProgress = getModeProgress(
+      learningState,
+      lastRemoved.cardId,
+      "spell",
+    );
     runInstantly(() => {
-      setDeck((prev) => {
-        const next = [...prev];
-        const insertIndex = Math.min(lastRemoved.index, next.length);
-        next.splice(insertIndex, 0, lastRemoved.item);
-        setIndex(insertIndex);
-        return next;
-      });
+      setRemovedCardIds((previous) =>
+        previous.filter((cardId) => cardId !== lastRemoved.cardId),
+      );
+      const restoreStudyAtSavedPosition =
+        mode === "study" &&
+        lastRemoved.studyPosition >= 0 &&
+        lastRemoved.studyRound === currentStudyRound;
+      if (restoreStudyAtSavedPosition || (mode === "study" && !studyProgress.hidden)) {
+        setDeck((previous) => {
+          if (previous.includes(restoredItem)) return previous;
+          const next = [...previous];
+          const insertIndex = restoreStudyAtSavedPosition
+            ? Math.min(lastRemoved.studyPosition, next.length)
+            : next.length;
+          next.splice(insertIndex, 0, restoredItem);
+          setIndex(insertIndex);
+          return next;
+        });
+      }
+      const restoreSpellAtSavedPosition =
+        mode === "spell" &&
+        lastRemoved.spellPosition >= 0 &&
+        lastRemoved.spellRound === currentSpellRound;
+      if (restoreSpellAtSavedPosition || (mode === "spell" && !spellProgress.hidden)) {
+        setSpellDeck((previous) => {
+          if (previous.includes(restoredItem)) return previous;
+          const next = [...previous];
+          const insertIndex = restoreSpellAtSavedPosition
+            ? Math.min(lastRemoved.spellPosition, next.length)
+            : next.length;
+          next.splice(insertIndex, 0, restoredItem);
+          return next;
+        });
+      }
       setLastRemoved(null);
       setRevealed(false);
     });
-  }, [lastRemoved, runInstantly]);
+  }, [
+    currentSpellRound,
+    currentStudyRound,
+    lastRemoved,
+    learningState,
+    mode,
+    runInstantly,
+    sourceItemById,
+  ]);
 
   const resetDeck = useCallback(() => {
     runInstantly(() => {
       const restoredDeck = cloneDeck();
       setSourceDeck(restoredDeck);
       setDeck(restoredDeck);
+      setSpellDeck([]);
       setIndex(0);
+      setSpellIndex(0);
       setRevealed(false);
       setLastRemoved(null);
+      setRemovedCardIds([]);
+      setLearningState({});
+      setCompletedRounds({ study: 0, spell: 0 });
       setMode("study");
     });
   }, [runInstantly]);
@@ -934,9 +1249,14 @@ export default function App() {
         runInstantly(() => {
           setSourceDeck(normalized);
           setDeck(normalized);
+          setSpellDeck([]);
           setIndex(0);
+          setSpellIndex(0);
           setRevealed(false);
           setLastRemoved(null);
+          setRemovedCardIds([]);
+          setLearningState({});
+          setCompletedRounds({ study: 0, spell: 0 });
           setMode("study");
         });
         setImportedDeckData(normalized);
@@ -965,9 +1285,14 @@ export default function App() {
       runInstantly(() => {
         setSourceDeck(normalized);
         setDeck(normalized);
+        setSpellDeck([]);
         setIndex(0);
+        setSpellIndex(0);
         setRevealed(false);
         setLastRemoved(null);
+        setRemovedCardIds([]);
+        setLearningState({});
+        setCompletedRounds({ study: 0, spell: 0 });
         setMode("study");
       });
       setImportedDeckData(normalized);
@@ -979,9 +1304,11 @@ export default function App() {
   }, [pasteText, runInstantly]);
 
   const exportDeck = useMemo(() => {
-    const remainingItems = new Set(deck);
-    return sourceDeck.filter((entry) => remainingItems.has(entry));
-  }, [deck, sourceDeck]);
+    const removed = new Set(removedCardIds);
+    return sourceDeck.filter(
+      (entry) => !removed.has(cardIdByItem.get(entry)),
+    );
+  }, [cardIdByItem, removedCardIds, sourceDeck]);
 
   const handleExportJson = useCallback(() => {
     if (!exportDeck.length) return;
@@ -1082,7 +1409,7 @@ export default function App() {
 
         if (event.code === "Escape") {
           event.preventDefault();
-          setMode("study");
+          enterStudyMode();
           return;
         }
 
@@ -1090,8 +1417,12 @@ export default function App() {
           event.preventDefault();
           if (spellResult === "correct") {
             // Advance to next spell word
-            if (spellIndex + 1 >= deck.length) {
+            if (spellIndex + 1 >= spellDeck.length) {
               // Done with all words
+              setCompletedRounds((previous) => ({
+                ...previous,
+                spell: currentSpellRound,
+              }));
               enterStudyMode();
             } else {
               setSpellIndex((prev) => prev + 1);
@@ -1103,8 +1434,16 @@ export default function App() {
             setShakeKey((prev) => prev + 1);
           } else {
             // Submit
-            const target = (deck[spellIndex]?.term ?? "").toLowerCase();
-            if (spellInput.toLowerCase() === target) {
+            const spellItem = spellDeck[spellIndex];
+            const target = (spellItem?.term ?? "").toLowerCase();
+            const correct = Boolean(target) && spellInput.toLowerCase() === target;
+            recordModeReview(
+              spellItem,
+              "spell",
+              currentSpellRound,
+              correct,
+            );
+            if (correct) {
               setSpellResult("correct");
             } else {
               setSpellResult("wrong");
@@ -1150,15 +1489,13 @@ export default function App() {
       } else if (event.code === "Enter") {
         event.preventDefault();
         if (revealed) {
-          // Last card + revealed → enter rest mode
-          if (index === deck.length - 1) {
-            enterRestMode();
-          } else {
-            nextCard();
-          }
+          completeStudyAnswer(true);
         } else {
           toggleReveal();
         }
+      } else if (event.code === "KeyN" && revealed) {
+        event.preventDefault();
+        completeStudyAnswer(false);
       } else if (event.code === "ArrowLeft") {
         event.preventDefault();
         prevCard();
@@ -1174,24 +1511,27 @@ export default function App() {
     };
   }, [
     deck,
+    completeStudyAnswer,
+    currentSpellRound,
     guideOpen,
     index,
     mode,
-    nextCard,
     prevCard,
     removeCard,
     revealed,
+    recordModeReview,
+    spellDeck,
     spellIndex,
     spellInput,
     spellResult,
     toggleReveal,
-    enterRestMode,
     enterStudyMode,
     enterSpellMode,
   ]);
 
   const hasDeck = deck.length > 0;
-  const completedByRemoval = !hasDeck && Boolean(lastRemoved);
+  const hasSpellDeck = spellDeck.length > 0;
+  const completedByRemoval = !exportDeck.length && Boolean(lastRemoved);
   const item = hasDeck ? deck[index] : null;
   const term = hasDeck
     ? revealed
@@ -1211,20 +1551,50 @@ export default function App() {
   const showDetails = revealed && hasDeck;
   const hint = hasDeck
     ? revealed
-      ? "Enter for next, Space hides, Tab/<- for previous, Delete removes"
+      ? "Enter = remembered · N = not yet · Space hides"
       : "Enter or Space reveals meaning + example sentences"
     : completedByRemoval
       ? "All the work is done! Undo or Reset to continue."
       : "Deck empty. Press Reset to reload.";
-  const activeProgressPosition = hasDeck
+  const activeDeckLength = mode === "spell" ? spellDeck.length : deck.length;
+  const activeProgressPosition = activeDeckLength
     ? mode === "spell"
       ? spellIndex + 1
       : index + 1
     : 0;
-  const progress = hasDeck ? activeProgressPosition / deck.length : 0;
-  const progressLabel = hasDeck
-    ? `${activeProgressPosition} / ${deck.length}`
+  const progress = activeDeckLength
+    ? activeProgressPosition / activeDeckLength
+    : 0;
+  const progressLabel = activeDeckLength
+    ? `${activeProgressPosition} / ${activeDeckLength}`
     : "0 / 0";
+  const currentStudyProgress = item
+    ? getModeProgress(learningState, cardIdByItem.get(item), "study")
+    : null;
+  const familiarEntries = useMemo(
+    () =>
+      sourceDeck
+        .map((entry) => {
+          const cardId = cardIdByItem.get(entry);
+          return {
+            entry,
+            cardId,
+            study: getModeProgress(learningState, cardId, "study"),
+            spell: getModeProgress(learningState, cardId, "spell"),
+          };
+        })
+        .filter(
+          ({ cardId, study, spell }) =>
+            !removedCardIds.includes(cardId) && (study.hidden || spell.hidden),
+        ),
+    [cardIdByItem, learningState, removedCardIds, sourceDeck],
+  );
+  const familiarStudyCount = familiarEntries.filter(
+    ({ study }) => study.hidden,
+  ).length;
+  const familiarSpellCount = familiarEntries.filter(
+    ({ spell }) => spell.hidden,
+  ).length;
 
   const copyCurrentTerm = useCallback(async () => {
     if (!item?.term) return;
@@ -1293,7 +1663,7 @@ export default function App() {
             <button
               type="button"
               onClick={handleExportJson}
-              disabled={!hasDeck}
+              disabled={!exportDeck.length}
             >
               Export JSON
             </button>
@@ -1306,9 +1676,8 @@ export default function App() {
           </div>
         </div>
         <div className="subhead">
-          Flashcard flow: Enter reveals, Enter again goes next. Space hides or
-          reveals. Tab or &lt;- goes previous. Delete removes. Tap the card if
-          you are on mobile.
+          Enter reveals, then marks remembered. N marks not yet. Four
+          consecutive correct rounds move a word into the familiar pool.
         </div>
         <input
           ref={fileInputRef}
@@ -1436,7 +1805,7 @@ export default function App() {
                         type="button"
                         className="export-btn"
                         onClick={handleExportJson}
-                        disabled={!hasDeck}
+                        disabled={!exportDeck.length}
                         title="下载 JSON 文件"
                       >
                         ⬇ JSON
@@ -1445,7 +1814,7 @@ export default function App() {
                         type="button"
                         className="export-btn"
                         onClick={handleExportMd}
-                        disabled={!hasDeck}
+                        disabled={!exportDeck.length}
                         title="下载 Markdown 文件"
                       >
                         ⬇ Markdown
@@ -1501,10 +1870,13 @@ export default function App() {
                   <ul className="guide-key-list">
                     <li>
                       <kbd>Space</kbd> 或 <kbd>Enter</kbd> — 翻开释义和 2-3
-                      条例句 / 隐藏
+                      条例句；翻开本身不计分
                     </li>
                     <li>
-                      翻开后再按 <kbd>Enter</kbd> — 进入下一张
+                      翻开后按 <kbd>Enter</kbd> — 记为「想起来了」并进入下一张
+                    </li>
+                    <li>
+                      翻开后按 <kbd>N</kbd> — 记为「没想起来」并进入下一张
                     </li>
                     <li>
                       <kbd>Tab</kbd> 或 <kbd>←</kbd> — 上一张
@@ -1515,7 +1887,7 @@ export default function App() {
                     <li>点击单词本身 — 复制原始拼写，不触发翻面</li>
                     <li>
                       顶部 <kbd>Export JSON</kbd> —
-                      按原始顺序导出本轮剩余单词及完整字段
+                      按原始顺序导出所有未 Remove 的单词，熟悉池中的词也保留
                     </li>
                     <li>
                       刷完最后一张后按 <kbd>Enter</kbd> — 进入休息屏
@@ -1547,6 +1919,7 @@ export default function App() {
                       答对后按 <kbd>Enter</kbd> — 下一个词
                     </li>
                     <li>答错后继续键入 — 自动清空重拼</li>
+                    <li>第一次提交决定本轮成绩，改正答案不会覆盖错误</li>
                     <li>
                       <kbd>Backspace</kbd> — 删除最后一个字符
                     </li>
@@ -1554,6 +1927,13 @@ export default function App() {
                       <kbd>Esc</kbd> — 退出，回到刷词模式
                     </li>
                   </ul>
+                </div>
+
+                <div className="guide-mode-block">
+                  <div className="guide-mode-badge">暂时熟悉池</div>
+                  <p className="guide-mode-desc">
+                    辨识和拼写分别累计。某个 mode 连续正确 4 轮后，该词会隐藏完整的 1-2 轮，再分批随机返场；每轮返场词最多约占最终队列的四分之一。返场错误只重置当前 mode。
+                  </p>
                 </div>
               </div>
             </details>
@@ -1574,7 +1954,14 @@ export default function App() {
       {/* ── Spell Mode ── */}
       {mode === "spell" &&
         (() => {
-          const spellItem = deck[spellIndex] ?? null;
+          const spellItem = spellDeck[spellIndex] ?? null;
+          const spellProgress = spellItem
+            ? getModeProgress(
+                learningState,
+                cardIdByItem.get(spellItem),
+                "spell",
+              )
+            : null;
           const spellPos = spellItem?.pos || "";
           const spellMeaning = spellItem
             ? [spellItem.meaning, spellItem.meaningZh].filter(Boolean).join(" / ")
@@ -1589,6 +1976,10 @@ export default function App() {
                   : spellResult === "wrong"
                     ? "继续键入重拼 / enter 再shake / esc 退出"
                     : "键入单词 · enter 提交 · esc 退出"}
+              </div>
+              <div className="memory-status">
+                拼写 {Math.min(spellProgress?.streak ?? 0, 4)}/4 · 第 {currentSpellRound} 轮
+                {spellProgress?.hidden ? " · 返场复习" : ""}
               </div>
 
               {/* Meaning only — no word shown */}
@@ -1634,6 +2025,10 @@ export default function App() {
           onClick={toggleReveal}
         >
           <div className="hint">{hint}</div>
+          <div className="memory-status">
+            辨识 {Math.min(currentStudyProgress?.streak ?? 0, 4)}/4 · 第 {currentStudyRound} 轮
+            {currentStudyProgress?.hidden ? " · 返场复习" : ""}
+          </div>
           <div className="term-row">
             <h2
               className="term term-copy"
@@ -1701,6 +2096,20 @@ export default function App() {
               })}
             </ul>
           ) : null}
+          {showDetails ? (
+            <div className="study-rating" onClick={(event) => event.stopPropagation()}>
+              <button
+                className="primary"
+                type="button"
+                onClick={() => completeStudyAnswer(true)}
+              >
+                想起来了 (Enter)
+              </button>
+              <button type="button" onClick={() => completeStudyAnswer(false)}>
+                没想起来 (N)
+              </button>
+            </div>
+          ) : null}
         </section>
       )}
 
@@ -1712,16 +2121,33 @@ export default function App() {
           <div className="count">{progressLabel}</div>
         </div>
         <div className="controls">
-          <button className="primary" type="button" onClick={toggleReveal}>
+          <button
+            className="primary"
+            type="button"
+            onClick={toggleReveal}
+            disabled={mode !== "study" || !hasDeck}
+          >
             {revealed ? "Hide (Space)" : "Reveal (Space)"}
           </button>
-          <button type="button" onClick={prevCard}>
+          <button
+            type="button"
+            onClick={prevCard}
+            disabled={mode !== "study" || !hasDeck}
+          >
             Prev (Tab / &lt;-)
           </button>
-          <button type="button" onClick={nextCard}>
-            Next (Enter)
+          <button
+            type="button"
+            onClick={revealed ? () => completeStudyAnswer(true) : toggleReveal}
+            disabled={mode !== "study" || !hasDeck}
+          >
+            {revealed ? "Remembered (Enter)" : "Reveal (Enter)"}
           </button>
-          <button type="button" onClick={removeCard}>
+          <button
+            type="button"
+            onClick={removeCard}
+            disabled={mode === "spell" ? !hasSpellDeck : !hasDeck}
+          >
             Remove (Delete)
           </button>
           <button type="button" onClick={undoRemove} disabled={!lastRemoved}>
@@ -1739,8 +2165,33 @@ export default function App() {
             Reset Deck
           </button>
         </div>
-        <div className="loop">Looping deck: on</div>
+        <div className="loop">
+          辨识第 {currentStudyRound} 轮 · 拼写第 {currentSpellRound} 轮 · 暂时熟悉：辨识 {familiarStudyCount} / 拼写 {familiarSpellCount}
+        </div>
       </section>
+
+      <details className="familiar-pool">
+        <summary>
+          暂时熟悉池（{familiarEntries.length} 个词）
+        </summary>
+        {familiarEntries.length ? (
+          <div className="familiar-list">
+            {familiarEntries.map(({ entry, cardId, study, spell }) => (
+              <div className="familiar-item" key={cardId}>
+                <strong>{entry.term}</strong>
+                <span>
+                  辨识：{study.hidden ? `隐藏至第 ${study.dueRound} 轮` : `${Math.min(study.streak, 4)}/4`}
+                </span>
+                <span>
+                  拼写：{spell.hidden ? `隐藏至第 ${spell.dueRound} 轮` : `${Math.min(spell.streak, 4)}/4`}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p>连续正确 4 轮的词会出现在这里。</p>
+        )}
+      </details>
 
       <div className="footer-note">
         No limits — keep cycling as long as you want.
