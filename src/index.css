@@ -721,6 +721,19 @@ kbd {
   color: var(--hint);
 }
 
+.memory-status {
+  font-size: 12px;
+  color: var(--ink-soft);
+  letter-spacing: 0.4px;
+}
+
+.study-rating {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 2px;
+}
+
 .meta {
   display: flex;
   flex-wrap: wrap;
@@ -801,6 +814,46 @@ button:disabled {
 .footer-note {
   font-size: 12px;
   color: var(--note);
+}
+
+.familiar-pool {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--button-bg);
+  color: var(--ink-soft);
+  padding: 14px 18px;
+}
+
+.familiar-pool summary {
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.familiar-pool > p {
+  margin: 12px 0 2px;
+  font-size: 13px;
+}
+
+.familiar-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.familiar-item {
+  display: grid;
+  grid-template-columns: minmax(110px, 1fr) repeat(2, minmax(150px, 1fr));
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  font-size: 13px;
+}
+
+.familiar-item strong {
+  color: var(--ink);
 }
 
 @keyframes rise {
@@ -965,6 +1018,11 @@ button:disabled {
 
   .progress-bar {
     width: 160px;
+  }
+
+  .familiar-item {
+    grid-template-columns: 1fr;
+    gap: 5px;
   }
 }
 
