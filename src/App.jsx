@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import deepUnderstandingPrompt from "./prompts/deep-understanding.md?raw";
 
 const baseDeck = [
   {
@@ -654,6 +655,8 @@ const parseDeckFromText = (rawText) => {
 
 const normalizeEntry = (entry) => {
   const toText = (value) => (value == null ? "" : String(value)).trim();
+  const sourceEntry =
+    entry && typeof entry === "object" && !Array.isArray(entry) ? entry : {};
   const normalizeExample = (example) => {
     if (typeof example === "string") {
       const sentence = toText(example);
@@ -670,7 +673,7 @@ const normalizeEntry = (entry) => {
         example?.highlight,
     );
 
-    return sentence ? { sentence, focus } : null;
+    return sentence ? { ...example, sentence, focus } : null;
   };
 
   const rawExamples =
@@ -698,6 +701,7 @@ const normalizeEntry = (entry) => {
   }
 
   return {
+    ...sourceEntry,
     term: toText(entry?.term ?? entry?.word ?? entry?.name),
     syllables: toText(entry?.syllables),
     respell: toText(entry?.respell),
@@ -705,6 +709,12 @@ const normalizeEntry = (entry) => {
     meaning: toText(entry?.meaning ?? entry?.definition),
     meaningZh: toText(
       entry?.meaningZh ?? entry?.meaning_zh ?? entry?.meaningZH,
+    ),
+    wordOrigin: toText(
+      entry?.wordOrigin ?? entry?.word_origin ?? entry?.etymology,
+    ),
+    relatedWord: toText(
+      entry?.relatedWord ?? entry?.related_word ?? entry?.counterpart,
     ),
     examples,
   };
@@ -726,7 +736,8 @@ const readImportFile = async (file) => {
 };
 
 export default function App() {
-  const [deck, setDeck] = useState(() => cloneDeck());
+  const [sourceDeck, setSourceDeck] = useState(() => cloneDeck());
+  const [deck, setDeck] = useState(sourceDeck);
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [lastRemoved, setLastRemoved] = useState(null);
@@ -756,6 +767,8 @@ export default function App() {
 - pos: 词性缩写（如 "n.", "v.", "adj.", "adv."）
 - meaning: 英文简明释义
 - meaningZh: 中文释义
+- wordOrigin: 用 1-3 句中文简述可靠的词根、词缀和词源，以及各部分怎样组合成当前含义；不确定或仅为助记时必须明确说明
+- relatedWord: 一个最直接的相反词或对应概念，并简短说明区别；没有自然、可靠的配对时输出空字符串
 - examples: 例句数组，必须提供 2-3 个对象
   - sentence: 例句，必须自然、简洁，适合 B1-B2 学习者理解
   - focus: 例句中需要加粗显示的原文片段，必须与 sentence 中的字符完全一致
@@ -775,6 +788,8 @@ export default function App() {
     "pos": "n.",
     "meaning": "a thing that illustrates a rule",
     "meaningZh": "例子；示例",
+    "wordOrigin": "来自 Latin exemplum，指从一组事物中取出来作为样本的东西。",
+    "relatedWord": "counterexample — 用来反驳或推翻某个说法的反例",
     "examples": [
       {
         "sentence": "This is a clear example of the rule.",
@@ -854,6 +869,7 @@ export default function App() {
   const removeCard = useCallback(() => {
     if (!deck.length) return;
     runInstantly(() => {
+      setMode("study");
       setDeck((prev) => {
         if (!prev.length) return prev;
         const next = [...prev];
@@ -888,7 +904,9 @@ export default function App() {
 
   const resetDeck = useCallback(() => {
     runInstantly(() => {
-      setDeck(cloneDeck());
+      const restoredDeck = cloneDeck();
+      setSourceDeck(restoredDeck);
+      setDeck(restoredDeck);
       setIndex(0);
       setRevealed(false);
       setLastRemoved(null);
@@ -914,11 +932,14 @@ export default function App() {
           throw new Error("内容中没有有效的单词。");
         }
         runInstantly(() => {
+          setSourceDeck(normalized);
           setDeck(normalized);
           setIndex(0);
           setRevealed(false);
           setLastRemoved(null);
+          setMode("study");
         });
+        setImportedDeckData(normalized);
         setImportMessage(`已导入 ${normalized.length} 个单词。`);
       } catch (error) {
         setImportMessage(`导入失败：${error?.message || "无法解析文件内容。"}`);
@@ -942,10 +963,12 @@ export default function App() {
         throw new Error("内容中没有有效的单词。");
       }
       runInstantly(() => {
+        setSourceDeck(normalized);
         setDeck(normalized);
         setIndex(0);
         setRevealed(false);
         setLastRemoved(null);
+        setMode("study");
       });
       setImportedDeckData(normalized);
       setImportMessage(`已导入 ${normalized.length} 个单词。`);
@@ -955,21 +978,29 @@ export default function App() {
     }
   }, [pasteText, runInstantly]);
 
+  const exportDeck = useMemo(() => {
+    const remainingItems = new Set(deck);
+    return sourceDeck.filter((entry) => remainingItems.has(entry));
+  }, [deck, sourceDeck]);
+
   const handleExportJson = useCallback(() => {
-    if (!importedDeckData) return;
-    const json = JSON.stringify(importedDeckData, null, 2);
+    if (!exportDeck.length) return;
+    const json = JSON.stringify(exportDeck, null, 2);
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = "vocab-deck.json";
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
-  }, [importedDeckData]);
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    setImportMessage(`已导出 ${exportDeck.length} 个剩余单词。`);
+  }, [exportDeck]);
 
   const handleExportMd = useCallback(() => {
-    if (!importedDeckData) return;
-    const lines = importedDeckData.map((entry) => {
+    if (!exportDeck.length) return;
+    const lines = exportDeck.map((entry) => {
       const exampleLines = (entry.examples ?? []).flatMap((example, index) =>
         [
           example?.sentence
@@ -984,6 +1015,8 @@ export default function App() {
         entry.respell ? `- Respell: ${entry.respell}` : "",
         entry.meaning ? `- Meaning (EN): ${entry.meaning}` : "",
         entry.meaningZh ? `- Meaning (ZH): ${entry.meaningZh}` : "",
+        entry.wordOrigin ? `- Word Origin: ${entry.wordOrigin}` : "",
+        entry.relatedWord ? `- Related Word: ${entry.relatedWord}` : "",
         ...exampleLines,
       ].filter(Boolean);
       return [`[${entry.term}]`, "", ...body].join("\n");
@@ -994,9 +1027,11 @@ export default function App() {
     const a = document.createElement("a");
     a.href = url;
     a.download = "vocab-deck.md";
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
-  }, [importedDeckData]);
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }, [exportDeck]);
 
   const handleCopyPrompt = async () => {
     try {
@@ -1007,10 +1042,27 @@ export default function App() {
     }
   };
 
+  const handleCopyDeepPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(deepUnderstandingPrompt);
+      setImportMessage("词根词源—感觉—画面提示词已复制到剪贴板。");
+    } catch (error) {
+      setImportMessage("复制失败，请在 Guidebook 中手动复制提示词。");
+    }
+  };
+
   useEffect(() => {
     const handleKeydown = (event) => {
       if (guideOpen) return;
       if (guidePanelRef.current?.contains(document.activeElement)) return;
+      if (
+        event.target instanceof Element &&
+        event.target.closest(
+          'button, input, textarea, select, [contenteditable="true"], [role="button"]',
+        )
+      ) {
+        return;
+      }
 
       // ── REST mode ──────────────────────────────────
       if (mode === "rest") {
@@ -1139,24 +1191,31 @@ export default function App() {
   ]);
 
   const hasDeck = deck.length > 0;
+  const completedByRemoval = !hasDeck && Boolean(lastRemoved);
   const item = hasDeck ? deck[index] : null;
   const term = hasDeck
     ? revealed
       ? item?.syllables || item?.term
       : item?.term
-    : "No words loaded";
+    : completedByRemoval
+      ? "Congratulations! 🎉"
+      : "No words loaded";
   const posTag = item?.pos || "";
   const meaningText = item
     ? [item.meaning, item.meaningZh].filter(Boolean).join(" / ")
     : "";
   const examples = item?.examples ?? [];
   const respell = item?.respell || "";
+  const wordOrigin = item?.wordOrigin || "";
+  const relatedWord = item?.relatedWord || "";
   const showDetails = revealed && hasDeck;
   const hint = hasDeck
     ? revealed
       ? "Enter for next, Space hides, Tab/<- for previous, Delete removes"
       : "Enter or Space reveals meaning + example sentences"
-    : "Deck empty. Press Reset to reload.";
+    : completedByRemoval
+      ? "All the work is done! Undo or Reset to continue."
+      : "Deck empty. Press Reset to reload.";
   const activeProgressPosition = hasDeck
     ? mode === "spell"
       ? spellIndex + 1
@@ -1166,6 +1225,34 @@ export default function App() {
   const progressLabel = hasDeck
     ? `${activeProgressPosition} / ${deck.length}`
     : "0 / 0";
+
+  const copyCurrentTerm = useCallback(async () => {
+    if (!item?.term) return;
+    try {
+      await navigator.clipboard.writeText(item.term);
+      setImportMessage(`已复制 ${item.term}。`);
+    } catch (error) {
+      setImportMessage("复制失败，请手动选择单词。");
+    }
+  }, [item?.term]);
+
+  const handleTermClick = useCallback(
+    (event) => {
+      event.stopPropagation();
+      copyCurrentTerm();
+    },
+    [copyCurrentTerm],
+  );
+
+  const handleTermKeyDown = useCallback(
+    (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      event.stopPropagation();
+      copyCurrentTerm();
+    },
+    [copyCurrentTerm],
+  );
 
   const cardClassName = useMemo(() => {
     return `card${noAnim ? " no-anim" : ""}`;
@@ -1201,8 +1288,18 @@ export default function App() {
             <button type="button" onClick={handleImportClick}>
               Import
             </button>
+            <button
+              type="button"
+              onClick={handleExportJson}
+              disabled={!hasDeck}
+            >
+              Export JSON
+            </button>
             <button type="button" onClick={() => setGuideOpen(true)}>
               Guidebook
+            </button>
+            <button type="button" onClick={handleCopyDeepPrompt}>
+              词根·感觉·画面
             </button>
           </div>
         </div>
@@ -1238,6 +1335,11 @@ export default function App() {
                 关闭
               </button>
             </div>
+            {importMessage ? (
+              <div className="import-message" aria-live="polite">
+                {importMessage}
+              </div>
+            ) : null}
 
             {/* ── 导入词库 ── */}
             <div className="guide-section">
@@ -1262,7 +1364,8 @@ export default function App() {
                     复制提示词，发给 DeepSeek 或 ChatGPT
                   </div>
                   <p className="guide-step-desc">
-                    点下方「复制提示词」，让 AI 按 B1-B2 难度生成更容易理解的例句词卡。
+                    点下方「复制提示词」，让 AI 补全词根词源、对应概念和 B1-B2
+                    日常例句，生成可直接导入的 JSON 词卡。
                   </p>
                   <button
                     className="primary guide-step-btn"
@@ -1331,6 +1434,7 @@ export default function App() {
                         type="button"
                         className="export-btn"
                         onClick={handleExportJson}
+                        disabled={!hasDeck}
                         title="下载 JSON 文件"
                       >
                         ⬇ JSON
@@ -1339,6 +1443,7 @@ export default function App() {
                         type="button"
                         className="export-btn"
                         onClick={handleExportMd}
+                        disabled={!hasDeck}
                         title="下载 Markdown 文件"
                       >
                         ⬇ Markdown
@@ -1359,6 +1464,24 @@ export default function App() {
                   直接上传
                 </button>
               </p>
+            </div>
+
+            <hr className="guide-divider" />
+
+            <div className="guide-section">
+              <h3 className="guide-section-title">
+                🧠 词根词缀词源—感觉—画面
+              </h3>
+              <p className="guide-import-desc">
+                学习某个难词时，把这套提示词发给 AI，再发送一个英文单词。它会从可靠词源、底层感觉、脑内画面、现实场景和近义词边界逐层讲解，帮助你绕开机械中英对照。
+              </p>
+              <button
+                className="primary guide-step-btn"
+                type="button"
+                onClick={handleCopyDeepPrompt}
+              >
+                复制深度理解提示词
+              </button>
             </div>
 
             <hr className="guide-divider" />
@@ -1386,6 +1509,11 @@ export default function App() {
                     </li>
                     <li>
                       <kbd>Delete</kbd> — 从本轮移除当前单词
+                    </li>
+                    <li>点击单词本身 — 复制原始拼写，不触发翻面</li>
+                    <li>
+                      顶部 <kbd>Export JSON</kbd> —
+                      按原始顺序导出本轮剩余单词及完整字段
                     </li>
                     <li>
                       刷完最后一张后按 <kbd>Enter</kbd> — 进入休息屏
@@ -1505,7 +1633,17 @@ export default function App() {
         >
           <div className="hint">{hint}</div>
           <div className="term-row">
-            <h2 className="term">{term}</h2>
+            <h2
+              className="term term-copy"
+              role={hasDeck ? "button" : undefined}
+              tabIndex={hasDeck ? 0 : undefined}
+              title={hasDeck ? `复制 ${item?.term}` : undefined}
+              aria-label={hasDeck ? `复制单词 ${item?.term}` : undefined}
+              onClick={hasDeck ? handleTermClick : undefined}
+              onKeyDown={hasDeck ? handleTermKeyDown : undefined}
+            >
+              {term}
+            </h2>
             <div className={`pronounce${showDetails ? "" : " is-hidden"}`}>
               <div className="pronounce-value">{respell}</div>
             </div>
@@ -1514,6 +1652,22 @@ export default function App() {
             {posTag ? <span className="pos-tag">{posTag}</span> : null}
             <span>{meaningText}</span>
           </p>
+          {showDetails && (wordOrigin || relatedWord) ? (
+            <div className="word-insight">
+              {wordOrigin ? (
+                <p>
+                  <strong>词根·词缀·词源</strong>
+                  <span>{wordOrigin}</span>
+                </p>
+              ) : null}
+              {relatedWord ? (
+                <p>
+                  <strong>对应概念</strong>
+                  <span>{relatedWord}</span>
+                </p>
+              ) : null}
+            </div>
+          ) : null}
           {examples.length ? (
             <ul
               className={`examples${showDetails ? "" : " is-hidden"}`}
