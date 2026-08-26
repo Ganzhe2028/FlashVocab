@@ -29,7 +29,7 @@ Bottom progress bar and count follow the study card position in this mode.
 - `Tab` / `←` — previous card
 - `Delete` / `Backspace` — remove current card from deck
 - `ArrowLeft` — previous card
-- Click the displayed word — copy the raw `term` without revealing or hiding the card
+- Click the displayed word — copy the raw `term` without revealing or hiding the card; focus is released immediately after copying so global study shortcuts continue working
 
 The top-level `Export JSON` button exports the remaining study deck in its original import order, independent of loop shuffles. Imported JSON properties outside the normalized schema are retained and exported unchanged. If the last card is manually removed, the card shows a completion message while Undo and Reset remain available.
 

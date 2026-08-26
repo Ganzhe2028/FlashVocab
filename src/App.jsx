@@ -1239,6 +1239,7 @@ export default function App() {
   const handleTermClick = useCallback(
     (event) => {
       event.stopPropagation();
+      event.currentTarget.blur();
       copyCurrentTerm();
     },
     [copyCurrentTerm],
@@ -1249,6 +1250,7 @@ export default function App() {
       if (event.key !== "Enter" && event.key !== " ") return;
       event.preventDefault();
       event.stopPropagation();
+      event.currentTarget.blur();
       copyCurrentTerm();
     },
     [copyCurrentTerm],
