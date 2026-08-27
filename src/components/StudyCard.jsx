@@ -1,4 +1,5 @@
 import { getHighlightedSentence } from "./highlightSentence.js";
+import { FAMILIAR_STREAK_TARGET } from "../learningAlgorithm.js";
 
 export default function StudyCard({
   cardClassName,
@@ -48,7 +49,8 @@ export default function StudyCard({
       <div className="hint">{hint}</div>
       {showFamiliarStatus ? (
         <div className="memory-status">
-          辨识 {Math.min(progress?.streak ?? 0, 4)}/4 · 第 {currentRound} 轮
+          辨识 {Math.min(progress?.streak ?? 0, FAMILIAR_STREAK_TARGET)}/
+          {FAMILIAR_STREAK_TARGET} · 第 {currentRound} 轮
           {progress?.hidden ? " · 返场复习" : ""}
         </div>
       ) : null}

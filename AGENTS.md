@@ -22,7 +22,7 @@ This repository is a Vite + React flashcard app with a separate vocabulary list.
 
 ### `study` mode (default)
 
-Standard flashcard loop. Shows one card at a time; Space/Enter reveal the answer. When revealed, the card shows part of speech, EN/ZH meaning, and a light-weight list of 2-3 B1-B2-friendly example sentences with bolded focus phrases. In default simple mode, Enter advances without a recognition rating. When `四轮熟悉返场` is enabled, the explicit rating buttons appear: Enter / `想起来了` records correct and advances; N / `没想起来` records wrong and advances. Revealing alone does not score the card.
+Standard flashcard loop. Shows one card at a time; Space/Enter reveal the answer. When revealed, the card shows part of speech, EN/ZH meaning, and a light-weight list of 2-3 B1-B2-friendly example sentences with bolded focus phrases. In default simple mode, Enter advances without a recognition rating. When `两轮熟悉返场` is enabled, the explicit rating buttons appear: Enter / `想起来了` records correct and advances; N / `没想起来` records wrong and advances. Revealing alone does not score the card.
 
 Bottom progress bar and count follow the study card position in this mode.
 
@@ -40,19 +40,20 @@ The top-level `Export JSON` button exports every non-removed source card in its 
 
 Global study shortcuts ignore interactive controls such as buttons, inputs, textareas, and elements with `role="button"`. Clicking the bottom Remove control from `rest` or `spell` mode returns to `study` before removal so empty-deck completion and indices remain valid.
 
-**Optional complexity:** both feature switches default off and persist locally. `词源与对应概念` controls whether revealed cards render `wordOrigin` and `relatedWord`; it never removes those fields. `四轮熟悉返场` controls the two recognition-rating buttons, the `N` shortcut, familiarity scoring, hiding, status labels, the pool, and return scheduling. While it is off, Enter simply advances, every non-removed card remains in ordinary circulation, and answers update only round-completion bookkeeping; existing familiarity progress is preserved. Turning it off immediately restores hidden cards to the current queue.
+**Optional complexity:** both feature switches default off and persist locally. `词源与对应概念` controls whether revealed cards render `wordOrigin` and `relatedWord`; it never removes those fields. `两轮熟悉返场` controls the two recognition-rating buttons, the `N` shortcut, familiarity scoring, hiding, status labels, the pool, and return scheduling. While it is off, Enter simply advances, every non-removed card remains in ordinary circulation, and answers update only round-completion bookkeeping; existing familiarity progress is preserved. Turning it off immediately restores hidden cards to the current queue.
 
 **Loop shuffle:** before a new study or spelling round begins, simple mode includes every non-removed card. When familiarity is enabled, the scheduler first filters independently hidden cards and selects eligible return cards, then optionally shuffles the ordinary cards. The new first card is kept away from the card that was just on screen. The `Shuffle Loop: On / Off` button toggles this behavior and is persisted locally. `Reset Deck` restores the built-in deck and clears learning history while retaining feature preferences. Study and spell each build their own round queue.
 
 ### Temporarily familiar pool (optional)
 
-When `四轮熟悉返场` is enabled, each stable card ID owns independent `study` and `spell` progress: consecutive-correct streak, hidden flag, due round, selected 1-2 round gap, last-scored round, return count, and lapse count. The status labels and familiar-pool panel are absent while the option is off.
+When `两轮熟悉返场` is enabled, each stable card ID owns `study` and `spell` progress: consecutive-correct streak, hidden flag, due round, selected 1-2 round gap, last-scored round, return count, lapse count, and recognition-sync metadata. The status labels and familiar-pool panel are absent while the option is off.
 
-- A mode reaches temporary familiarity after 4 correct results in distinct rounds. Only that mode hides the card.
+- A mode reaches temporary familiarity after 2 correct results in distinct rounds.
+- If recognition is already hidden, the first correct spelling result hides spelling too and binds its return schedule to recognition. The same binding occurs when spelling already has one success and recognition then becomes hidden.
 - Promotion in round `R` sets `dueRound = R + 1 + skipRounds`, where `skipRounds` is randomly 1 or 2. The card is absent for one or two complete mode rounds.
 - Each new round contains all ordinary non-hidden cards plus a return batch. With ordinary cards present, the batch is capped at `max(1, floor(ordinary / 3))`, approximately 25% of the final queue; the one-card minimum is the small-deck liveness exception. A due-only round returns at most 25% of eligible pool cards, also with a minimum of one.
 - Older due rounds have priority; ties are random. Eligible cards not selected stay overdue for the next round.
-- A successful return keeps the card hidden and schedules another 1-2 round gap. A failed return resets only that mode to streak 0 and makes it ordinary again.
+- A bound card returns to spelling only after it actually returned in recognition; bound candidates take priority within the existing return cap. A successful recognition return updates both schedules. A recognition lapse releases both sides, while a spelling lapse releases only spelling.
 - Each card can score at most once per mode and round. In spell mode, the first submission is the scored result; corrections after feedback do not overwrite it.
 - If a newly requested round has no ordinary or due cards, it is explicitly skipped from the `rest` screen so round-only scheduling cannot deadlock.
 - Learning data, source deck, removed IDs, the latest Undo record, mode queues, indices, shuffle preference, both optional-complexity preferences, and completed round counts persist under the versioned `vocab2-learning-v1` localStorage key.
@@ -154,7 +155,7 @@ Append new words to the end of both `vocab.md` and `baseDeck` unless you are del
 
 ## Testing Guidelines
 
-Run `npm run check` before delivery. It runs ESLint, the Node logic tests, the Vitest/jsdom UI characterization suite, and the production build. The tests cover stable duplicate IDs, mode isolation, four-correct promotion, exact 1-2 skipped rounds, one-score-per-round, skipped-card round completion, lapse behavior, return caps, overdue priority, safe persistence, import/export formats, and the main study/rest/spell/remove/undo flows.
+Run `npm run check` before delivery. It runs ESLint, the Node logic tests, the Vitest/jsdom UI characterization suite, and the production build. The tests cover stable duplicate IDs, mode isolation, two-correct promotion, recognition-led cross-mode synchronization, exact 1-2 skipped rounds, one-score-per-round, skipped-card round completion, lapse behavior, return caps, overdue priority, safe persistence, import/export formats, and the main study/rest/spell/remove/undo flows.
 
 For deeper behaviour checks: `npm run build`, serve with `npm run preview`, then drive the UI with a headless-Chrome script through the Playwright module at `/Users/mac/.npm-global/lib/node_modules/@playwright/test/node_modules/playwright` (system Chrome at `/Applications/Chrome.app/Contents/MacOS/Google Chrome`). This pipeline was used to verify the loop-shuffle behaviour end to end.
 

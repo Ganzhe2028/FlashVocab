@@ -24,9 +24,9 @@ test("duplicate terms receive independent stable IDs", () => {
   assert.notEqual(first[0], first[1]);
 });
 
-test("four correct reviews hide only the scored mode after the current round", () => {
+test("two correct reviews hide only the scored mode after the current round", () => {
   let state = {};
-  for (let round = 1; round <= 4; round += 1) {
+  for (let round = 1; round <= 2; round += 1) {
     state = recordReview({
       learningState: state,
       cardId: "a",
@@ -37,15 +37,15 @@ test("four correct reviews hide only the scored mode after the current round", (
     });
   }
 
-  assert.equal(getModeProgress(state, "a", "study").streak, 4);
+  assert.equal(getModeProgress(state, "a", "study").streak, 2);
   assert.equal(getModeProgress(state, "a", "study").hidden, true);
-  assert.equal(getModeProgress(state, "a", "study").dueRound, 6);
+  assert.equal(getModeProgress(state, "a", "study").dueRound, 4);
   assert.equal(getModeProgress(state, "a", "spell").hidden, false);
 });
 
 test("a two-round gap returns on current round plus three", () => {
   let state = {};
-  for (let round = 1; round <= 4; round += 1) {
+  for (let round = 1; round <= 2; round += 1) {
     state = recordReview({
       learningState: state,
       cardId: "a",
@@ -56,7 +56,118 @@ test("a two-round gap returns on current round plus three", () => {
     });
   }
 
-  assert.equal(getModeProgress(state, "a", "spell").dueRound, 7);
+  assert.equal(getModeProgress(state, "a", "spell").dueRound, 5);
+});
+
+test("one spelling success links both modes when recognition is hidden", () => {
+  const state = recordReview({
+    learningState: {
+      a: {
+        study: {
+          streak: 2,
+          hidden: true,
+          dueRound: 5,
+          skipRounds: 2,
+        },
+      },
+    },
+    cardId: "a",
+    mode: "spell",
+    round: 1,
+    correct: true,
+    random: alwaysLow,
+  });
+
+  const spell = getModeProgress(state, "a", "spell");
+  assert.equal(spell.streak, 1);
+  assert.equal(spell.hidden, true);
+  assert.equal(spell.syncedWithStudy, true);
+  assert.equal(spell.dueRound, 5);
+  assert.equal(spell.skipRounds, 2);
+});
+
+test("recognition promotion also links an existing spelling success", () => {
+  const state = recordReview({
+    learningState: {
+      a: {
+        study: { streak: 1, lastScoredRound: 1 },
+        spell: { streak: 1, lastScoredRound: 1 },
+      },
+    },
+    cardId: "a",
+    mode: "study",
+    round: 2,
+    correct: true,
+    random: alwaysLow,
+  });
+
+  assert.equal(getModeProgress(state, "a", "study").hidden, true);
+  assert.equal(getModeProgress(state, "a", "spell").hidden, true);
+  assert.equal(getModeProgress(state, "a", "spell").syncedWithStudy, true);
+});
+
+test("linked spelling returns only after recognition actually returned", () => {
+  const baseState = {
+    a: {
+      study: { hidden: true, dueRound: 3, lastReturnedRound: null },
+      spell: {
+        hidden: true,
+        dueRound: 3,
+        syncedWithStudy: true,
+        lastSyncedStudyRound: null,
+      },
+    },
+  };
+  const beforeStudyReturn = buildRoundCardIds({
+    cardIds: ["active", "a"],
+    learningState: baseState,
+    mode: "spell",
+    round: 20,
+    studyRound: 3,
+    shuffleOnLoop: false,
+    random: alwaysLow,
+  });
+  assert.deepEqual(beforeStudyReturn, ["active"]);
+
+  const afterStudyReturn = buildRoundCardIds({
+    cardIds: ["active", "a"],
+    learningState: {
+      ...baseState,
+      a: {
+        ...baseState.a,
+        study: {
+          ...baseState.a.study,
+          dueRound: 5,
+          lastReturnedRound: 3,
+        },
+      },
+    },
+    mode: "spell",
+    round: 20,
+    studyRound: 3,
+    shuffleOnLoop: false,
+    random: alwaysLow,
+  });
+  assert.deepEqual(afterStudyReturn, ["active", "a"]);
+});
+
+test("a recognition lapse releases a linked spelling card", () => {
+  const state = recordReview({
+    learningState: {
+      a: {
+        study: { streak: 2, hidden: true, dueRound: 3 },
+        spell: { streak: 1, hidden: true, syncedWithStudy: true },
+      },
+    },
+    cardId: "a",
+    mode: "study",
+    round: 3,
+    correct: false,
+  });
+
+  assert.equal(getModeProgress(state, "a", "study").hidden, false);
+  assert.equal(getModeProgress(state, "a", "spell").hidden, false);
+  assert.equal(getModeProgress(state, "a", "spell").syncedWithStudy, false);
 });
 
 test("the same card can only score once per mode and round", () => {

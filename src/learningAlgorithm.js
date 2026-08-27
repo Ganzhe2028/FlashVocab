@@ -32,7 +32,12 @@ export const createEmptyModeProgress = () => ({
   lastScoredRound: null,
   returnCount: 0,
   lapseCount: 0,
+  syncedWithStudy: false,
+  lastReturnedRound: null,
+  lastSyncedStudyRound: null,
 });
+
+export const FAMILIAR_STREAK_TARGET = 2;
 
 export const getModeProgress = (learningState, cardId, mode) => ({
   ...createEmptyModeProgress(),
@@ -52,6 +57,8 @@ export const recordReview = ({
 }) => {
   const previousCard = learningState?.[cardId] ?? {};
   const previous = getModeProgress(learningState, cardId, mode);
+  const previousStudy = getModeProgress(learningState, cardId, "study");
+  const previousSpell = getModeProgress(learningState, cardId, "spell");
 
   if (previous.lastScoredRound === round) return learningState;
 
@@ -78,28 +85,81 @@ export const recordReview = ({
       skipRounds: null,
       lastScoredRound: round,
       lapseCount: previous.lapseCount + 1,
+      syncedWithStudy: false,
+      lastReturnedRound: previous.hidden ? round : previous.lastReturnedRound,
     };
   } else {
     const nextStreak = previous.streak + 1;
-    const shouldHide = previous.hidden || nextStreak >= 4;
+    const shouldSyncWithStudy =
+      mode === "spell" && previousStudy.hidden;
+    const shouldHide =
+      previous.hidden ||
+      nextStreak >= FAMILIAR_STREAK_TARGET ||
+      shouldSyncWithStudy;
     const skipRounds = shouldHide ? drawSkipRounds(random) : null;
     nextMode = {
       ...previous,
       streak: nextStreak,
       hidden: shouldHide,
-      dueRound: shouldHide ? round + skipRounds + 1 : null,
-      skipRounds,
+      dueRound: shouldSyncWithStudy
+        ? previousStudy.dueRound
+        : shouldHide
+          ? round + skipRounds + 1
+          : null,
+      skipRounds: shouldSyncWithStudy
+        ? previousStudy.skipRounds
+        : skipRounds,
       lastScoredRound: round,
       returnCount: previous.returnCount + (previous.hidden ? 1 : 0),
+      syncedWithStudy:
+        mode === "spell"
+          ? previous.syncedWithStudy || shouldSyncWithStudy
+          : previous.syncedWithStudy,
+      lastReturnedRound: previous.hidden ? round : previous.lastReturnedRound,
+      lastSyncedStudyRound:
+        mode === "spell" && (previous.syncedWithStudy || shouldSyncWithStudy)
+          ? previousStudy.lastReturnedRound
+          : previous.lastSyncedStudyRound,
     };
+  }
+
+  let nextCard = {
+    ...previousCard,
+    [mode]: nextMode,
+  };
+
+  if (mode === "study") {
+    const spellShouldSync =
+      nextMode.hidden &&
+      (previousSpell.syncedWithStudy || previousSpell.streak >= 1);
+    if (spellShouldSync) {
+      nextCard = {
+        ...nextCard,
+        spell: {
+          ...previousSpell,
+          hidden: nextMode.hidden,
+          dueRound: nextMode.dueRound,
+          skipRounds: nextMode.skipRounds,
+          syncedWithStudy: nextMode.hidden,
+        },
+      };
+    } else if (!nextMode.hidden && previousSpell.syncedWithStudy) {
+      nextCard = {
+        ...nextCard,
+        spell: {
+          ...previousSpell,
+          hidden: false,
+          dueRound: null,
+          skipRounds: null,
+          syncedWithStudy: false,
+        },
+      };
+    }
   }
 
   return {
     ...learningState,
-    [cardId]: {
-      ...previousCard,
-      [mode]: nextMode,
-    },
+    [cardId]: nextCard,
   };
 };
 
@@ -153,6 +213,7 @@ export const buildRoundCardIds = ({
   learningState,
   mode,
   round,
+  studyRound = null,
   familiarModeEnabled = true,
   shuffleOnLoop = true,
   avoidFirstCardId = null,
@@ -165,9 +226,18 @@ export const buildRoundCardIds = ({
   cardIds.forEach((cardId) => {
     if (removed.has(cardId)) return;
     const progress = getModeProgress(learningState, cardId, mode);
+    const studyProgress = getModeProgress(learningState, cardId, "study");
     if (!familiarModeEnabled || !progress.hidden) {
       activeIds.push(cardId);
-    } else if (progress.dueRound !== null && progress.dueRound <= round) {
+    } else if (
+      mode === "spell" &&
+      progress.syncedWithStudy
+        ? studyRound !== null &&
+          studyProgress.lastReturnedRound !== null &&
+          studyProgress.lastReturnedRound <= studyRound &&
+          progress.lastSyncedStudyRound !== studyProgress.lastReturnedRound
+        : progress.dueRound !== null && progress.dueRound <= round
+    ) {
       eligibleIds.push(cardId);
     }
   });
@@ -181,12 +251,23 @@ export const buildRoundCardIds = ({
   const randomizedEligible = eligibleIds
     .map((cardId) => ({
       cardId,
-      dueRound: getModeProgress(learningState, cardId, mode).dueRound,
+      syncPriority:
+        mode === "spell" &&
+        getModeProgress(learningState, cardId, mode).syncedWithStudy
+          ? 0
+          : 1,
+      dueRound:
+        mode === "spell" &&
+        getModeProgress(learningState, cardId, mode).syncedWithStudy
+          ? getModeProgress(learningState, cardId, "study").dueRound
+          : getModeProgress(learningState, cardId, mode).dueRound,
       tieBreaker: random(),
     }))
     .sort(
       (left, right) =>
-        left.dueRound - right.dueRound || left.tieBreaker - right.tieBreaker,
+        left.syncPriority - right.syncPriority ||
+        left.dueRound - right.dueRound ||
+        left.tieBreaker - right.tieBreaker,
     )
     .map(({ cardId }) => cardId);
 

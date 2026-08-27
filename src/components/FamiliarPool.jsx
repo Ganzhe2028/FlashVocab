@@ -1,3 +1,5 @@
+import { FAMILIAR_STREAK_TARGET } from "../learningAlgorithm.js";
+
 export default function FamiliarPool({ entries }) {
   return (
     <details className="familiar-pool">
@@ -11,19 +13,21 @@ export default function FamiliarPool({ entries }) {
                 辨识：
                 {study.hidden
                   ? `隐藏至第 ${study.dueRound} 轮`
-                  : `${Math.min(study.streak, 4)}/4`}
+                  : `${Math.min(study.streak, FAMILIAR_STREAK_TARGET)}/${FAMILIAR_STREAK_TARGET}`}
               </span>
               <span>
                 拼写：
                 {spell.hidden
-                  ? `隐藏至第 ${spell.dueRound} 轮`
-                  : `${Math.min(spell.streak, 4)}/4`}
+                  ? spell.syncedWithStudy
+                    ? `跟随辨识返场（第 ${study.dueRound} 轮）`
+                    : `隐藏至第 ${spell.dueRound} 轮`
+                  : `${Math.min(spell.streak, FAMILIAR_STREAK_TARGET)}/${FAMILIAR_STREAK_TARGET}`}
               </span>
             </div>
           ))}
         </div>
       ) : (
-        <p>连续正确 4 轮的词会出现在这里。</p>
+        <p>连续正确 2 轮的词会出现在这里。</p>
       )}
     </details>
   );

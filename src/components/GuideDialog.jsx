@@ -196,7 +196,7 @@ export default function GuideDialog({
                   简约模式翻开后按 <kbd>Enter</kbd> — 直接进入下一张
                 </li>
                 <li>
-                  开启「四轮熟悉返场」后才显示「想起来了 / 没想起来」按钮；
+                  开启「两轮熟悉返场」后才显示「想起来了 / 没想起来」按钮；
                   <kbd>Enter</kbd> 记正确，<kbd>N</kbd> 记错误
                 </li>
                 <li>
@@ -253,9 +253,10 @@ export default function GuideDialog({
             <div className="guide-mode-block">
               <div className="guide-mode-badge">暂时熟悉池</div>
               <p className="guide-mode-desc">
-                默认关闭。打开底部「四轮熟悉返场」后，辨识和拼写分别累计；某个
-                mode 连续正确 4 轮后，该词会隐藏完整的 1-2
-                轮，再分批随机返场。关闭时所有词保持普通循环，已有熟悉进度会保留。
+                默认关闭。打开底部「两轮熟悉返场」后，任一 mode 连续正确 2
+                轮会暂时隐藏；辨识已隐藏时，拼写首次正确即可同步隐藏，之后跟随辨识
+                返场。每次隐藏完整的 1-2 轮，再分批随机返场。关闭时所有词保持普通
+                循环，已有熟悉进度会保留。
               </p>
             </div>
           </div>

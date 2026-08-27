@@ -103,11 +103,11 @@ describe("App behavior", () => {
       name: "词源与对应概念",
     });
     const familiarSwitch = screen.getByRole("switch", {
-      name: "四轮熟悉返场",
+      name: "两轮熟悉返场",
     });
     expect(insightsSwitch.checked).toBe(false);
     expect(familiarSwitch.checked).toBe(false);
-    expect(screen.queryByText(/辨识 0\/4/)).toBeNull();
+    expect(screen.queryByText(/辨识 0\/2/)).toBeNull();
     expect(screen.queryByText(/暂时熟悉池/)).toBeNull();
 
     press("Space", " ");
@@ -136,7 +136,7 @@ describe("App behavior", () => {
     expect(
       screen.getByRole("button", { name: "没想起来 (N)" }),
     ).toBeTruthy();
-    expect(screen.getByText(/辨识 0\/4/)).toBeTruthy();
+    expect(screen.getByText(/辨识 0\/2/)).toBeTruthy();
     expect(screen.getByText(/暂时熟悉池/)).toBeTruthy();
 
     await waitFor(() => {
@@ -169,7 +169,7 @@ describe("App behavior", () => {
       familiarModeEnabled: true,
       learningState: {
         [cardIds[1]]: {
-          study: { streak: 4, hidden: true, dueRound: 9 },
+          study: { streak: 2, hidden: true, dueRound: 9 },
         },
       },
       studyQueueIds: [cardIds[0]],
@@ -178,7 +178,7 @@ describe("App behavior", () => {
 
     expect(screen.getByText("1 / 1")).toBeTruthy();
     fireEvent.click(
-      screen.getByRole("switch", { name: "四轮熟悉返场" }),
+      screen.getByRole("switch", { name: "两轮熟悉返场" }),
     );
     expect(screen.getByText("1 / 2")).toBeTruthy();
 
@@ -248,6 +248,41 @@ describe("App behavior", () => {
       expect(spellProgress.lastScoredRound).toBe(1);
       expect(spellProgress.streak).toBe(0);
       expect(spellProgress.lapseCount).toBe(1);
+    });
+  });
+
+  test("one correct spelling links to an already familiar recognition card", async () => {
+    const [alphaId] = createCardIds([testDeck[0]]);
+    saveDeckSnapshot([testDeck[0]], {
+      mode: "rest",
+      completedRounds: { study: 2, spell: 0 },
+      learningState: {
+        [alphaId]: {
+          study: {
+            streak: 2,
+            hidden: true,
+            dueRound: 4,
+            skipRounds: 1,
+          },
+        },
+      },
+      studyQueueIds: [alphaId],
+    });
+    render(<App />);
+
+    press("Space", " ");
+    for (const letter of "Alpha") {
+      press(`Key${letter.toUpperCase()}`, letter);
+    }
+    press("Enter", "Enter");
+
+    await waitFor(() => {
+      const progress = readSnapshot().learningState[alphaId];
+      expect(progress.study.hidden).toBe(true);
+      expect(progress.spell.streak).toBe(1);
+      expect(progress.spell.hidden).toBe(true);
+      expect(progress.spell.syncedWithStudy).toBe(true);
+      expect(progress.spell.dueRound).toBe(4);
     });
   });
 

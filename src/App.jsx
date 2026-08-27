@@ -22,6 +22,7 @@ import {
 import {
   buildRoundCardIds,
   createCardIds,
+  FAMILIAR_STREAK_TARGET,
   findNextUnscoredCardIndex,
   getModeProgress,
   recordReview,
@@ -188,13 +189,14 @@ export default function App() {
   const currentSpellRound = completedRounds.spell + 1;
 
   const buildModeQueueIds = useCallback(
-    (targetMode, round, avoidFirstCardId = null) => {
+    (targetMode, round, avoidFirstCardId = null, studyRound = null) => {
       return buildRoundCardIds({
         cardIds,
         removedCardIds,
         learningState,
         mode: targetMode,
         round,
+        studyRound,
         familiarModeEnabled,
         shuffleOnLoop,
         avoidFirstCardId,
@@ -367,7 +369,12 @@ export default function App() {
 
   const enterSpellMode = useCallback(() => {
     const nextRound = completedRounds.spell + 1;
-    const nextQueueIds = buildModeQueueIds("spell", nextRound);
+    const nextQueueIds = buildModeQueueIds(
+      "spell",
+      nextRound,
+      null,
+      completedRounds.study,
+    );
     if (!nextQueueIds.length) {
       setCompletedRounds((previous) => ({
         ...previous,
@@ -382,7 +389,7 @@ export default function App() {
     setSpellIndex(0);
     setSpellInput("");
     setSpellResult(null);
-  }, [buildModeQueueIds, completedRounds.spell]);
+  }, [buildModeQueueIds, completedRounds.spell, completedRounds.study]);
 
   const recordModeReview = useCallback(
     (cardId, targetMode, round, correct) => {
@@ -973,7 +980,7 @@ export default function App() {
         <div className="subhead">
           Enter or Space reveals. Enter advances.
           {familiarModeEnabled
-            ? " N marks not yet; four correct rounds move a word into the familiar pool."
+            ? ` N marks not yet; ${FAMILIAR_STREAK_TARGET} correct rounds move a word into the familiar pool.`
             : ""}
         </div>
         <input

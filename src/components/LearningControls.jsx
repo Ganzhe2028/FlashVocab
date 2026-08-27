@@ -94,7 +94,7 @@ export default function LearningControls({
           </span>
         </label>
         <label className="feature-switch">
-          <span>四轮熟悉返场</span>
+          <span>两轮熟悉返场</span>
           <input
             type="checkbox"
             role="switch"

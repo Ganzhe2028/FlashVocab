@@ -1,3 +1,5 @@
+import { FAMILIAR_STREAK_TARGET } from "../learningAlgorithm.js";
+
 export default function SpellCard({
   currentRound,
   input,
@@ -25,7 +27,8 @@ export default function SpellCard({
       </div>
       {showFamiliarStatus ? (
         <div className="memory-status">
-          拼写 {Math.min(progress?.streak ?? 0, 4)}/4 · 第 {currentRound} 轮
+          拼写 {Math.min(progress?.streak ?? 0, FAMILIAR_STREAK_TARGET)}/
+          {FAMILIAR_STREAK_TARGET} · 第 {currentRound} 轮
           {progress?.hidden ? " · 返场复习" : ""}
         </div>
       ) : null}
