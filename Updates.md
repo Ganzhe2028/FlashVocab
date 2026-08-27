@@ -1,5 +1,11 @@
 # Updates
 
+## 2026-08-27 — 内置词源字段
+
+- 内置 24 词全部补全 `wordOrigin`（按拉丁、希腊、古法语来源拆解）与 `relatedWord`（B1-B2 级反义词或对应概念）。
+- 留了几处卡片间呼应：Vacant↔vacate、Translucent↔Lucid、Negligence↔Diligence，复习时可以串起来。
+- `vocab.md` 同步补全 `Word Origin` 与 `Related Word` 行；Markdown 导入解析器原生认识这两个字段，往返一致。
+
 ## 2026-08-27 — Codebase refactor
 
 - 将内置词库、导入导出、浏览器存储和键盘行为从 `App.jsx` 拆为独立模块，删除应用内的重复实现；主组件改为状态协调和视图组合。
