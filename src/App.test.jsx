@@ -47,6 +47,7 @@ const saveDeckSnapshot = (sourceDeck = testDeck, overrides = {}) => {
       shuffleOnLoop: false,
       showWordInsights: false,
       familiarModeEnabled: true,
+      autoPronounceEnabled: true,
       mode: "study",
       lastRemoved: null,
       studyQueueIds: cardIds,
@@ -90,6 +91,82 @@ describe("App behavior", () => {
     expect(alphaMeaning().closest("p").classList).toContain(
       "is-hidden",
     );
+  });
+
+  test("revealing an answer plays its American pronunciation and allows replay", () => {
+    saveDeckSnapshot();
+    render(<App />);
+
+    press("Space", " ");
+
+    expect(window.speechSynthesis.cancel).toHaveBeenCalledTimes(1);
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
+    const utterance = window.speechSynthesis.speak.mock.calls[0][0];
+    expect(utterance.text).toBe("Alpha");
+    expect(utterance.lang).toBe("en-US");
+    expect(utterance.rate).toBe(0.9);
+    expect(utterance.voice.name).toBe("Test US Voice");
+
+    press("Space", " ");
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
+
+    press("Space", " ");
+    fireEvent.click(
+      screen.getByRole("button", { name: "播放 Alpha 的美式发音" }),
+    );
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(3);
+    expect(alphaMeaning().closest("p").classList).not.toContain(
+      "is-hidden",
+    );
+  });
+
+  test("automatic pronunciation can be disabled while manual replay remains available", async () => {
+    saveDeckSnapshot();
+    render(<App />);
+
+    const pronunciationSwitch = screen.getByRole("switch", {
+      name: "自动美式发音",
+    });
+    expect(pronunciationSwitch.checked).toBe(true);
+    fireEvent.click(pronunciationSwitch);
+    press("Space", " ");
+
+    expect(window.speechSynthesis.speak).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole("button", { name: "播放 Alpha 的美式发音" }),
+    );
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
+
+    await waitFor(() => {
+      expect(readSnapshot().autoPronounceEnabled).toBe(false);
+    });
+  });
+
+  test("missing speech synthesis support does not interrupt study", () => {
+    const speechSynthesis = window.speechSynthesis;
+    Object.defineProperty(window, "speechSynthesis", {
+      configurable: true,
+      value: undefined,
+    });
+
+    try {
+      saveDeckSnapshot();
+      render(<App />);
+
+      const pronunciationSwitch = screen.getByRole("switch", {
+        name: "自动美式发音",
+      });
+      expect(pronunciationSwitch.disabled).toBe(true);
+      expect(() => press("Space", " ")).not.toThrow();
+      expect(alphaMeaning().closest("p").classList).not.toContain(
+        "is-hidden",
+      );
+    } finally {
+      Object.defineProperty(window, "speechSynthesis", {
+        configurable: true,
+        value: speechSynthesis,
+      });
+    }
   });
 
   test("optional complex features default off and persist independently", async () => {
@@ -204,6 +281,8 @@ describe("App behavior", () => {
     press("Enter", "Enter");
     press("KeyN", "n");
     await screen.findByRole("heading", { name: "随手拼？" });
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(3);
+    expect(window.speechSynthesis.speak.mock.calls[2][0].text).toBe("Beta");
 
     await waitFor(() => {
       const snapshot = readSnapshot();
@@ -232,16 +311,25 @@ describe("App behavior", () => {
     render(<App />);
     await finishSingleCardStudyRound();
     press("Space", " ");
+    window.speechSynthesis.speak.mockClear();
+    window.speechSynthesis.cancel.mockClear();
 
     press("KeyX", "x");
     press("Enter", "Enter");
     expect(screen.getByText("Al·pha")).toBeTruthy();
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
+    expect(window.speechSynthesis.speak.mock.calls[0][0].text).toBe("Alpha");
 
     for (const letter of "Alpha") {
       press(`Key${letter.toUpperCase()}`, letter);
     }
     press("Enter", "Enter");
     expect(screen.getByText("enter 下一个")).toBeTruthy();
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(2);
+    expect(window.speechSynthesis.speak.mock.calls[1][0].text).toBe("Alpha");
+    expect(
+      screen.getByRole("button", { name: "播放 Alpha 的美式发音" }),
+    ).toBeTruthy();
 
     await waitFor(() => {
       const spellProgress = readSnapshot().learningState[alphaId].spell;

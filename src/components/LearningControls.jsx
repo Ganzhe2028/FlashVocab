@@ -1,4 +1,5 @@
 export default function LearningControls({
+  autoPronounceEnabled,
   currentSpellRound,
   currentStudyRound,
   familiarSpellCount,
@@ -13,12 +14,14 @@ export default function LearningControls({
   onRemoveCard,
   onResetDeck,
   onToggleReveal,
+  onToggleAutoPronounce,
   onToggleFamiliarMode,
   onToggleShuffle,
   onToggleWordInsights,
   onUndoRemove,
   progress,
   progressLabel,
+  pronunciationSupported,
   revealed,
   showWordInsights,
   shuffleOnLoop,
@@ -81,6 +84,26 @@ export default function LearningControls({
         </button>
       </div>
       <div className="feature-switches" aria-label="可选学习功能">
+        <label
+          className="feature-switch"
+          title={
+            pronunciationSupported
+              ? undefined
+              : "当前浏览器不支持语音合成"
+          }
+        >
+          <span>自动美式发音</span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={autoPronounceEnabled}
+            disabled={!pronunciationSupported}
+            onChange={onToggleAutoPronounce}
+          />
+          <span className="switch-track" aria-hidden="true">
+            <span />
+          </span>
+        </label>
         <label className="feature-switch">
           <span>词源与对应概念</span>
           <input

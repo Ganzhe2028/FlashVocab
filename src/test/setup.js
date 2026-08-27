@@ -4,6 +4,27 @@ import { afterEach, beforeEach, vi } from "vitest";
 const clipboardWriteText = vi.fn(() => Promise.resolve());
 const createObjectURL = vi.fn(() => "blob:vocab-test");
 const revokeObjectURL = vi.fn();
+const americanVoice = {
+  default: true,
+  lang: "en-US",
+  localService: true,
+  name: "Test US Voice",
+};
+const speechSynthesisCancel = vi.fn();
+const speechSynthesisSpeak = vi.fn();
+const speechSynthesisGetVoices = vi.fn(() => [americanVoice]);
+const speechSynthesisAddEventListener = vi.fn();
+const speechSynthesisRemoveEventListener = vi.fn();
+
+class MockSpeechSynthesisUtterance {
+  constructor(text) {
+    this.text = text;
+    this.lang = "";
+    this.rate = 1;
+    this.pitch = 1;
+    this.voice = null;
+  }
+}
 
 Object.defineProperty(navigator, "clipboard", {
   configurable: true,
@@ -20,6 +41,19 @@ Object.defineProperty(URL, "revokeObjectURL", {
   value: revokeObjectURL,
 });
 
+Object.defineProperty(window, "speechSynthesis", {
+  configurable: true,
+  value: {
+    addEventListener: speechSynthesisAddEventListener,
+    cancel: speechSynthesisCancel,
+    getVoices: speechSynthesisGetVoices,
+    removeEventListener: speechSynthesisRemoveEventListener,
+    speak: speechSynthesisSpeak,
+  },
+});
+
+vi.stubGlobal("SpeechSynthesisUtterance", MockSpeechSynthesisUtterance);
+
 vi.stubGlobal(
   "requestAnimationFrame",
   vi.fn((callback) => {
@@ -34,6 +68,11 @@ beforeEach(() => {
   clipboardWriteText.mockClear();
   createObjectURL.mockClear();
   revokeObjectURL.mockClear();
+  speechSynthesisCancel.mockClear();
+  speechSynthesisSpeak.mockClear();
+  speechSynthesisGetVoices.mockClear();
+  speechSynthesisAddEventListener.mockClear();
+  speechSynthesisRemoveEventListener.mockClear();
 });
 
 afterEach(() => {

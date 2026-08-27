@@ -1,14 +1,17 @@
 import { FAMILIAR_STREAK_TARGET } from "../learningAlgorithm.js";
+import PronounceButton from "./PronounceButton.jsx";
 
 export default function SpellCard({
   currentRound,
   input,
   item,
+  onPronounce,
   progress,
   progressLabel,
   result,
   shakeKey,
   showFamiliarStatus,
+  pronunciationSupported,
 }) {
   const pos = item?.pos || "";
   const meaning = item
@@ -56,7 +59,18 @@ export default function SpellCard({
         </div>
       </div>
 
-      {result && <p className="spell-answer">{correctDisplay}</p>}
+      {result ? (
+        <div className="spell-answer-row">
+          <p className="spell-answer">{correctDisplay}</p>
+          {result === "correct" ? (
+            <PronounceButton
+              disabled={!pronunciationSupported}
+              onPronounce={onPronounce}
+              term={item?.term || "当前单词"}
+            />
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="spell-progress">{progressLabel}</div>
     </section>

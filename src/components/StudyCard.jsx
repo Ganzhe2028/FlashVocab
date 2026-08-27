@@ -1,5 +1,6 @@
 import { getHighlightedSentence } from "./highlightSentence.js";
 import { FAMILIAR_STREAK_TARGET } from "../learningAlgorithm.js";
+import PronounceButton from "./PronounceButton.jsx";
 
 export default function StudyCard({
   cardClassName,
@@ -9,6 +10,7 @@ export default function StudyCard({
   item,
   noAnim = false,
   onCompleteAnswer,
+  onPronounce,
   onTermClick,
   onTermKeyDown,
   onToggleReveal,
@@ -16,6 +18,7 @@ export default function StudyCard({
   revealed,
   showFamiliarStatus,
   showWordInsights,
+  pronunciationSupported,
 }) {
   const term = hasDeck
     ? revealed
@@ -66,8 +69,18 @@ export default function StudyCard({
         >
           {term}
         </h2>
-        <div className={`pronounce${showDetails ? "" : " is-hidden"}`}>
+        <div
+          className={`pronounce${showDetails ? "" : " is-hidden"}`}
+          aria-hidden={!showDetails}
+        >
           <div className="pronounce-value">{respell}</div>
+          {showDetails ? (
+            <PronounceButton
+              disabled={!pronunciationSupported}
+              onPronounce={onPronounce}
+              term={item?.term || "当前单词"}
+            />
+          ) : null}
         </div>
       </div>
       <p className={`meaning${showDetails ? "" : " is-hidden"}`}>

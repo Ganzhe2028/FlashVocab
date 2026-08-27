@@ -7,6 +7,7 @@ import SpellCard from "./components/SpellCard.jsx";
 import StudyCard from "./components/StudyCard.jsx";
 import { cloneDeck } from "./data/baseDeck.js";
 import { useAppKeyboard } from "./hooks/useAppKeyboard.js";
+import { usePronunciation } from "./hooks/usePronunciation.js";
 import deepUnderstandingPrompt from "./prompts/deep-understanding.md?raw";
 import {
   buildMarkdownExport,
@@ -62,6 +63,7 @@ const createInitialAppSnapshot = () => {
   const shuffleOnLoop = stored?.shuffleOnLoop ?? true;
   const showWordInsights = stored?.showWordInsights ?? false;
   const familiarModeEnabled = stored?.familiarModeEnabled ?? false;
+  const autoPronounceEnabled = stored?.autoPronounceEnabled ?? true;
   const defaultStudyIds = buildRoundCardIds({
     cardIds,
     removedCardIds,
@@ -115,6 +117,7 @@ const createInitialAppSnapshot = () => {
     shuffleOnLoop,
     showWordInsights,
     familiarModeEnabled,
+    autoPronounceEnabled,
     mode,
     lastRemoved,
     index: Math.min(
@@ -153,6 +156,9 @@ export default function App() {
   const [familiarModeEnabled, setFamiliarModeEnabled] = useState(
     initialSnapshot.familiarModeEnabled,
   );
+  const [autoPronounceEnabled, setAutoPronounceEnabled] = useState(
+    initialSnapshot.autoPronounceEnabled,
+  );
   const [removedCardIds, setRemovedCardIds] = useState(
     initialSnapshot.removedCardIds,
   );
@@ -176,6 +182,10 @@ export default function App() {
   const [spellInput, setSpellInput] = useState("");
   const [spellResult, setSpellResult] = useState(null); // null | 'correct' | 'wrong'
   const [shakeKey, setShakeKey] = useState(0);
+  const {
+    isSupported: pronunciationSupported,
+    speak: pronounce,
+  } = usePronunciation();
 
   const cardIds = useMemo(() => createCardIds(sourceDeck), [sourceDeck]);
   const sourceItemById = useMemo(
@@ -185,6 +195,11 @@ export default function App() {
       ),
     [cardIds, sourceDeck],
   );
+  const currentStudyItem =
+    sourceItemById.get(studyQueueIds[index] ?? null) ?? null;
+  const currentSpellCardId = spellQueueIds[spellIndex] ?? null;
+  const currentSpellItem =
+    sourceItemById.get(currentSpellCardId) ?? null;
   const currentStudyRound = completedRounds.study + 1;
   const currentSpellRound = completedRounds.spell + 1;
 
@@ -270,6 +285,7 @@ export default function App() {
       shuffleOnLoop,
       showWordInsights,
       familiarModeEnabled,
+      autoPronounceEnabled,
       mode,
       lastRemoved,
       studyQueueIds,
@@ -286,6 +302,7 @@ export default function App() {
     }
   }, [
     completedRounds,
+    autoPronounceEnabled,
     familiarModeEnabled,
     index,
     learningState,
@@ -312,8 +329,17 @@ export default function App() {
 
   const toggleReveal = useCallback(() => {
     if (!studyQueueIds.length) return;
-    setRevealed((prev) => !prev);
-  }, [studyQueueIds.length]);
+    if (!revealed && autoPronounceEnabled) {
+      pronounce(currentStudyItem?.term);
+    }
+    setRevealed(!revealed);
+  }, [
+    autoPronounceEnabled,
+    currentStudyItem?.term,
+    pronounce,
+    revealed,
+    studyQueueIds.length,
+  ]);
 
   const enterRestMode = useCallback(() => {
     setCompletedRounds((previous) => ({
@@ -420,6 +446,9 @@ export default function App() {
         round: currentStudyRound,
       });
       recordModeReview(currentCardId, "study", currentStudyRound, correct);
+      if (!correct && autoPronounceEnabled) {
+        pronounce(sourceItemById.get(currentCardId)?.term);
+      }
       if (nextUnscoredIndex === -1) {
         enterRestMode();
       } else {
@@ -430,13 +459,16 @@ export default function App() {
       }
     },
     [
+      autoPronounceEnabled,
       currentStudyRound,
       enterRestMode,
       index,
       learningState,
       recordModeReview,
       revealed,
+      pronounce,
       runInstantly,
+      sourceItemById,
       studyQueueIds,
     ],
   );
@@ -760,6 +792,9 @@ export default function App() {
     const target = (spellItem?.term ?? "").toLowerCase();
     const correct = Boolean(target) && spellInput.toLowerCase() === target;
     recordModeReview(spellCardId, "spell", currentSpellRound, correct);
+    if (autoPronounceEnabled) {
+      pronounce(spellItem?.term);
+    }
     if (correct) {
       setSpellResult("correct");
       return;
@@ -767,7 +802,9 @@ export default function App() {
     setSpellResult("wrong");
     setShakeKey((previous) => previous + 1);
   }, [
+    autoPronounceEnabled,
     currentSpellRound,
+    pronounce,
     recordModeReview,
     sourceItemById,
     spellIndex,
@@ -812,11 +849,9 @@ export default function App() {
   const hasDeck = studyQueueIds.length > 0;
   const hasSpellDeck = spellQueueIds.length > 0;
   const completedByRemoval = !exportDeck.length && Boolean(lastRemoved);
-  const item = hasDeck
-    ? sourceItemById.get(studyQueueIds[index]) ?? null
-    : null;
-  const spellCardId = spellQueueIds[spellIndex] ?? null;
-  const spellItem = sourceItemById.get(spellCardId) ?? null;
+  const item = hasDeck ? currentStudyItem : null;
+  const spellCardId = currentSpellCardId;
+  const spellItem = currentSpellItem;
   const activeDeckLength =
     mode === "spell" ? spellQueueIds.length : studyQueueIds.length;
   const activeProgressPosition = activeDeckLength
@@ -928,6 +963,10 @@ export default function App() {
     }
   }, [cardIds, familiarModeEnabled, removedCardIds, spellQueueIds.length]);
 
+  const toggleAutoPronounce = useCallback(() => {
+    setAutoPronounceEnabled((previousValue) => !previousValue);
+  }, []);
+
   const cardClassName = useMemo(() => {
     return `card${noAnim ? " no-anim" : ""}`;
   }, [noAnim]);
@@ -1019,8 +1058,10 @@ export default function App() {
           currentRound={currentSpellRound}
           input={spellInput}
           item={spellItem}
+          onPronounce={() => pronounce(spellItem?.term)}
           progress={currentSpellProgress}
           progressLabel={progressLabel}
+          pronunciationSupported={pronunciationSupported}
           result={spellResult}
           shakeKey={shakeKey}
           showFamiliarStatus={familiarModeEnabled}
@@ -1035,10 +1076,12 @@ export default function App() {
           hasDeck={hasDeck}
           item={item}
           onCompleteAnswer={completeStudyAnswer}
+          onPronounce={() => pronounce(item?.term)}
           onTermClick={handleTermClick}
           onTermKeyDown={handleTermKeyDown}
           onToggleReveal={toggleReveal}
           progress={currentStudyProgress}
+          pronunciationSupported={pronunciationSupported}
           revealed={revealed}
           showFamiliarStatus={familiarModeEnabled}
           showWordInsights={showWordInsights}
@@ -1046,6 +1089,7 @@ export default function App() {
       )}
 
       <LearningControls
+        autoPronounceEnabled={autoPronounceEnabled}
         currentSpellRound={currentSpellRound}
         currentStudyRound={currentStudyRound}
         familiarSpellCount={familiarSpellCount}
@@ -1059,12 +1103,14 @@ export default function App() {
         onRemoveCard={removeCard}
         onResetDeck={resetDeck}
         onToggleReveal={toggleReveal}
+        onToggleAutoPronounce={toggleAutoPronounce}
         onToggleFamiliarMode={toggleFamiliarMode}
         onToggleShuffle={toggleShuffle}
         onToggleWordInsights={toggleWordInsights}
         onUndoRemove={undoRemove}
         progress={progress}
         progressLabel={progressLabel}
+        pronunciationSupported={pronunciationSupported}
         revealed={revealed}
         familiarModeEnabled={familiarModeEnabled}
         showWordInsights={showWordInsights}

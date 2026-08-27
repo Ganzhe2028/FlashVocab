@@ -107,6 +107,10 @@ export const normalizeLearningSnapshot = (snapshot) => {
       typeof snapshot.familiarModeEnabled === "boolean"
         ? snapshot.familiarModeEnabled
         : false,
+    autoPronounceEnabled:
+      typeof snapshot.autoPronounceEnabled === "boolean"
+        ? snapshot.autoPronounceEnabled
+        : true,
     mode,
     lastRemoved,
     studyQueueIds,
