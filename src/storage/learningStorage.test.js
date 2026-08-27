@@ -19,6 +19,8 @@ const createSnapshot = (overrides = {}) => {
     learningState: {},
     completedRounds: { study: 0, spell: 0 },
     shuffleOnLoop: true,
+    showWordInsights: true,
+    familiarModeEnabled: true,
     mode: "study",
     lastRemoved: null,
     studyQueueIds: [cardId],
@@ -90,6 +92,17 @@ test("spell mode with an empty queue degrades to a consistent study state", () =
   assert.equal(normalized.spellIndex, 0);
 });
 
+test("optional complex features default off for older snapshots", () => {
+  const snapshot = createSnapshot();
+  delete snapshot.showWordInsights;
+  delete snapshot.familiarModeEnabled;
+
+  const normalized = normalizeLearningSnapshot(snapshot);
+
+  assert.equal(normalized.showWordInsights, false);
+  assert.equal(normalized.familiarModeEnabled, false);
+});
+
 test("queues discard removed, unknown, and duplicate IDs", () => {
   const sourceDeck = [
     { term: "One", meaning: "the first number" },
@@ -125,4 +138,6 @@ test("a valid snapshot is stored under the versioned key", () => {
   assert.deepEqual(result, { success: true });
   assert.equal(storedKey, LEARNING_STORAGE_KEY);
   assert.equal(JSON.parse(storedValue).version, LEARNING_STORAGE_VERSION);
+  assert.equal(JSON.parse(storedValue).showWordInsights, true);
+  assert.equal(JSON.parse(storedValue).familiarModeEnabled, true);
 });

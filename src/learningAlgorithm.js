@@ -47,12 +47,26 @@ export const recordReview = ({
   mode,
   round,
   correct,
+  familiarModeEnabled = true,
   random = Math.random,
 }) => {
   const previousCard = learningState?.[cardId] ?? {};
   const previous = getModeProgress(learningState, cardId, mode);
 
   if (previous.lastScoredRound === round) return learningState;
+
+  if (!familiarModeEnabled) {
+    return {
+      ...learningState,
+      [cardId]: {
+        ...previousCard,
+        [mode]: {
+          ...previous,
+          lastScoredRound: round,
+        },
+      },
+    };
+  }
 
   let nextMode;
   if (!correct) {
@@ -139,6 +153,7 @@ export const buildRoundCardIds = ({
   learningState,
   mode,
   round,
+  familiarModeEnabled = true,
   shuffleOnLoop = true,
   avoidFirstCardId = null,
   random = Math.random,
@@ -150,7 +165,7 @@ export const buildRoundCardIds = ({
   cardIds.forEach((cardId) => {
     if (removed.has(cardId)) return;
     const progress = getModeProgress(learningState, cardId, mode);
-    if (!progress.hidden) {
+    if (!familiarModeEnabled || !progress.hidden) {
       activeIds.push(cardId);
     } else if (progress.dueRound !== null && progress.dueRound <= round) {
       eligibleIds.push(cardId);

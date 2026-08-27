@@ -6,6 +6,7 @@ export default function SpellCard({
   progressLabel,
   result,
   shakeKey,
+  showFamiliarStatus,
 }) {
   const pos = item?.pos || "";
   const meaning = item
@@ -22,10 +23,12 @@ export default function SpellCard({
             ? "继续键入重拼 / enter 再shake / esc 退出"
             : "键入单词 · enter 提交 · esc 退出"}
       </div>
-      <div className="memory-status">
-        拼写 {Math.min(progress?.streak ?? 0, 4)}/4 · 第 {currentRound} 轮
-        {progress?.hidden ? " · 返场复习" : ""}
-      </div>
+      {showFamiliarStatus ? (
+        <div className="memory-status">
+          拼写 {Math.min(progress?.streak ?? 0, 4)}/4 · 第 {currentRound} 轮
+          {progress?.hidden ? " · 返场复习" : ""}
+        </div>
+      ) : null}
 
       <p className="meaning">
         {pos ? <span className="pos-tag">{pos}</span> : null}

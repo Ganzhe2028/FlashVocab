@@ -13,6 +13,8 @@ export default function StudyCard({
   onToggleReveal,
   progress,
   revealed,
+  showFamiliarStatus,
+  showWordInsights,
 }) {
   const term = hasDeck
     ? revealed
@@ -42,10 +44,12 @@ export default function StudyCard({
   return (
     <section className={className} aria-live="polite" onClick={onToggleReveal}>
       <div className="hint">{hint}</div>
-      <div className="memory-status">
-        辨识 {Math.min(progress?.streak ?? 0, 4)}/4 · 第 {currentRound} 轮
-        {progress?.hidden ? " · 返场复习" : ""}
-      </div>
+      {showFamiliarStatus ? (
+        <div className="memory-status">
+          辨识 {Math.min(progress?.streak ?? 0, 4)}/4 · 第 {currentRound} 轮
+          {progress?.hidden ? " · 返场复习" : ""}
+        </div>
+      ) : null}
       <div className="term-row">
         <h2
           className="term term-copy"
@@ -66,7 +70,7 @@ export default function StudyCard({
         {posTag ? <span className="pos-tag">{posTag}</span> : null}
         <span>{meaningText}</span>
       </p>
-      {showDetails && (wordOrigin || relatedWord) ? (
+      {showDetails && showWordInsights && (wordOrigin || relatedWord) ? (
         <div className="word-insight">
           {wordOrigin ? (
             <p>

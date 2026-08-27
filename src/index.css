@@ -774,6 +774,72 @@ kbd {
   gap: 12px;
 }
 
+.feature-switches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  width: 100%;
+}
+
+.feature-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.feature-switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.switch-track {
+  width: 34px;
+  height: 20px;
+  padding: 2px;
+  border: 1px solid var(--button-border);
+  border-radius: 999px;
+  background: var(--progress-track);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.switch-track span {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ink-soft);
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.feature-switch input:checked + .switch-track {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+}
+
+.feature-switch input:checked + .switch-track span {
+  background: var(--accent);
+  transform: translateX(14px);
+}
+
+.feature-switch input:focus-visible + .switch-track {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
 button {
   border: 1px solid var(--button-border);
   background: var(--button-bg);
@@ -1018,6 +1084,12 @@ button:disabled {
 
   .progress-bar {
     width: 160px;
+  }
+
+  .feature-switches {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: flex-start;
   }
 
   .familiar-item {

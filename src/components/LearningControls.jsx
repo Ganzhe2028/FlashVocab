@@ -3,6 +3,7 @@ export default function LearningControls({
   currentStudyRound,
   familiarSpellCount,
   familiarStudyCount,
+  familiarModeEnabled,
   hasDeck,
   hasSpellDeck,
   lastRemoved,
@@ -12,11 +13,14 @@ export default function LearningControls({
   onRemoveCard,
   onResetDeck,
   onToggleReveal,
+  onToggleFamiliarMode,
   onToggleShuffle,
+  onToggleWordInsights,
   onUndoRemove,
   progress,
   progressLabel,
   revealed,
+  showWordInsights,
   shuffleOnLoop,
 }) {
   return (
@@ -72,10 +76,38 @@ export default function LearningControls({
           Reset Deck
         </button>
       </div>
-      <div className="loop">
-        辨识第 {currentStudyRound} 轮 · 拼写第 {currentSpellRound} 轮 · 暂时熟悉：辨识{" "}
-        {familiarStudyCount} / 拼写 {familiarSpellCount}
+      <div className="feature-switches" aria-label="可选学习功能">
+        <label className="feature-switch">
+          <span>词源与对应概念</span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={showWordInsights}
+            onChange={onToggleWordInsights}
+          />
+          <span className="switch-track" aria-hidden="true">
+            <span />
+          </span>
+        </label>
+        <label className="feature-switch">
+          <span>四轮熟悉返场</span>
+          <input
+            type="checkbox"
+            role="switch"
+            checked={familiarModeEnabled}
+            onChange={onToggleFamiliarMode}
+          />
+          <span className="switch-track" aria-hidden="true">
+            <span />
+          </span>
+        </label>
       </div>
+      {familiarModeEnabled ? (
+        <div className="loop">
+          辨识第 {currentStudyRound} 轮 · 拼写第 {currentSpellRound} 轮 ·
+          暂时熟悉：辨识 {familiarStudyCount} / 拼写 {familiarSpellCount}
+        </div>
+      ) : null}
     </section>
   );
 }

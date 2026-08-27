@@ -81,6 +81,33 @@ test("the same card can only score once per mode and round", () => {
   assert.equal(getModeProgress(twice, "a", "study").streak, 1);
 });
 
+test("simple mode completes rounds without changing familiarity progress", () => {
+  const previous = {
+    a: {
+      study: {
+        streak: 3,
+        hidden: true,
+        dueRound: 8,
+        lapseCount: 1,
+      },
+    },
+  };
+  const next = recordReview({
+    learningState: previous,
+    cardId: "a",
+    mode: "study",
+    round: 4,
+    correct: false,
+    familiarModeEnabled: false,
+  });
+
+  assert.equal(next.a.study.streak, 3);
+  assert.equal(next.a.study.hidden, true);
+  assert.equal(next.a.study.dueRound, 8);
+  assert.equal(next.a.study.lapseCount, 1);
+  assert.equal(next.a.study.lastScoredRound, 4);
+});
+
 test("round completion waits for cards skipped by previous navigation", () => {
   const queueIds = ["a", "b", "c", "d"];
   const learningState = {
@@ -206,6 +233,22 @@ test("a due-only round returns a quarter of the pool with a minimum of one", () 
   });
 
   assert.equal(queue.length, 1);
+});
+
+test("simple mode includes hidden cards without applying return caps", () => {
+  const queue = buildRoundCardIds({
+    cardIds: ["active", "hidden-1", "hidden-2"],
+    learningState: {
+      "hidden-1": { study: { hidden: true, dueRound: 99 } },
+      "hidden-2": { study: { hidden: true, dueRound: 2 } },
+    },
+    mode: "study",
+    round: 2,
+    familiarModeEnabled: false,
+    shuffleOnLoop: false,
+  });
+
+  assert.deepEqual(queue, ["active", "hidden-1", "hidden-2"]);
 });
 
 test("a new round avoids the last presented card when alternatives exist", () => {

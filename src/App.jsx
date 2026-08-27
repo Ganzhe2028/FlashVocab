@@ -27,6 +27,18 @@ import {
   recordReview,
 } from "./learningAlgorithm.js";
 
+const includeAllActiveCardIds = (queueIds, cardIds, removedCardIds) => {
+  const removed = new Set(removedCardIds);
+  const next = queueIds.filter((cardId) => !removed.has(cardId));
+  const queued = new Set(next);
+  cardIds.forEach((cardId) => {
+    if (!removed.has(cardId) && !queued.has(cardId)) {
+      next.push(cardId);
+    }
+  });
+  return next;
+};
+
 const createInitialAppSnapshot = () => {
   const stored = readLearningSnapshot();
   const storedDeck = Array.isArray(stored?.sourceDeck)
@@ -47,24 +59,42 @@ const createInitialAppSnapshot = () => {
       : 0,
   };
   const shuffleOnLoop = stored?.shuffleOnLoop ?? true;
+  const showWordInsights = stored?.showWordInsights ?? false;
+  const familiarModeEnabled = stored?.familiarModeEnabled ?? false;
   const defaultStudyIds = buildRoundCardIds({
     cardIds,
     removedCardIds,
     learningState,
     mode: "study",
     round: completedRounds.study + 1,
+    familiarModeEnabled,
     shuffleOnLoop: false,
   });
   const validCardIds = new Set(cardIds);
-  const studyQueueIds = (
+  const restoredStudyQueueIds = (
     Array.isArray(stored?.studyQueueIds)
       ? stored.studyQueueIds
       : defaultStudyIds
   ).filter((cardId) => validCardIds.has(cardId));
-  const spellQueueIds = (Array.isArray(stored?.spellQueueIds)
+  const restoredSpellQueueIds = (Array.isArray(stored?.spellQueueIds)
     ? stored.spellQueueIds
     : []
   ).filter((cardId) => validCardIds.has(cardId));
+  const studyQueueIds = familiarModeEnabled
+    ? restoredStudyQueueIds
+    : includeAllActiveCardIds(
+        restoredStudyQueueIds,
+        cardIds,
+        removedCardIds,
+      );
+  const spellQueueIds =
+    !familiarModeEnabled && restoredSpellQueueIds.length
+      ? includeAllActiveCardIds(
+          restoredSpellQueueIds,
+          cardIds,
+          removedCardIds,
+        )
+      : restoredSpellQueueIds;
   const mode = ["study", "rest", "spell"].includes(stored?.mode)
     ? stored.mode
     : "study";
@@ -82,6 +112,8 @@ const createInitialAppSnapshot = () => {
     learningState,
     completedRounds,
     shuffleOnLoop,
+    showWordInsights,
+    familiarModeEnabled,
     mode,
     lastRemoved,
     index: Math.min(
@@ -113,6 +145,12 @@ export default function App() {
   const [noAnim, setNoAnim] = useState(false);
   const [shuffleOnLoop, setShuffleOnLoop] = useState(
     initialSnapshot.shuffleOnLoop,
+  );
+  const [showWordInsights, setShowWordInsights] = useState(
+    initialSnapshot.showWordInsights,
+  );
+  const [familiarModeEnabled, setFamiliarModeEnabled] = useState(
+    initialSnapshot.familiarModeEnabled,
   );
   const [removedCardIds, setRemovedCardIds] = useState(
     initialSnapshot.removedCardIds,
@@ -157,11 +195,18 @@ export default function App() {
         learningState,
         mode: targetMode,
         round,
+        familiarModeEnabled,
         shuffleOnLoop,
         avoidFirstCardId,
       });
     },
-    [cardIds, learningState, removedCardIds, shuffleOnLoop],
+    [
+      cardIds,
+      familiarModeEnabled,
+      learningState,
+      removedCardIds,
+      shuffleOnLoop,
+    ],
   );
 
   const promptText = `你是英语词汇整理助手。请把用户提供的单词逐个补全为以下字段，并输出为可导入的 JSON 数组：
@@ -221,6 +266,8 @@ export default function App() {
       learningState,
       completedRounds,
       shuffleOnLoop,
+      showWordInsights,
+      familiarModeEnabled,
       mode,
       lastRemoved,
       studyQueueIds,
@@ -237,12 +284,14 @@ export default function App() {
     }
   }, [
     completedRounds,
+    familiarModeEnabled,
     index,
     learningState,
     lastRemoved,
     mode,
     removedCardIds,
     shuffleOnLoop,
+    showWordInsights,
     sourceDeck,
     spellQueueIds,
     spellIndex,
@@ -345,10 +394,11 @@ export default function App() {
           mode: targetMode,
           round,
           correct,
+          familiarModeEnabled,
         }),
       );
     },
-    [],
+    [familiarModeEnabled],
   );
 
   const completeStudyAnswer = useCallback(
@@ -412,6 +462,7 @@ export default function App() {
           learningState,
           mode: "study",
           round: currentStudyRound,
+          familiarModeEnabled,
           shuffleOnLoop,
           avoidFirstCardId: studyQueueIds[index] ?? null,
         });
@@ -445,6 +496,7 @@ export default function App() {
     cardIds,
     currentSpellRound,
     currentStudyRound,
+    familiarModeEnabled,
     index,
     learningState,
     mode,
@@ -476,7 +528,8 @@ export default function App() {
       lastRemoved.studyRound === currentStudyRound;
     const shouldRestoreStudy =
       (restoreStudyAtSavedPosition ||
-        (mode === "study" && !studyProgress.hidden)) &&
+        (mode === "study" &&
+          (!familiarModeEnabled || !studyProgress.hidden))) &&
       !studyQueueIds.includes(lastRemoved.cardId);
     const studyInsertIndex = restoreStudyAtSavedPosition
       ? Math.min(lastRemoved.studyPosition, studyQueueIds.length)
@@ -502,7 +555,11 @@ export default function App() {
         mode === "spell" &&
         lastRemoved.spellPosition >= 0 &&
         lastRemoved.spellRound === currentSpellRound;
-      if (restoreSpellAtSavedPosition || (mode === "spell" && !spellProgress.hidden)) {
+      if (
+        restoreSpellAtSavedPosition ||
+        (mode === "spell" &&
+          (!familiarModeEnabled || !spellProgress.hidden))
+      ) {
         setSpellQueueIds((previous) => {
           if (previous.includes(lastRemoved.cardId)) return previous;
           const next = [...previous];
@@ -519,6 +576,7 @@ export default function App() {
   }, [
     currentSpellRound,
     currentStudyRound,
+    familiarModeEnabled,
     lastRemoved,
     learningState,
     mode,
@@ -772,21 +830,30 @@ export default function App() {
     : null;
   const familiarEntries = useMemo(
     () =>
-      sourceDeck
-        .map((entry, entryIndex) => {
-          const cardId = cardIds[entryIndex];
-          return {
-            entry,
-            cardId,
-            study: getModeProgress(learningState, cardId, "study"),
-            spell: getModeProgress(learningState, cardId, "spell"),
-          };
-        })
-        .filter(
-          ({ cardId, study, spell }) =>
-            !removedCardIds.includes(cardId) && (study.hidden || spell.hidden),
-        ),
-    [cardIds, learningState, removedCardIds, sourceDeck],
+      familiarModeEnabled
+        ? sourceDeck
+            .map((entry, entryIndex) => {
+              const cardId = cardIds[entryIndex];
+              return {
+                entry,
+                cardId,
+                study: getModeProgress(learningState, cardId, "study"),
+                spell: getModeProgress(learningState, cardId, "spell"),
+              };
+            })
+            .filter(
+              ({ cardId, study, spell }) =>
+                !removedCardIds.includes(cardId) &&
+                (study.hidden || spell.hidden),
+            )
+        : [],
+    [
+      cardIds,
+      familiarModeEnabled,
+      learningState,
+      removedCardIds,
+      sourceDeck,
+    ],
   );
   const familiarStudyCount = familiarEntries.filter(
     ({ study }) => study.hidden,
@@ -833,6 +900,25 @@ export default function App() {
   const toggleShuffle = useCallback(() => {
     setShuffleOnLoop((previousValue) => !previousValue);
   }, []);
+
+  const toggleWordInsights = useCallback(() => {
+    setShowWordInsights((previousValue) => !previousValue);
+  }, []);
+
+  const toggleFamiliarMode = useCallback(() => {
+    const nextValue = !familiarModeEnabled;
+    setFamiliarModeEnabled(nextValue);
+    if (!nextValue) {
+      setStudyQueueIds((previous) =>
+        includeAllActiveCardIds(previous, cardIds, removedCardIds),
+      );
+      if (spellQueueIds.length) {
+        setSpellQueueIds((previous) =>
+          includeAllActiveCardIds(previous, cardIds, removedCardIds),
+        );
+      }
+    }
+  }, [cardIds, familiarModeEnabled, removedCardIds, spellQueueIds.length]);
 
   const cardClassName = useMemo(() => {
     return `card${noAnim ? " no-anim" : ""}`;
@@ -884,8 +970,10 @@ export default function App() {
           </div>
         </div>
         <div className="subhead">
-          Enter reveals, then marks remembered. N marks not yet. Four
-          consecutive correct rounds move a word into the familiar pool.
+          Enter reveals, then marks remembered. N marks not yet.
+          {familiarModeEnabled
+            ? " Four consecutive correct rounds move a word into the familiar pool."
+            : ""}
         </div>
         <input
           ref={fileInputRef}
@@ -927,6 +1015,7 @@ export default function App() {
           progressLabel={progressLabel}
           result={spellResult}
           shakeKey={shakeKey}
+          showFamiliarStatus={familiarModeEnabled}
         />
       )}
 
@@ -943,6 +1032,8 @@ export default function App() {
           onToggleReveal={toggleReveal}
           progress={currentStudyProgress}
           revealed={revealed}
+          showFamiliarStatus={familiarModeEnabled}
+          showWordInsights={showWordInsights}
         />
       )}
 
@@ -960,15 +1051,19 @@ export default function App() {
         onRemoveCard={removeCard}
         onResetDeck={resetDeck}
         onToggleReveal={toggleReveal}
+        onToggleFamiliarMode={toggleFamiliarMode}
         onToggleShuffle={toggleShuffle}
+        onToggleWordInsights={toggleWordInsights}
         onUndoRemove={undoRemove}
         progress={progress}
         progressLabel={progressLabel}
         revealed={revealed}
+        familiarModeEnabled={familiarModeEnabled}
+        showWordInsights={showWordInsights}
         shuffleOnLoop={shuffleOnLoop}
       />
 
-      <FamiliarPool entries={familiarEntries} />
+      {familiarModeEnabled ? <FamiliarPool entries={familiarEntries} /> : null}
 
       <div className="footer-note">
         No limits — keep cycling as long as you want.

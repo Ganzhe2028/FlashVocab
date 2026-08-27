@@ -252,9 +252,9 @@ export default function GuideDialog({
             <div className="guide-mode-block">
               <div className="guide-mode-badge">暂时熟悉池</div>
               <p className="guide-mode-desc">
-                辨识和拼写分别累计。某个 mode 连续正确 4 轮后，该词会隐藏完整的 1-2
-                轮，再分批随机返场；每轮返场词最多约占最终队列的四分之一。返场错误只重置当前
-                mode。
+                默认关闭。打开底部「四轮熟悉返场」后，辨识和拼写分别累计；某个
+                mode 连续正确 4 轮后，该词会隐藏完整的 1-2
+                轮，再分批随机返场。关闭时所有词保持普通循环，已有熟悉进度会保留。
               </p>
             </div>
           </div>

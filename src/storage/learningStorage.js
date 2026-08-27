@@ -99,6 +99,14 @@ export const normalizeLearningSnapshot = (snapshot) => {
       typeof snapshot.shuffleOnLoop === "boolean"
         ? snapshot.shuffleOnLoop
         : true,
+    showWordInsights:
+      typeof snapshot.showWordInsights === "boolean"
+        ? snapshot.showWordInsights
+        : false,
+    familiarModeEnabled:
+      typeof snapshot.familiarModeEnabled === "boolean"
+        ? snapshot.familiarModeEnabled
+        : false,
     mode,
     lastRemoved,
     studyQueueIds,
