@@ -9,7 +9,7 @@
 - study、rest、spell、底部控制栏、Guidebook 和熟悉池拆为独立组件，例句高亮提取为可测试纯函数。
 - 新增 ESLint、Vitest/jsdom、Testing Library 和 GitHub Actions CI；现有测试扩充为 32 个逻辑测试与 7 个 UI 行为测试。
 - Vite 升级到 8.2.2，生产构建重新生成；依赖审计无已知漏洞。
-- `ui-ux-pro-max` skill 已全局安装到 `.agents` 并同步到 `.hermes`，应用不再依赖项目内的 Cursor 命令入口。
+- `ui-ux-pro-max` skill 已全局安装到 `.agents` 并同步到 `.hermes`；项目内旧 `.cursor`、`.shared` 与 `.codex` 文件已经清除，ESLint 也不再为这些目录保留特殊忽略规则。
 
 ## Earlier updates
 

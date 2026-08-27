@@ -160,4 +160,4 @@ This is a git repository. Use short, imperative commit messages like "Add 5 new 
 
 ## Skills
 
-- ui-ux-pro-max: Searchable database of UI styles, color palettes, font pairings, chart types, product recommendations, UX guidelines, and stack-specific best practices. Installed globally at `/Users/mac/.agents/skills/ui-ux-pro-max/SKILL.md` and mirrored to `/Users/mac/.hermes/skills/ui-ux-pro-max/SKILL.md`; the application does not depend on project-local skill artifacts.
+- ui-ux-pro-max: Searchable database of UI styles, color palettes, font pairings, chart types, product recommendations, UX guidelines, and stack-specific best practices. Installed globally at `/Users/mac/.agents/skills/ui-ux-pro-max/SKILL.md` and mirrored to `/Users/mac/.hermes/skills/ui-ux-pro-max/SKILL.md`; project-local `.cursor`, `.shared`, and `.codex` artifacts have been removed.
