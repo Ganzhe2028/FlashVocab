@@ -4,6 +4,7 @@ const INTERACTIVE_SELECTOR =
   'button, input, textarea, select, [contenteditable="true"], [role="button"]';
 
 export function useAppKeyboard({
+  familiarModeEnabled,
   guideOpen,
   guidePanelRef,
   mode,
@@ -94,7 +95,11 @@ export function useAppKeyboard({
         } else {
           onToggleReveal();
         }
-      } else if (event.code === "KeyN" && revealed) {
+      } else if (
+        event.code === "KeyN" &&
+        revealed &&
+        familiarModeEnabled
+      ) {
         event.preventDefault();
         onCompleteStudyAnswer(false);
       } else if (
@@ -111,6 +116,7 @@ export function useAppKeyboard({
       document.removeEventListener("keydown", handleKeydown);
     };
   }, [
+    familiarModeEnabled,
     guideOpen,
     guidePanelRef,
     mode,

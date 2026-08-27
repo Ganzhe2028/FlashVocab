@@ -34,7 +34,9 @@ export default function StudyCard({
   const showDetails = revealed && hasDeck;
   const hint = hasDeck
     ? revealed
-      ? "Enter = remembered · N = not yet · Space hides"
+      ? showFamiliarStatus
+        ? "Enter = remembered · N = not yet · Space hides"
+        : "Enter = next · Space hides"
       : "Enter or Space reveals meaning + example sentences"
     : completedByRemoval
       ? "All the work is done! Undo or Reset to continue."
@@ -117,7 +119,7 @@ export default function StudyCard({
           })}
         </ul>
       ) : null}
-      {showDetails ? (
+      {showDetails && showFamiliarStatus ? (
         <div
           className="study-rating"
           onClick={(event) => event.stopPropagation()}

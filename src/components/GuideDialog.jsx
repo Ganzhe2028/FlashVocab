@@ -193,10 +193,11 @@ export default function GuideDialog({
                   条例句；翻开本身不计分
                 </li>
                 <li>
-                  翻开后按 <kbd>Enter</kbd> — 记为「想起来了」并进入下一张
+                  简约模式翻开后按 <kbd>Enter</kbd> — 直接进入下一张
                 </li>
                 <li>
-                  翻开后按 <kbd>N</kbd> — 记为「没想起来」并进入下一张
+                  开启「四轮熟悉返场」后才显示「想起来了 / 没想起来」按钮；
+                  <kbd>Enter</kbd> 记正确，<kbd>N</kbd> 记错误
                 </li>
                 <li>
                   <kbd>Tab</kbd> 或 <kbd>←</kbd> — 上一张

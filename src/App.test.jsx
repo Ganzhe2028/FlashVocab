@@ -112,6 +112,15 @@ describe("App behavior", () => {
 
     press("Space", " ");
     expect(
+      screen.queryByRole("button", { name: "想起来了 (Enter)" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "没想起来 (N)" }),
+    ).toBeNull();
+    expect(screen.getByRole("button", { name: "Next (Enter)" })).toBeTruthy();
+    press("KeyN", "n");
+    expect(currentTerm("Alpha")).toBeTruthy();
+    expect(
       screen.queryByText("Alpha comes from the first Greek letter."),
     ).toBeNull();
 
@@ -121,6 +130,12 @@ describe("App behavior", () => {
     ).toBeTruthy();
 
     fireEvent.click(familiarSwitch);
+    expect(
+      screen.getByRole("button", { name: "想起来了 (Enter)" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "没想起来 (N)" }),
+    ).toBeTruthy();
     expect(screen.getByText(/辨识 0\/4/)).toBeTruthy();
     expect(screen.getByText(/暂时熟悉池/)).toBeTruthy();
 

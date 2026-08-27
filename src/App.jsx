@@ -783,6 +783,7 @@ export default function App() {
   }, []);
 
   useAppKeyboard({
+    familiarModeEnabled,
     guideOpen,
     guidePanelRef,
     mode,
@@ -970,9 +971,9 @@ export default function App() {
           </div>
         </div>
         <div className="subhead">
-          Enter reveals, then marks remembered. N marks not yet.
+          Enter or Space reveals. Enter advances.
           {familiarModeEnabled
-            ? " Four consecutive correct rounds move a word into the familiar pool."
+            ? " N marks not yet; four correct rounds move a word into the familiar pool."
             : ""}
         </div>
         <input

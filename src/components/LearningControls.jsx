@@ -52,7 +52,11 @@ export default function LearningControls({
           onClick={revealed ? () => onCompleteAnswer(true) : onToggleReveal}
           disabled={mode !== "study" || !hasDeck}
         >
-          {revealed ? "Remembered (Enter)" : "Reveal (Enter)"}
+          {revealed
+            ? familiarModeEnabled
+              ? "Remembered (Enter)"
+              : "Next (Enter)"
+            : "Reveal (Enter)"}
         </button>
         <button
           type="button"

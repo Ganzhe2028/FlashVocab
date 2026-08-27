@@ -22,15 +22,15 @@ This repository is a Vite + React flashcard app with a separate vocabulary list.
 
 ### `study` mode (default)
 
-Standard flashcard loop. Shows one card at a time; Space/Enter reveal the answer. When revealed, the card shows part of speech, EN/ZH meaning, and a light-weight list of 2-3 B1-B2-friendly example sentences with bolded focus phrases. The learner must then explicitly mark the recognition result: Enter / `想起来了` records correct and advances; N / `没想起来` records wrong and advances. Revealing alone does not score the card.
+Standard flashcard loop. Shows one card at a time; Space/Enter reveal the answer. When revealed, the card shows part of speech, EN/ZH meaning, and a light-weight list of 2-3 B1-B2-friendly example sentences with bolded focus phrases. In default simple mode, Enter advances without a recognition rating. When `四轮熟悉返场` is enabled, the explicit rating buttons appear: Enter / `想起来了` records correct and advances; N / `没想起来` records wrong and advances. Revealing alone does not score the card.
 
 Bottom progress bar and count follow the study card position in this mode.
 
 **Keyboard shortcuts:**
 
 - `Space` — toggle reveal/hide meaning
-- `Enter` — reveal if hidden; record recognition success and advance if revealed; if on the **last card**, finish the study round and enter `rest` mode
-- `N` — when revealed, record recognition failure and advance
+- `Enter` — reveal if hidden; advance if revealed; when familiarity is enabled, the advance records recognition success
+- `N` — only when familiarity is enabled and the card is revealed, record recognition failure and advance
 - `Tab` / `←` — previous card
 - `Delete` / `Backspace` — remove current card from deck
 - `ArrowLeft` — previous card
@@ -40,7 +40,7 @@ The top-level `Export JSON` button exports every non-removed source card in its 
 
 Global study shortcuts ignore interactive controls such as buttons, inputs, textareas, and elements with `role="button"`. Clicking the bottom Remove control from `rest` or `spell` mode returns to `study` before removal so empty-deck completion and indices remain valid.
 
-**Optional complexity:** both feature switches default off and persist locally. `词源与对应概念` controls whether revealed cards render `wordOrigin` and `relatedWord`; it never removes those fields. `四轮熟悉返场` controls familiarity scoring, hiding, status labels, the pool, and return scheduling. While it is off, every non-removed card remains in ordinary circulation and answers update only round-completion bookkeeping; existing familiarity progress is preserved. Turning it off immediately restores hidden cards to the current queue.
+**Optional complexity:** both feature switches default off and persist locally. `词源与对应概念` controls whether revealed cards render `wordOrigin` and `relatedWord`; it never removes those fields. `四轮熟悉返场` controls the two recognition-rating buttons, the `N` shortcut, familiarity scoring, hiding, status labels, the pool, and return scheduling. While it is off, Enter simply advances, every non-removed card remains in ordinary circulation, and answers update only round-completion bookkeeping; existing familiarity progress is preserved. Turning it off immediately restores hidden cards to the current queue.
 
 **Loop shuffle:** before a new study or spelling round begins, simple mode includes every non-removed card. When familiarity is enabled, the scheduler first filters independently hidden cards and selects eligible return cards, then optionally shuffles the ordinary cards. The new first card is kept away from the card that was just on screen. The `Shuffle Loop: On / Off` button toggles this behavior and is persisted locally. `Reset Deck` restores the built-in deck and clears learning history while retaining feature preferences. Study and spell each build their own round queue.
 
