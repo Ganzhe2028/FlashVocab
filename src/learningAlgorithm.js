@@ -1,7 +1,3 @@
-export const LEARNING_STORAGE_KEY = "vocab2-learning-v1";
-export const LEARNING_STORAGE_VERSION = 1;
-export const MODES = ["study", "spell"];
-
 const hashText = (value) => {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index += 1) {
@@ -208,22 +204,4 @@ export const restoreQueue = (sourceDeck, cardIds, queueIds) => {
   return (Array.isArray(queueIds) ? queueIds : [])
     .map((cardId) => entriesById.get(cardId))
     .filter(Boolean);
-};
-
-export const readStoredLearningState = () => {
-  if (typeof window === "undefined") return null;
-  try {
-    const parsed = JSON.parse(
-      window.localStorage.getItem(LEARNING_STORAGE_KEY) ?? "null",
-    );
-    if (
-      parsed?.version !== LEARNING_STORAGE_VERSION ||
-      !Array.isArray(parsed?.sourceDeck)
-    ) {
-      return null;
-    }
-    return parsed;
-  } catch {
-    return null;
-  }
 };

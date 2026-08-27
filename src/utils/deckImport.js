@@ -37,7 +37,7 @@ const inflateZipData = async (compressed) => {
       blob.stream().pipeThrough(stream)
     ).arrayBuffer();
     return new Uint8Array(buffer);
-  } catch (error) {
+  } catch {
     const stream = new DecompressionStream("deflate");
     const buffer = await new Response(
       blob.stream().pipeThrough(stream)
@@ -148,12 +148,41 @@ const extractDeckFromParsed = (parsed) => {
   return null;
 };
 
+const MARKDOWN_FIELD_ALIASES = {
+  "meaning (en)": "meaning",
+  meaning: "meaning",
+  definition: "meaning",
+  "meaning (zh)": "meaningZh",
+  "meaning (zh-cn)": "meaningZh",
+  meaningzh: "meaningZh",
+  meaning_zh: "meaningZh",
+  syllables: "syllables",
+  respell: "respell",
+  pos: "pos",
+  "part of speech": "pos",
+  "word origin": "wordOrigin",
+  wordorigin: "wordOrigin",
+  word_origin: "wordOrigin",
+  etymology: "wordOrigin",
+  "related word": "relatedWord",
+  relatedword: "relatedWord",
+  related_word: "relatedWord",
+  counterpart: "relatedWord",
+};
+
 const parseVocabMarkdown = (text) => {
   const lines = text.split(/\r?\n/);
   const entries = [];
   let current = null;
   const flush = () => {
     if (current?.term) {
+      current.examples = Object.keys(current.exampleParts ?? {})
+        .map(Number)
+        .sort((a, b) => a - b)
+        .map((index) => current.exampleParts[index])
+        .filter((example) => example.sentence)
+        .slice(0, 3);
+      delete current.exampleParts;
       entries.push(current);
     }
     current = null;
@@ -161,61 +190,74 @@ const parseVocabMarkdown = (text) => {
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i].trim();
     if (!line) continue;
-    const termMatch = line.match(/^\[(.+?)\]$/);
+    const termMatch = line.match(/^\[([^{}]+)\]$/);
     if (termMatch) {
       flush();
-      current = { term: termMatch[1].trim() };
+      current = { term: termMatch[1].trim(), exampleParts: {} };
       continue;
     }
     if (!current) continue;
-    if (line.startsWith("- Meaning")) {
-      const meaning = line.split(":").slice(1).join(":").trim();
-      if (meaning) {
-        current.meaning = meaning;
-      }
+
+    const fieldMatch = line.match(/^-\s*([^:]+):\s*(.*)$/);
+    if (!fieldMatch) continue;
+    const label = fieldMatch[1].trim();
+    const value = fieldMatch[2].trim();
+    if (!value) continue;
+
+    const exampleMatch = label.match(/^(sentence|focus)(?:\s+(\d+))?$/i);
+    if (exampleMatch) {
+      const kind = exampleMatch[1].toLowerCase();
+      const index = Number(exampleMatch[2] ?? 1);
+      current.exampleParts[index] ??= { sentence: "", focus: "" };
+      current.exampleParts[index][kind] = value;
       continue;
     }
-    if (line.startsWith("- Sentence")) {
-      const sentence = line.split(":").slice(1).join(":").trim();
-      if (sentence) {
-        current.sentence = sentence;
-      }
+
+    const field = MARKDOWN_FIELD_ALIASES[label.toLowerCase()];
+    if (field) {
+      current[field] = value;
     }
   }
   flush();
   return entries;
 };
 
-const parseCsvLine = (line) => {
-  const values = [];
+const parseCsvRecords = (text) => {
+  const records = [];
+  let row = [];
   let current = "";
   let inQuotes = false;
-  for (let i = 0; i < line.length; i += 1) {
-    const char = line[i];
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
     if (char === '"') {
-      if (inQuotes && line[i + 1] === '"') {
+      if (inQuotes && text[i + 1] === '"') {
         current += '"';
         i += 1;
       } else {
         inQuotes = !inQuotes;
       }
     } else if (char === "," && !inQuotes) {
-      values.push(current);
+      row.push(current.trim());
+      current = "";
+    } else if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && text[i + 1] === "\n") i += 1;
+      row.push(current.trim());
+      if (row.some(Boolean)) records.push(row);
+      row = [];
       current = "";
     } else {
       current += char;
     }
   }
-  values.push(current);
-  return values.map((value) => value.trim());
+  if (inQuotes) return [];
+  row.push(current.trim());
+  if (row.some(Boolean)) records.push(row);
+  return records;
 };
 
 const parseCsvDeck = (text) => {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  if (lines.length < 2) return [];
+  const records = parseCsvRecords(text);
+  if (records.length < 2) return [];
   const headerMap = {
     word: "term",
     name: "term",
@@ -234,26 +276,52 @@ const parseCsvDeck = (text) => {
     collocations: "phrases",
     sentence: "sentence",
     example: "sentence",
+    focus: "sentenceFocus",
+    sentencefocus: "sentenceFocus",
+    sentence_focus: "sentenceFocus",
+    wordorigin: "wordOrigin",
+    word_origin: "wordOrigin",
+    etymology: "wordOrigin",
+    relatedword: "relatedWord",
+    related_word: "relatedWord",
+    counterpart: "relatedWord",
   };
-  const headers = parseCsvLine(lines[0]).map((header) => {
-    const normalized = header.toLowerCase().replace(/\s+/g, "");
-    return headerMap[normalized] ?? normalized;
+  const headers = records[0].map((header) => {
+    const trimmed = header.trim();
+    const normalized = trimmed.toLowerCase().replace(/\s+/g, "");
+    const numberedExample = normalized.match(/^(sentence|focus)([1-3])$/);
+    if (numberedExample) {
+      return `${numberedExample[1]}${numberedExample[2]}`;
+    }
+    return headerMap[normalized] ?? trimmed;
   });
   if (!headers.includes("term")) {
     return [];
   }
-  return lines.slice(1).map((line) => {
-    const cells = parseCsvLine(line);
+  return records.slice(1).map((cells) => {
     const entry = {};
     headers.forEach((header, index) => {
-      entry[header] = cells[index];
+      entry[header] = cells[index] ?? "";
     });
+    const numberedExamples = [1, 2, 3]
+      .map((index) => ({
+        sentence: entry[`sentence${index}`] ?? "",
+        focus: entry[`focus${index}`] ?? "",
+      }))
+      .filter((example) => example.sentence);
+    if (numberedExamples.length) entry.examples = numberedExamples;
     return entry;
   });
 };
 
 export const parseDeckFromText = (rawText) => {
-  const text = rawText.replace(/^\uFEFF/, "");
+  if (typeof rawText !== "string") {
+    throw new Error("无法识别内容，请提供文本内容。");
+  }
+  const text = rawText.replace(/^\uFEFF/, "").trim();
+  if (!text) {
+    throw new Error("无法识别内容，请提供非空文本。");
+  }
   const mdDeck = parseVocabMarkdown(text);
   if (mdDeck.length) {
     return mdDeck;
@@ -271,7 +339,7 @@ export const parseDeckFromText = (rawText) => {
       if (deck && deck.length) {
         return deck;
       }
-    } catch (error) {
+    } catch {
       continue;
     }
   }
@@ -280,16 +348,53 @@ export const parseDeckFromText = (rawText) => {
 
 const normalizeEntry = (entry) => {
   const toText = (value) => (value == null ? "" : String(value)).trim();
-  const rawPhrases = entry?.phrases ?? entry?.collocations ?? [];
-  const phrases = Array.isArray(rawPhrases)
-    ? rawPhrases.map(toText).filter(Boolean)
-    : typeof rawPhrases === "string"
-    ? rawPhrases
-        .split(/[,;\n]/)
-        .map((phrase) => phrase.trim())
-        .filter(Boolean)
+  const sourceEntry =
+    entry && typeof entry === "object" && !Array.isArray(entry) ? entry : {};
+  const normalizeExample = (example) => {
+    if (typeof example === "string") {
+      const sentence = toText(example);
+      return sentence ? { sentence, focus: "" } : null;
+    }
+
+    const sentence = toText(
+      example?.sentence ?? example?.text ?? example?.example,
+    );
+    const focus = toText(
+      example?.focus ??
+        example?.sentenceFocus ??
+        example?.sentence_focus ??
+        example?.highlight,
+    );
+
+    return sentence ? { ...example, sentence, focus } : null;
+  };
+
+  const rawExamples =
+    entry?.examples ?? entry?.sentences ?? entry?.usageExamples ?? [];
+  const examples = Array.isArray(rawExamples)
+    ? rawExamples.map(normalizeExample).filter(Boolean).slice(0, 3)
     : [];
+
+  if (!examples.length) {
+    const legacySentence = toText(
+      entry?.sentence ??
+        entry?.example ??
+        entry?.exampleSentence ??
+        entry?.example_sentence,
+    );
+    const legacyFocus = toText(
+      entry?.sentenceFocus ??
+        entry?.sentence_focus ??
+        entry?.focus ??
+        entry?.highlight,
+    );
+    if (legacySentence) {
+      examples.push({ sentence: legacySentence, focus: legacyFocus });
+    }
+  }
+
   return {
+    ...sourceEntry,
     term: toText(entry?.term ?? entry?.word ?? entry?.name),
     syllables: toText(entry?.syllables),
     respell: toText(entry?.respell),
@@ -299,15 +404,22 @@ const normalizeEntry = (entry) => {
       entry?.meaningZh ??
         entry?.meaning_zh ??
         entry?.meaningZH ??
-        entry?.meaningzh
+        entry?.meaningzh,
     ),
-    phrases,
-    sentence: toText(entry?.sentence),
+    wordOrigin: toText(
+      entry?.wordOrigin ?? entry?.word_origin ?? entry?.etymology,
+    ),
+    relatedWord: toText(
+      entry?.relatedWord ?? entry?.related_word ?? entry?.counterpart,
+    ),
+    examples,
   };
 };
 
 export const normalizeDeck = (importedDeck) =>
-  importedDeck.map(normalizeEntry).filter((entry) => entry.term);
+  (Array.isArray(importedDeck) ? importedDeck : [])
+    .map(normalizeEntry)
+    .filter((entry) => entry.term);
 
 export const readImportFile = async (file) => {
   const name = file.name.toLowerCase();
@@ -324,9 +436,21 @@ export const readImportFile = async (file) => {
 export const buildMarkdownExport = (items) =>
   items
     .map((entry) => {
-      const sentenceText = entry.sentence || "";
-      return `[${entry.term}]\n\n- Meaning (EN): ${
-        entry.meaning || ""
-      }\n- Sentence: ${sentenceText}`.trimEnd();
+      const lines = [
+        `[${entry.term}]`,
+        "",
+        entry.pos ? `- POS: ${entry.pos}` : "",
+        entry.syllables ? `- Syllables: ${entry.syllables}` : "",
+        entry.respell ? `- Respell: ${entry.respell}` : "",
+        entry.meaning ? `- Meaning (EN): ${entry.meaning}` : "",
+        entry.meaningZh ? `- Meaning (ZH): ${entry.meaningZh}` : "",
+        entry.wordOrigin ? `- Word Origin: ${entry.wordOrigin}` : "",
+        entry.relatedWord ? `- Related Word: ${entry.relatedWord}` : "",
+      ];
+      (entry.examples ?? []).slice(0, 3).forEach((example, index) => {
+        lines.push(`- Sentence ${index + 1}: ${example.sentence || ""}`);
+        lines.push(`- Focus ${index + 1}: ${example.focus || ""}`);
+      });
+      return lines.filter((line, index) => line || index < 2).join("\n");
     })
     .join("\n\n");

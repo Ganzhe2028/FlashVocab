@@ -6,6 +6,7 @@ import {
   findNextUnscoredCardIndex,
   getModeProgress,
   recordReview,
+  restoreQueue,
 } from "./learningAlgorithm.js";
 
 const alwaysLow = () => 0;
@@ -205,4 +206,28 @@ test("a due-only round returns a quarter of the pool with a minimum of one", () 
   });
 
   assert.equal(queue.length, 1);
+});
+
+test("a new round avoids the last presented card when alternatives exist", () => {
+  const queue = buildRoundCardIds({
+    cardIds: ["a", "b", "c"],
+    learningState: {},
+    mode: "study",
+    round: 2,
+    shuffleOnLoop: false,
+    avoidFirstCardId: "a",
+    random: alwaysLow,
+  });
+
+  assert.deepEqual(queue, ["b", "a", "c"]);
+});
+
+test("restoreQueue drops missing IDs and preserves the requested order", () => {
+  const sourceDeck = [{ term: "A" }, { term: "B" }, { term: "C" }];
+
+  assert.deepEqual(
+    restoreQueue(sourceDeck, ["a", "b", "c"], ["c", "missing", "a"]),
+    [sourceDeck[2], sourceDeck[0]],
+  );
+  assert.deepEqual(restoreQueue(sourceDeck, ["a", "b", "c"], null), []);
 });

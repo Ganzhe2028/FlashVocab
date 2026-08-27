@@ -1,737 +1,34 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import FamiliarPool from "./components/FamiliarPool.jsx";
+import GuideDialog from "./components/GuideDialog.jsx";
+import LearningControls from "./components/LearningControls.jsx";
+import RestScreen from "./components/RestScreen.jsx";
+import SpellCard from "./components/SpellCard.jsx";
+import StudyCard from "./components/StudyCard.jsx";
+import { cloneDeck } from "./data/baseDeck.js";
+import { useAppKeyboard } from "./hooks/useAppKeyboard.js";
 import deepUnderstandingPrompt from "./prompts/deep-understanding.md?raw";
 import {
-  LEARNING_STORAGE_KEY,
+  buildMarkdownExport,
+  parseDeckFromText,
+  normalizeDeck,
+  readImportFile,
+} from "./utils/deckImport.js";
+import {
   LEARNING_STORAGE_VERSION,
+  readLearningSnapshot,
+  writeLearningSnapshot,
+} from "./storage/learningStorage.js";
+import {
   buildRoundCardIds,
   createCardIds,
   findNextUnscoredCardIndex,
   getModeProgress,
-  readStoredLearningState,
   recordReview,
-  restoreQueue,
 } from "./learningAlgorithm.js";
 
-const baseDeck = [
-  {
-    term: "Vacant",
-    syllables: "Va·cant",
-    respell: "[VAY-kunt]",
-    pos: "adj.",
-    meaning: "empty; not occupied",
-    meaningZh: "空的；未被占用",
-    examples: [
-      {
-        sentence: "The bus had a vacant seat by the door.",
-        focus: "vacant seat",
-      },
-      {
-        sentence: "We found a vacant room at the hotel.",
-        focus: "vacant room",
-      },
-    ],
-  },
-  {
-    term: "Proximity",
-    syllables: "Prox·im·i·ty",
-    respell: "[prok-SIM-ih-tee]",
-    pos: "n.",
-    meaning: "the state of being near; closeness",
-    meaningZh: "接近；邻近",
-    examples: [
-      {
-        sentence: "Our school is in close proximity to the library.",
-        focus: "in close proximity to",
-      },
-      {
-        sentence: "I like the apartment's proximity to the subway.",
-        focus: "proximity to",
-      },
-    ],
-  },
-  {
-    term: "Devise",
-    syllables: "De·vise",
-    respell: "[dih-VYZE]",
-    pos: "v.",
-    meaning: "to plan or invent something carefully",
-    meaningZh: "设计；制定；想出",
-    examples: [
-      {
-        sentence: "We devised a plan for the class trip.",
-        focus: "devised a plan",
-      },
-      {
-        sentence: "She devised a simple way to save time.",
-        focus: "devised a simple way",
-      },
-    ],
-  },
-  {
-    term: "Mundane",
-    syllables: "Mun·dane",
-    respell: "[mun-DAYN]",
-    pos: "adj.",
-    meaning: "ordinary and not interesting",
-    meaningZh: "平凡的；乏味的",
-    examples: [
-      {
-        sentence: "Washing dishes feels like a mundane task.",
-        focus: "mundane task",
-      },
-      {
-        sentence: "His office job became a mundane routine.",
-        focus: "mundane routine",
-      },
-    ],
-  },
-  {
-    term: "Translucent",
-    syllables: "Trans·lu·cent",
-    respell: "[trans-LOO-sent]",
-    pos: "adj.",
-    meaning: "allowing some light to pass through; semi-transparent",
-    meaningZh: "半透明的",
-    examples: [
-      {
-        sentence: "Sunlight came through the translucent curtain.",
-        focus: "translucent curtain",
-      },
-      {
-        sentence: "The bathroom door has translucent glass.",
-        focus: "translucent glass",
-      },
-    ],
-  },
-  {
-    term: "Probe",
-    syllables: "Probe",
-    respell: "[PROHB]",
-    pos: "v.",
-    meaning: "to investigate or examine closely",
-    meaningZh: "调查；探查",
-    examples: [
-      {
-        sentence: "The interviewer tried to probe deeper into his answer.",
-        focus: "probe deeper",
-      },
-      {
-        sentence: "Police will probe the cause of the fire.",
-        focus: "probe the cause",
-      },
-    ],
-  },
-  {
-    term: "Revive",
-    syllables: "Re·vive",
-    respell: "[rih-VYV]",
-    pos: "v.",
-    meaning: "to bring back to life or make active again",
-    meaningZh: "复苏；恢复；使复活",
-    examples: [
-      {
-        sentence: "The poster helped revive interest in the club.",
-        focus: "revive interest in",
-      },
-      {
-        sentence: "Rain may revive the dry plants by morning.",
-        focus: "revive the dry plants",
-      },
-    ],
-  },
-  {
-    term: "Inhabit",
-    syllables: "In·hab·it",
-    respell: "[in-HAB-it]",
-    pos: "v.",
-    meaning: "to live in a place",
-    meaningZh: "居住于；栖息于",
-    examples: [
-      {
-        sentence: "Many fish inhabit the river.",
-        focus: "inhabit the river",
-      },
-      {
-        sentence: "Only a few families inhabit the island in winter.",
-        focus: "inhabit the island",
-      },
-    ],
-  },
-  {
-    term: "Credibility",
-    syllables: "Cred·i·bil·i·ty",
-    respell: "[kred-uh-BIL-ih-tee]",
-    pos: "n.",
-    meaning: "the quality of being believable or trustworthy",
-    meaningZh: "可信度；可信性",
-    examples: [
-      {
-        sentence: "He began to lose credibility after he lied.",
-        focus: "lose credibility",
-      },
-      {
-        sentence: "The false story hurt the website's credibility.",
-        focus: "website's credibility",
-      },
-    ],
-  },
-  {
-    term: "Lucid",
-    syllables: "Lu·cid",
-    respell: "[LOO-sid]",
-    pos: "adj.",
-    meaning: "clear and easy to understand",
-    meaningZh: "清晰的；易懂的",
-    examples: [
-      {
-        sentence: "The teacher gave a lucid explanation of the rule.",
-        focus: "lucid explanation",
-      },
-      {
-        sentence: "She gave a lucid answer to the question.",
-        focus: "lucid answer",
-      },
-    ],
-  },
-  {
-    term: "Fatigue",
-    syllables: "Fa·tigue",
-    respell: "[fuh-TEEG]",
-    pos: "n.",
-    meaning: "extreme tiredness after long effort",
-    meaningZh: "疲劳；疲惫",
-    examples: [
-      {
-        sentence: "After the long game, mental fatigue made it hard to focus.",
-        focus: "mental fatigue",
-      },
-      {
-        sentence: "By 10 p.m., fatigue set in and everyone grew quiet.",
-        focus: "fatigue set in",
-      },
-    ],
-  },
-  {
-    term: "Impulse",
-    syllables: "Im·pulse",
-    respell: "[IM-puls]",
-    pos: "n.",
-    meaning: "a sudden urge to do something without thinking",
-    meaningZh: "冲动",
-    examples: [
-      {
-        sentence: "I bought the snacks on impulse near the cashier.",
-        focus: "on impulse",
-      },
-      {
-        sentence: "Stores put candy there to encourage impulse buys.",
-        focus: "impulse buys",
-      },
-    ],
-  },
-  {
-    term: "Recede",
-    syllables: "Re·cede",
-    respell: "[rih-SEED]",
-    pos: "v.",
-    meaning: "to move back; to gradually become smaller or weaker",
-    meaningZh: "后退；逐渐减弱",
-    examples: [
-      {
-        sentence: "The lights receded into the distance as the car drove away.",
-        focus: "receded into the distance",
-      },
-      {
-        sentence: "After some rest, the pain receded.",
-        focus: "pain receded",
-      },
-    ],
-  },
-  {
-    term: "Distorted",
-    syllables: "Dis·tort·ed",
-    respell: "[dis-TOR-tid]",
-    pos: "adj.",
-    meaning: "changed in shape or meaning; twisted or unclear",
-    meaningZh: "扭曲的；失真的",
-    examples: [
-      {
-        sentence: "The old speaker made a distorted sound.",
-        focus: "distorted sound",
-      },
-      {
-        sentence: "The mirror gave a distorted view of the room.",
-        focus: "distorted view",
-      },
-    ],
-  },
-  {
-    term: "Deception",
-    syllables: "De·cep·tion",
-    respell: "[dih-SEP-shun]",
-    pos: "n.",
-    meaning: "the act of tricking someone by lying or hiding the truth",
-    meaningZh: "欺骗；欺诈",
-    examples: [
-      {
-        sentence: "The trick was an act of deception.",
-        focus: "act of deception",
-      },
-      {
-        sentence: "The scam used deception to get money.",
-        focus: "used deception",
-      },
-    ],
-  },
-  {
-    term: "Prosperous",
-    syllables: "Pros·per·ous",
-    respell: "[PROS-per-us]",
-    pos: "adj.",
-    meaning: "successful, wealthy, or doing well",
-    meaningZh: "繁荣的；富裕的",
-    examples: [
-      {
-        sentence: "A prosperous town usually has many busy shops.",
-        focus: "prosperous town",
-      },
-      {
-        sentence: "The family became prosperous after years of work.",
-        focus: "became prosperous",
-      },
-    ],
-  },
-  {
-    term: "Elusive",
-    syllables: "E·lu·sive",
-    respell: "[ih-LOO-siv]",
-    pos: "adj.",
-    meaning: "difficult to find, catch, or understand",
-    meaningZh: "难以捉摸的；难以找到的",
-    examples: [
-      {
-        sentence: "An elusive answer kept bothering the class.",
-        focus: "elusive answer",
-      },
-      {
-        sentence: "The small cat was elusive and hard to catch.",
-        focus: "was elusive",
-      },
-    ],
-  },
-  {
-    term: "Bloated",
-    syllables: "Blo·at·ed",
-    respell: "[BLOH-tid]",
-    pos: "adj.",
-    meaning: "swollen; or made too big with unnecessary parts",
-    meaningZh: "肿胀的；膨胀的",
-    examples: [
-      {
-        sentence: "The project started with a bloated budget.",
-        focus: "bloated budget",
-      },
-      {
-        sentence: "I felt bloated after dinner.",
-        focus: "felt bloated",
-      },
-    ],
-  },
-  {
-    term: "Contempt",
-    syllables: "Con·tempt",
-    respell: "[kun-TEMPT]",
-    pos: "n.",
-    meaning: "strong disrespect; the feeling that someone is beneath you",
-    meaningZh: "轻蔑；蔑视",
-    examples: [
-      {
-        sentence: "He spoke with open contempt about the rule.",
-        focus: "open contempt",
-      },
-      {
-        sentence: "She looked at the bully with contempt.",
-        focus: "with contempt",
-      },
-    ],
-  },
-  {
-    term: "Centennial",
-    syllables: "Cen·ten·ni·al",
-    respell: "[sen-TEN-ee-uhl]",
-    pos: "adj.",
-    meaning: "relating to the 100th anniversary of something",
-    meaningZh: "百年纪念的",
-    examples: [
-      {
-        sentence: "The school held a centennial celebration in May.",
-        focus: "centennial celebration",
-      },
-      {
-        sentence: "We saw a centennial sign in the hall.",
-        focus: "centennial sign",
-      },
-    ],
-  },
-  {
-    term: "Atrocity",
-    syllables: "A·troc·i·ty",
-    respell: "[uh-TROS-ih-tee]",
-    pos: "n.",
-    meaning: "an extremely cruel or brutal act",
-    meaningZh: "暴行；残暴行为",
-    examples: [
-      {
-        sentence: "The documentary described a war atrocity.",
-        focus: "war atrocity",
-      },
-      {
-        sentence: "Everyone was shocked by the atrocity.",
-        focus: "by the atrocity",
-      },
-    ],
-  },
-  {
-    term: "Phantoms",
-    syllables: "Phan·toms",
-    respell: "[FAN-tumz]",
-    pos: "n. pl.",
-    meaning: "ghosts; shadowy figures (real or imagined)",
-    meaningZh: "幻影；幽灵",
-    examples: [
-      {
-        sentence: "He still felt phantom pain in his leg.",
-        focus: "phantom pain",
-      },
-      {
-        sentence: "She heard phantom sounds in the quiet room.",
-        focus: "phantom sounds",
-      },
-    ],
-  },
-  {
-    term: "Negligence",
-    syllables: "Neg·li·gence",
-    respell: "[NEG-lih-jens]",
-    pos: "n.",
-    meaning: "failure to take proper care; carelessness",
-    meaningZh: "疏忽；过失",
-    examples: [
-      {
-        sentence: "The report called it gross negligence.",
-        focus: "gross negligence",
-      },
-      {
-        sentence: "The family made a negligence claim after the fall.",
-        focus: "negligence claim",
-      },
-    ],
-  },
-  {
-    term: "Complicity",
-    syllables: "Com·plic·i·ty",
-    respell: "[kum-PLIS-ih-tee]",
-    pos: "n.",
-    meaning:
-      "involvement in a wrongful act, especially by helping or allowing it",
-    meaningZh: "共谋；同谋",
-    examples: [
-      {
-        sentence: "Silence can become complicity in bullying.",
-        focus: "complicity in bullying",
-      },
-      {
-        sentence: "He denied complicity in the cheating.",
-        focus: "complicity in the cheating",
-      },
-    ],
-  },
-];
-
-const cloneDeck = () =>
-  baseDeck.map((item) => ({
-    ...item,
-    examples: (item.examples ?? []).map((example) => ({ ...example })),
-  }));
-
-const findTextRange = (source, query) => {
-  const text = typeof source === "string" ? source : "";
-  const needle = typeof query === "string" ? query.trim() : "";
-  if (!text || !needle) return null;
-
-  const start = text.toLowerCase().indexOf(needle.toLowerCase());
-  if (start === -1) return null;
-
-  return {
-    start,
-    end: start + needle.length,
-  };
-};
-
-const getHighlightedSentence = (sentence, sentenceFocus, term) => {
-  const match =
-    findTextRange(sentence, sentenceFocus) ?? findTextRange(sentence, term);
-  if (!match) return null;
-
-  return {
-    before: sentence.slice(0, match.start),
-    highlight: sentence.slice(match.start, match.end),
-    after: sentence.slice(match.end),
-  };
-};
-
-const DOCX_MIME =
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-const DOC_MIME = "application/msword";
-
-const readUint16LE = (data, offset) => data[offset] | (data[offset + 1] << 8);
-
-const readUint32LE = (data, offset) =>
-  (data[offset] |
-    (data[offset + 1] << 8) |
-    (data[offset + 2] << 16) |
-    (data[offset + 3] << 24)) >>>
-  0;
-
-const findEocdIndex = (data) => {
-  const minOffset = Math.max(0, data.length - 65557);
-  for (let i = data.length - 22; i >= minOffset; i -= 1) {
-    if (
-      data[i] === 0x50 &&
-      data[i + 1] === 0x4b &&
-      data[i + 2] === 0x05 &&
-      data[i + 3] === 0x06
-    ) {
-      return i;
-    }
-  }
-  return -1;
-};
-
-const inflateZipData = async (compressed) => {
-  if (typeof DecompressionStream === "undefined") {
-    throw new Error("浏览器不支持解析 .docx，请改为粘贴文本。");
-  }
-  const blob = new Blob([compressed]);
-  try {
-    const stream = new DecompressionStream("deflate-raw");
-    const buffer = await new Response(
-      blob.stream().pipeThrough(stream),
-    ).arrayBuffer();
-    return new Uint8Array(buffer);
-  } catch (error) {
-    const stream = new DecompressionStream("deflate");
-    const buffer = await new Response(
-      blob.stream().pipeThrough(stream),
-    ).arrayBuffer();
-    return new Uint8Array(buffer);
-  }
-};
-
-const extractDocxXml = async (file) => {
-  const buffer = await file.arrayBuffer();
-  const data = new Uint8Array(buffer);
-  const eocdIndex = findEocdIndex(data);
-  if (eocdIndex < 0) {
-    throw new Error("无法读取 .docx 文件结构。");
-  }
-  const centralDirOffset = readUint32LE(data, eocdIndex + 16);
-  const centralDirSize = readUint32LE(data, eocdIndex + 12);
-  const decoder = new TextDecoder("utf-8");
-  let offset = centralDirOffset;
-  while (offset < centralDirOffset + centralDirSize) {
-    if (readUint32LE(data, offset) !== 0x02014b50) {
-      break;
-    }
-    const compressionMethod = readUint16LE(data, offset + 10);
-    const compressedSize = readUint32LE(data, offset + 20);
-    const fileNameLength = readUint16LE(data, offset + 28);
-    const extraLength = readUint16LE(data, offset + 30);
-    const commentLength = readUint16LE(data, offset + 32);
-    const localHeaderOffset = readUint32LE(data, offset + 42);
-    const nameStart = offset + 46;
-    const fileName = decoder.decode(
-      data.slice(nameStart, nameStart + fileNameLength),
-    );
-    if (fileName === "word/document.xml") {
-      if (readUint32LE(data, localHeaderOffset) !== 0x04034b50) {
-        throw new Error("docx 内容已损坏。");
-      }
-      const localNameLength = readUint16LE(data, localHeaderOffset + 26);
-      const localExtraLength = readUint16LE(data, localHeaderOffset + 28);
-      const dataStart =
-        localHeaderOffset + 30 + localNameLength + localExtraLength;
-      const compressed = data.slice(dataStart, dataStart + compressedSize);
-      if (compressionMethod === 0) {
-        return decoder.decode(compressed);
-      }
-      if (compressionMethod === 8) {
-        const inflated = await inflateZipData(compressed);
-        return decoder.decode(inflated);
-      }
-      throw new Error("docx 压缩方式不支持。");
-    }
-    offset = nameStart + fileNameLength + extraLength + commentLength;
-  }
-  throw new Error("docx 中未找到正文内容。");
-};
-
-const extractDocxText = async (file) => {
-  const xmlText = await extractDocxXml(file);
-  const parser = new DOMParser();
-  const xml = parser.parseFromString(xmlText, "application/xml");
-  if (xml.getElementsByTagName("parsererror").length) {
-    return xmlText.replace(/<[^>]+>/g, " ");
-  }
-  const paragraphs = Array.from(xml.getElementsByTagName("w:p"));
-  const lines = paragraphs
-    .map((paragraph) => {
-      const textNodes = Array.from(paragraph.getElementsByTagName("w:t"));
-      return textNodes.map((node) => node.textContent ?? "").join("");
-    })
-    .map((line) => line.trim())
-    .filter(Boolean);
-  return lines.join("\n");
-};
-
-const extractJsonCandidates = (text) => {
-  const candidates = [];
-  const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)```/gi;
-  let match;
-  while ((match = codeBlockRegex.exec(text)) !== null) {
-    const block = match[1].trim();
-    if (block) {
-      candidates.push(block);
-    }
-  }
-  const firstArray = text.indexOf("[");
-  const lastArray = text.lastIndexOf("]");
-  if (firstArray >= 0 && lastArray > firstArray) {
-    candidates.push(text.slice(firstArray, lastArray + 1).trim());
-  }
-  const firstObj = text.indexOf("{");
-  const lastObj = text.lastIndexOf("}");
-  if (firstObj >= 0 && lastObj > firstObj) {
-    candidates.push(text.slice(firstObj, lastObj + 1).trim());
-  }
-  const trimmed = text.trim();
-  if (trimmed) {
-    candidates.push(trimmed);
-  }
-  return [...new Set(candidates)];
-};
-
-const extractDeckFromParsed = (parsed) => {
-  if (Array.isArray(parsed)) return parsed;
-  if (Array.isArray(parsed?.deck)) return parsed.deck;
-  if (Array.isArray(parsed?.cards)) return parsed.cards;
-  if (Array.isArray(parsed?.items)) return parsed.items;
-  if (Array.isArray(parsed?.data)) return parsed.data;
-  return null;
-};
-
-const parseDeckFromText = (rawText) => {
-  const text = rawText.replace(/^\uFEFF/, "");
-  const candidates = extractJsonCandidates(text);
-  for (const candidate of candidates) {
-    if (!candidate) continue;
-    try {
-      const parsed = JSON.parse(candidate);
-      const deck = extractDeckFromParsed(parsed);
-      if (deck && deck.length) {
-        return deck;
-      }
-    } catch (error) {
-      continue;
-    }
-  }
-  throw new Error("无法识别内容，请确保包含 JSON 数组或 deck 字段。");
-};
-
-const normalizeEntry = (entry) => {
-  const toText = (value) => (value == null ? "" : String(value)).trim();
-  const sourceEntry =
-    entry && typeof entry === "object" && !Array.isArray(entry) ? entry : {};
-  const normalizeExample = (example) => {
-    if (typeof example === "string") {
-      const sentence = toText(example);
-      return sentence ? { sentence, focus: "" } : null;
-    }
-
-    const sentence = toText(
-      example?.sentence ?? example?.text ?? example?.example,
-    );
-    const focus = toText(
-      example?.focus ??
-        example?.sentenceFocus ??
-        example?.sentence_focus ??
-        example?.highlight,
-    );
-
-    return sentence ? { ...example, sentence, focus } : null;
-  };
-
-  const rawExamples =
-    entry?.examples ?? entry?.sentences ?? entry?.usageExamples ?? [];
-  const examples = Array.isArray(rawExamples)
-    ? rawExamples.map(normalizeExample).filter(Boolean).slice(0, 3)
-    : [];
-
-  if (!examples.length) {
-    const legacySentence = toText(
-      entry?.sentence ??
-        entry?.example ??
-        entry?.exampleSentence ??
-        entry?.example_sentence,
-    );
-    const legacyFocus = toText(
-      entry?.sentenceFocus ??
-        entry?.sentence_focus ??
-        entry?.focus ??
-        entry?.highlight,
-    );
-    if (legacySentence) {
-      examples.push({ sentence: legacySentence, focus: legacyFocus });
-    }
-  }
-
-  return {
-    ...sourceEntry,
-    term: toText(entry?.term ?? entry?.word ?? entry?.name),
-    syllables: toText(entry?.syllables),
-    respell: toText(entry?.respell),
-    pos: toText(entry?.pos),
-    meaning: toText(entry?.meaning ?? entry?.definition),
-    meaningZh: toText(
-      entry?.meaningZh ?? entry?.meaning_zh ?? entry?.meaningZH,
-    ),
-    wordOrigin: toText(
-      entry?.wordOrigin ?? entry?.word_origin ?? entry?.etymology,
-    ),
-    relatedWord: toText(
-      entry?.relatedWord ?? entry?.related_word ?? entry?.counterpart,
-    ),
-    examples,
-  };
-};
-
-const normalizeDeck = (importedDeck) =>
-  importedDeck.map(normalizeEntry).filter((entry) => entry.term);
-
-const readImportFile = async (file) => {
-  const name = file.name.toLowerCase();
-  const type = file.type;
-  if (name.endsWith(".docx") || type === DOCX_MIME) {
-    return extractDocxText(file);
-  }
-  if (name.endsWith(".doc") || type === DOC_MIME) {
-    throw new Error("暂不支持 .doc，请另存为 .docx 或直接粘贴。");
-  }
-  return file.text();
-};
-
 const createInitialAppSnapshot = () => {
-  const stored = readStoredLearningState();
+  const stored = readLearningSnapshot();
   const storedDeck = Array.isArray(stored?.sourceDeck)
     ? normalizeDeck(stored.sourceDeck)
     : [];
@@ -758,12 +55,16 @@ const createInitialAppSnapshot = () => {
     round: completedRounds.study + 1,
     shuffleOnLoop: false,
   });
-  const studyDeck = Array.isArray(stored?.studyQueueIds)
-    ? restoreQueue(sourceDeck, cardIds, stored.studyQueueIds)
-    : restoreQueue(sourceDeck, cardIds, defaultStudyIds);
-  const spellDeck = Array.isArray(stored?.spellQueueIds)
-    ? restoreQueue(sourceDeck, cardIds, stored.spellQueueIds)
-    : [];
+  const validCardIds = new Set(cardIds);
+  const studyQueueIds = (
+    Array.isArray(stored?.studyQueueIds)
+      ? stored.studyQueueIds
+      : defaultStudyIds
+  ).filter((cardId) => validCardIds.has(cardId));
+  const spellQueueIds = (Array.isArray(stored?.spellQueueIds)
+    ? stored.spellQueueIds
+    : []
+  ).filter((cardId) => validCardIds.has(cardId));
   const mode = ["study", "rest", "spell"].includes(stored?.mode)
     ? stored.mode
     : "study";
@@ -775,8 +76,8 @@ const createInitialAppSnapshot = () => {
 
   return {
     sourceDeck,
-    studyDeck,
-    spellDeck,
+    studyQueueIds,
+    spellQueueIds,
     removedCardIds,
     learningState,
     completedRounds,
@@ -785,14 +86,14 @@ const createInitialAppSnapshot = () => {
     lastRemoved,
     index: Math.min(
       Math.max(Number.isInteger(stored?.index) ? stored.index : 0, 0),
-      Math.max(studyDeck.length - 1, 0),
+      Math.max(studyQueueIds.length - 1, 0),
     ),
     spellIndex: Math.min(
       Math.max(
         Number.isInteger(stored?.spellIndex) ? stored.spellIndex : 0,
         0,
       ),
-      Math.max(spellDeck.length - 1, 0),
+      Math.max(spellQueueIds.length - 1, 0),
     ),
   };
 };
@@ -800,8 +101,12 @@ const createInitialAppSnapshot = () => {
 export default function App() {
   const [initialSnapshot] = useState(createInitialAppSnapshot);
   const [sourceDeck, setSourceDeck] = useState(initialSnapshot.sourceDeck);
-  const [deck, setDeck] = useState(initialSnapshot.studyDeck);
-  const [spellDeck, setSpellDeck] = useState(initialSnapshot.spellDeck);
+  const [studyQueueIds, setStudyQueueIds] = useState(
+    initialSnapshot.studyQueueIds,
+  );
+  const [spellQueueIds, setSpellQueueIds] = useState(
+    initialSnapshot.spellQueueIds,
+  );
   const [index, setIndex] = useState(initialSnapshot.index);
   const [revealed, setRevealed] = useState(false);
   const [lastRemoved, setLastRemoved] = useState(initialSnapshot.lastRemoved);
@@ -834,13 +139,6 @@ export default function App() {
   const [shakeKey, setShakeKey] = useState(0);
 
   const cardIds = useMemo(() => createCardIds(sourceDeck), [sourceDeck]);
-  const cardIdByItem = useMemo(
-    () =>
-      new Map(
-        sourceDeck.map((entry, entryIndex) => [entry, cardIds[entryIndex]]),
-      ),
-    [cardIds, sourceDeck],
-  );
   const sourceItemById = useMemo(
     () =>
       new Map(
@@ -851,9 +149,9 @@ export default function App() {
   const currentStudyRound = completedRounds.study + 1;
   const currentSpellRound = completedRounds.spell + 1;
 
-  const buildModeDeck = useCallback(
+  const buildModeQueueIds = useCallback(
     (targetMode, round, avoidFirstCardId = null) => {
-      const queueIds = buildRoundCardIds({
+      return buildRoundCardIds({
         cardIds,
         removedCardIds,
         learningState,
@@ -862,15 +160,8 @@ export default function App() {
         shuffleOnLoop,
         avoidFirstCardId,
       });
-      return restoreQueue(sourceDeck, cardIds, queueIds);
     },
-    [
-      cardIds,
-      learningState,
-      removedCardIds,
-      shuffleOnLoop,
-      sourceDeck,
-    ],
+    [cardIds, learningState, removedCardIds, shuffleOnLoop],
   );
 
   const promptText = `你是英语词汇整理助手。请把用户提供的单词逐个补全为以下字段，并输出为可导入的 JSON 数组：
@@ -932,18 +223,20 @@ export default function App() {
       shuffleOnLoop,
       mode,
       lastRemoved,
-      studyQueueIds: deck.map((entry) => cardIdByItem.get(entry)).filter(Boolean),
-      spellQueueIds: spellDeck
-        .map((entry) => cardIdByItem.get(entry))
-        .filter(Boolean),
+      studyQueueIds,
+      spellQueueIds,
       index,
       spellIndex,
     };
-    window.localStorage.setItem(LEARNING_STORAGE_KEY, JSON.stringify(snapshot));
+    const result = writeLearningSnapshot(snapshot);
+    if (!result.success) {
+      setImportMessage(
+        (previous) =>
+          previous || "学习进度暂时无法保存，本次使用不受影响。",
+      );
+    }
   }, [
-    cardIdByItem,
     completedRounds,
-    deck,
     index,
     learningState,
     lastRemoved,
@@ -951,8 +244,9 @@ export default function App() {
     removedCardIds,
     shuffleOnLoop,
     sourceDeck,
-    spellDeck,
+    spellQueueIds,
     spellIndex,
+    studyQueueIds,
   ]);
 
   const runInstantly = useCallback((action) => {
@@ -966,9 +260,9 @@ export default function App() {
   }, []);
 
   const toggleReveal = useCallback(() => {
-    if (!deck.length) return;
+    if (!studyQueueIds.length) return;
     setRevealed((prev) => !prev);
-  }, [deck.length]);
+  }, [studyQueueIds.length]);
 
   const enterRestMode = useCallback(() => {
     setCompletedRounds((previous) => ({
@@ -980,22 +274,26 @@ export default function App() {
   }, [currentStudyRound]);
 
   const prevCard = useCallback(() => {
-    if (!deck.length) return;
+    if (!studyQueueIds.length) return;
     runInstantly(() => {
-      setIndex((prev) => (prev - 1 + deck.length) % deck.length);
+      setIndex(
+        (prev) =>
+          (prev - 1 + studyQueueIds.length) % studyQueueIds.length,
+      );
       setRevealed(false);
     });
-  }, [deck.length, runInstantly]);
+  }, [runInstantly, studyQueueIds.length]);
 
   const enterStudyMode = useCallback(() => {
     const nextRound = completedRounds.study + 1;
-    const previousLastItem = deck[deck.length - 1];
-    const nextDeck = buildModeDeck(
+    const previouslyPresentedCardId =
+      mode === "spell" ? spellQueueIds[spellIndex] : studyQueueIds[index];
+    const nextQueueIds = buildModeQueueIds(
       "study",
       nextRound,
-      cardIdByItem.get(previousLastItem) ?? null,
+      previouslyPresentedCardId ?? null,
     );
-    if (!nextDeck.length) {
+    if (!nextQueueIds.length) {
       setCompletedRounds((previous) => ({
         ...previous,
         study: nextRound,
@@ -1004,16 +302,24 @@ export default function App() {
       setImportMessage(`辨识第 ${nextRound} 轮暂无返场词，已跳过。`);
       return;
     }
-    setDeck(nextDeck);
+    setStudyQueueIds(nextQueueIds);
     setMode("study");
     setIndex(0);
     setRevealed(false);
-  }, [buildModeDeck, cardIdByItem, completedRounds.study, deck]);
+  }, [
+    buildModeQueueIds,
+    completedRounds.study,
+    index,
+    mode,
+    spellQueueIds,
+    spellIndex,
+    studyQueueIds,
+  ]);
 
   const enterSpellMode = useCallback(() => {
     const nextRound = completedRounds.spell + 1;
-    const nextDeck = buildModeDeck("spell", nextRound);
-    if (!nextDeck.length) {
+    const nextQueueIds = buildModeQueueIds("spell", nextRound);
+    if (!nextQueueIds.length) {
       setCompletedRounds((previous) => ({
         ...previous,
         spell: nextRound,
@@ -1022,16 +328,15 @@ export default function App() {
       setImportMessage(`拼写第 ${nextRound} 轮暂无返场词，已跳过。`);
       return;
     }
-    setSpellDeck(nextDeck);
+    setSpellQueueIds(nextQueueIds);
     setMode("spell");
     setSpellIndex(0);
     setSpellInput("");
     setSpellResult(null);
-  }, [buildModeDeck, completedRounds.spell]);
+  }, [buildModeQueueIds, completedRounds.spell]);
 
   const recordModeReview = useCallback(
-    (entry, targetMode, round, correct) => {
-      const cardId = cardIdByItem.get(entry);
+    (cardId, targetMode, round, correct) => {
       if (!cardId) return;
       setLearningState((previous) =>
         recordReview({
@@ -1043,21 +348,21 @@ export default function App() {
         }),
       );
     },
-    [cardIdByItem],
+    [],
   );
 
   const completeStudyAnswer = useCallback(
     (correct) => {
-      const currentItem = deck[index];
-      if (!currentItem || !revealed) return;
+      const currentCardId = studyQueueIds[index];
+      if (!currentCardId || !revealed) return;
       const nextUnscoredIndex = findNextUnscoredCardIndex({
-        queueIds: deck.map((entry) => cardIdByItem.get(entry)),
+        queueIds: studyQueueIds,
         currentIndex: index,
         learningState,
         mode: "study",
         round: currentStudyRound,
       });
-      recordModeReview(currentItem, "study", currentStudyRound, correct);
+      recordModeReview(currentCardId, "study", currentStudyRound, correct);
       if (nextUnscoredIndex === -1) {
         enterRestMode();
       } else {
@@ -1068,30 +373,26 @@ export default function App() {
       }
     },
     [
-      cardIdByItem,
       currentStudyRound,
-      deck,
       enterRestMode,
       index,
       learningState,
       recordModeReview,
       revealed,
       runInstantly,
+      studyQueueIds,
     ],
   );
 
   const removeCard = useCallback(() => {
-    const targetItem =
-      mode === "spell" ? spellDeck[spellIndex] : deck[index];
-    const cardId = cardIdByItem.get(targetItem);
-    if (!targetItem || !cardId) return;
+    const cardId =
+      mode === "spell" ? spellQueueIds[spellIndex] : studyQueueIds[index];
+    if (!cardId) return;
     runInstantly(() => {
-      const studyPosition = deck.indexOf(targetItem);
-      const spellPosition = spellDeck.indexOf(targetItem);
       setLastRemoved({
         cardId,
-        studyPosition: mode === "study" ? studyPosition : -1,
-        spellPosition: mode === "spell" ? spellPosition : -1,
+        studyPosition: mode === "study" ? index : -1,
+        spellPosition: mode === "spell" ? spellIndex : -1,
         studyRound: mode === "study" ? currentStudyRound : null,
         spellRound: mode === "spell" ? currentSpellRound : null,
       });
@@ -1101,44 +402,49 @@ export default function App() {
       setRemovedCardIds((previous) =>
         previous.includes(cardId) ? previous : [...previous, cardId],
       );
-      let nextStudyDeck = deck.filter((entry) => entry !== targetItem);
+      let nextStudyQueueIds = studyQueueIds.filter(
+        (queuedCardId) => queuedCardId !== cardId,
+      );
       if (mode !== "study") {
-        const nextStudyIds = buildRoundCardIds({
+        nextStudyQueueIds = buildRoundCardIds({
           cardIds,
           removedCardIds: nextRemovedCardIds,
           learningState,
           mode: "study",
           round: currentStudyRound,
           shuffleOnLoop,
-          avoidFirstCardId: cardIdByItem.get(deck[deck.length - 1]) ?? null,
+          avoidFirstCardId: studyQueueIds[index] ?? null,
         });
-        nextStudyDeck = restoreQueue(sourceDeck, cardIds, nextStudyIds);
       }
-      const nextSpellDeck = spellDeck.filter((entry) => entry !== targetItem);
+      const nextSpellQueueIds = spellQueueIds.filter(
+        (queuedCardId) => queuedCardId !== cardId,
+      );
       const nextRemovedCount = new Set(nextRemovedCardIds).size;
       const remainingSourceCount = sourceDeck.length - nextRemovedCount;
       setMode(
-        nextStudyDeck.length || remainingSourceCount === 0 ? "study" : "rest",
+        nextStudyQueueIds.length || remainingSourceCount === 0
+          ? "study"
+          : "rest",
       );
-      setDeck(nextStudyDeck);
-      setSpellDeck(nextSpellDeck);
+      setStudyQueueIds(nextStudyQueueIds);
+      setSpellQueueIds(nextSpellQueueIds);
       setIndex((previous) => {
-        if (!nextStudyDeck.length) return 0;
+        if (!nextStudyQueueIds.length) return 0;
         return mode === "study"
-          ? Math.min(previous, nextStudyDeck.length - 1)
+          ? Math.min(previous, nextStudyQueueIds.length - 1)
           : 0;
       });
       setSpellIndex((previous) =>
-        nextSpellDeck.length ? Math.min(previous, nextSpellDeck.length - 1) : 0,
+        nextSpellQueueIds.length
+          ? Math.min(previous, nextSpellQueueIds.length - 1)
+          : 0,
       );
       setRevealed(false);
     });
   }, [
-    cardIdByItem,
     cardIds,
     currentSpellRound,
     currentStudyRound,
-    deck,
     index,
     learningState,
     mode,
@@ -1146,14 +452,14 @@ export default function App() {
     runInstantly,
     shuffleOnLoop,
     sourceDeck,
-    spellDeck,
+    spellQueueIds,
     spellIndex,
+    studyQueueIds,
   ]);
 
   const undoRemove = useCallback(() => {
     if (!lastRemoved) return;
-    const restoredItem = sourceItemById.get(lastRemoved.cardId);
-    if (!restoredItem) return;
+    if (!sourceItemById.has(lastRemoved.cardId)) return;
     const studyProgress = getModeProgress(
       learningState,
       lastRemoved.cardId,
@@ -1164,38 +470,46 @@ export default function App() {
       lastRemoved.cardId,
       "spell",
     );
+    const restoreStudyAtSavedPosition =
+      mode === "study" &&
+      lastRemoved.studyPosition >= 0 &&
+      lastRemoved.studyRound === currentStudyRound;
+    const shouldRestoreStudy =
+      (restoreStudyAtSavedPosition ||
+        (mode === "study" && !studyProgress.hidden)) &&
+      !studyQueueIds.includes(lastRemoved.cardId);
+    const studyInsertIndex = restoreStudyAtSavedPosition
+      ? Math.min(lastRemoved.studyPosition, studyQueueIds.length)
+      : studyQueueIds.length;
     runInstantly(() => {
       setRemovedCardIds((previous) =>
         previous.filter((cardId) => cardId !== lastRemoved.cardId),
       );
-      const restoreStudyAtSavedPosition =
-        mode === "study" &&
-        lastRemoved.studyPosition >= 0 &&
-        lastRemoved.studyRound === currentStudyRound;
-      if (restoreStudyAtSavedPosition || (mode === "study" && !studyProgress.hidden)) {
-        setDeck((previous) => {
-          if (previous.includes(restoredItem)) return previous;
+      if (shouldRestoreStudy) {
+        setStudyQueueIds((previous) => {
+          if (previous.includes(lastRemoved.cardId)) return previous;
           const next = [...previous];
-          const insertIndex = restoreStudyAtSavedPosition
-            ? Math.min(lastRemoved.studyPosition, next.length)
-            : next.length;
-          next.splice(insertIndex, 0, restoredItem);
-          setIndex(insertIndex);
+          next.splice(
+            Math.min(studyInsertIndex, next.length),
+            0,
+            lastRemoved.cardId,
+          );
           return next;
         });
+        setIndex(studyInsertIndex);
       }
       const restoreSpellAtSavedPosition =
         mode === "spell" &&
         lastRemoved.spellPosition >= 0 &&
         lastRemoved.spellRound === currentSpellRound;
       if (restoreSpellAtSavedPosition || (mode === "spell" && !spellProgress.hidden)) {
-        setSpellDeck((previous) => {
-          if (previous.includes(restoredItem)) return previous;
+        setSpellQueueIds((previous) => {
+          if (previous.includes(lastRemoved.cardId)) return previous;
           const next = [...previous];
           const insertIndex = restoreSpellAtSavedPosition
             ? Math.min(lastRemoved.spellPosition, next.length)
             : next.length;
-          next.splice(insertIndex, 0, restoredItem);
+          next.splice(insertIndex, 0, lastRemoved.cardId);
           return next;
         });
       }
@@ -1210,14 +524,15 @@ export default function App() {
     mode,
     runInstantly,
     sourceItemById,
+    studyQueueIds,
   ]);
 
   const resetDeck = useCallback(() => {
     runInstantly(() => {
       const restoredDeck = cloneDeck();
       setSourceDeck(restoredDeck);
-      setDeck(restoredDeck);
-      setSpellDeck([]);
+      setStudyQueueIds(createCardIds(restoredDeck));
+      setSpellQueueIds([]);
       setIndex(0);
       setSpellIndex(0);
       setRevealed(false);
@@ -1248,8 +563,8 @@ export default function App() {
         }
         runInstantly(() => {
           setSourceDeck(normalized);
-          setDeck(normalized);
-          setSpellDeck([]);
+          setStudyQueueIds(createCardIds(normalized));
+          setSpellQueueIds([]);
           setIndex(0);
           setSpellIndex(0);
           setRevealed(false);
@@ -1284,8 +599,8 @@ export default function App() {
       }
       runInstantly(() => {
         setSourceDeck(normalized);
-        setDeck(normalized);
-        setSpellDeck([]);
+        setStudyQueueIds(createCardIds(normalized));
+        setSpellQueueIds([]);
         setIndex(0);
         setSpellIndex(0);
         setRevealed(false);
@@ -1305,10 +620,8 @@ export default function App() {
 
   const exportDeck = useMemo(() => {
     const removed = new Set(removedCardIds);
-    return sourceDeck.filter(
-      (entry) => !removed.has(cardIdByItem.get(entry)),
-    );
-  }, [cardIdByItem, removedCardIds, sourceDeck]);
+    return sourceDeck.filter((_, entryIndex) => !removed.has(cardIds[entryIndex]));
+  }, [cardIds, removedCardIds, sourceDeck]);
 
   const handleExportJson = useCallback(() => {
     if (!exportDeck.length) return;
@@ -1327,28 +640,7 @@ export default function App() {
 
   const handleExportMd = useCallback(() => {
     if (!exportDeck.length) return;
-    const lines = exportDeck.map((entry) => {
-      const exampleLines = (entry.examples ?? []).flatMap((example, index) =>
-        [
-          example?.sentence
-            ? `- Sentence ${index + 1}: ${example.sentence}`
-            : "",
-          example?.focus ? `- Focus ${index + 1}: ${example.focus}` : "",
-        ].filter(Boolean),
-      );
-      const body = [
-        entry.pos ? `- POS: ${entry.pos}` : "",
-        entry.syllables ? `- Syllables: ${entry.syllables}` : "",
-        entry.respell ? `- Respell: ${entry.respell}` : "",
-        entry.meaning ? `- Meaning (EN): ${entry.meaning}` : "",
-        entry.meaningZh ? `- Meaning (ZH): ${entry.meaningZh}` : "",
-        entry.wordOrigin ? `- Word Origin: ${entry.wordOrigin}` : "",
-        entry.relatedWord ? `- Related Word: ${entry.relatedWord}` : "",
-        ...exampleLines,
-      ].filter(Boolean);
-      return [`[${entry.term}]`, "", ...body].join("\n");
-    });
-    const md = lines.join("\n\n");
+    const md = buildMarkdownExport(exportDeck);
     const blob = new Blob([md], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -1364,7 +656,7 @@ export default function App() {
     try {
       await navigator.clipboard.writeText(promptText);
       setImportMessage("提示词已复制到剪贴板。");
-    } catch (error) {
+    } catch {
       setImportMessage("复制失败，请手动复制提示词。");
     }
   };
@@ -1373,190 +665,94 @@ export default function App() {
     try {
       await navigator.clipboard.writeText(deepUnderstandingPrompt);
       setImportMessage("词根词源—感觉—画面提示词已复制到剪贴板。");
-    } catch (error) {
+    } catch {
       setImportMessage("复制失败，请在 Guidebook 中手动复制提示词。");
     }
   };
 
-  useEffect(() => {
-    const handleKeydown = (event) => {
-      if (guideOpen) return;
-      if (guidePanelRef.current?.contains(document.activeElement)) return;
-      if (
-        event.target instanceof Element &&
-        event.target.closest(
-          'button, input, textarea, select, [contenteditable="true"], [role="button"]',
-        )
-      ) {
-        return;
-      }
-
-      // ── REST mode ──────────────────────────────────
-      if (mode === "rest") {
-        if (event.code === "Enter") {
-          event.preventDefault();
-          enterStudyMode();
-        } else if (event.code === "Space") {
-          event.preventDefault();
-          enterSpellMode();
-        }
-        return;
-      }
-
-      // ── SPELL mode ─────────────────────────────────
-      if (mode === "spell") {
-        const key = event.key;
-
-        if (event.code === "Escape") {
-          event.preventDefault();
-          enterStudyMode();
-          return;
-        }
-
-        if (event.code === "Enter") {
-          event.preventDefault();
-          if (spellResult === "correct") {
-            // Advance to next spell word
-            if (spellIndex + 1 >= spellDeck.length) {
-              // Done with all words
-              setCompletedRounds((previous) => ({
-                ...previous,
-                spell: currentSpellRound,
-              }));
-              enterStudyMode();
-            } else {
-              setSpellIndex((prev) => prev + 1);
-              setSpellInput("");
-              setSpellResult(null);
-            }
-          } else if (spellResult === "wrong") {
-            // Shake again
-            setShakeKey((prev) => prev + 1);
-          } else {
-            // Submit
-            const spellItem = spellDeck[spellIndex];
-            const target = (spellItem?.term ?? "").toLowerCase();
-            const correct = Boolean(target) && spellInput.toLowerCase() === target;
-            recordModeReview(
-              spellItem,
-              "spell",
-              currentSpellRound,
-              correct,
-            );
-            if (correct) {
-              setSpellResult("correct");
-            } else {
-              setSpellResult("wrong");
-              setShakeKey((prev) => prev + 1);
-            }
-          }
-          return;
-        }
-
-        if (event.code === "Backspace") {
-          event.preventDefault();
-          if (spellResult !== "correct") {
-            setSpellInput((prev) => prev.slice(0, -1));
-            setSpellResult(null);
-          }
-          return;
-        }
-
-        // Letter keys and space — single printable character
-        if (key.length === 1 && /[a-zA-Z' -]/.test(key)) {
-          event.preventDefault();
-          if (spellResult === "correct") return;
-          if (spellResult === "wrong") {
-            // Start over from this letter
-            setSpellInput(key);
-            setSpellResult(null);
-          } else {
-            setSpellInput((prev) => prev + key);
-          }
-          return;
-        }
-
-        return;
-      }
-
-      // ── STUDY mode (default) ────────────────────────
-      if (event.code === "Space") {
-        event.preventDefault();
-        toggleReveal();
-      } else if (event.code === "Tab") {
-        event.preventDefault();
-        prevCard();
-      } else if (event.code === "Enter") {
-        event.preventDefault();
-        if (revealed) {
-          completeStudyAnswer(true);
-        } else {
-          toggleReveal();
-        }
-      } else if (event.code === "KeyN" && revealed) {
-        event.preventDefault();
-        completeStudyAnswer(false);
-      } else if (event.code === "ArrowLeft") {
-        event.preventDefault();
-        prevCard();
-      } else if (event.code === "Delete" || event.code === "Backspace") {
-        event.preventDefault();
-        removeCard();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeydown);
-    return () => {
-      document.removeEventListener("keydown", handleKeydown);
-    };
+  const advanceSpell = useCallback(() => {
+    if (spellIndex + 1 >= spellQueueIds.length) {
+      setCompletedRounds((previous) => ({
+        ...previous,
+        spell: currentSpellRound,
+      }));
+      enterStudyMode();
+      return;
+    }
+    setSpellIndex((previous) => previous + 1);
+    setSpellInput("");
+    setSpellResult(null);
   }, [
-    deck,
-    completeStudyAnswer,
     currentSpellRound,
-    guideOpen,
-    index,
-    mode,
-    prevCard,
-    removeCard,
-    revealed,
-    recordModeReview,
-    spellDeck,
-    spellIndex,
-    spellInput,
-    spellResult,
-    toggleReveal,
     enterStudyMode,
-    enterSpellMode,
+    spellIndex,
+    spellQueueIds.length,
   ]);
 
-  const hasDeck = deck.length > 0;
-  const hasSpellDeck = spellDeck.length > 0;
+  const submitSpell = useCallback(() => {
+    const spellCardId = spellQueueIds[spellIndex];
+    const spellItem = sourceItemById.get(spellCardId);
+    const target = (spellItem?.term ?? "").toLowerCase();
+    const correct = Boolean(target) && spellInput.toLowerCase() === target;
+    recordModeReview(spellCardId, "spell", currentSpellRound, correct);
+    if (correct) {
+      setSpellResult("correct");
+      return;
+    }
+    setSpellResult("wrong");
+    setShakeKey((previous) => previous + 1);
+  }, [
+    currentSpellRound,
+    recordModeReview,
+    sourceItemById,
+    spellIndex,
+    spellInput,
+    spellQueueIds,
+  ]);
+
+  const replaySpellShake = useCallback(() => {
+    setShakeKey((previous) => previous + 1);
+  }, []);
+
+  const deleteSpellCharacter = useCallback(() => {
+    setSpellInput((previous) => previous.slice(0, -1));
+    setSpellResult(null);
+  }, []);
+
+  const typeSpellCharacter = useCallback((key, { replace }) => {
+    setSpellInput((previous) => (replace ? key : previous + key));
+    setSpellResult(null);
+  }, []);
+
+  useAppKeyboard({
+    guideOpen,
+    guidePanelRef,
+    mode,
+    revealed,
+    spellResult,
+    onEnterStudyMode: enterStudyMode,
+    onEnterSpellMode: enterSpellMode,
+    onToggleReveal: toggleReveal,
+    onPreviousCard: prevCard,
+    onCompleteStudyAnswer: completeStudyAnswer,
+    onRemoveCard: removeCard,
+    onAdvanceSpell: advanceSpell,
+    onSubmitSpell: submitSpell,
+    onReplaySpellShake: replaySpellShake,
+    onDeleteSpellCharacter: deleteSpellCharacter,
+    onTypeSpellCharacter: typeSpellCharacter,
+  });
+
+  const hasDeck = studyQueueIds.length > 0;
+  const hasSpellDeck = spellQueueIds.length > 0;
   const completedByRemoval = !exportDeck.length && Boolean(lastRemoved);
-  const item = hasDeck ? deck[index] : null;
-  const term = hasDeck
-    ? revealed
-      ? item?.syllables || item?.term
-      : item?.term
-    : completedByRemoval
-      ? "Congratulations! 🎉"
-      : "No words loaded";
-  const posTag = item?.pos || "";
-  const meaningText = item
-    ? [item.meaning, item.meaningZh].filter(Boolean).join(" / ")
-    : "";
-  const examples = item?.examples ?? [];
-  const respell = item?.respell || "";
-  const wordOrigin = item?.wordOrigin || "";
-  const relatedWord = item?.relatedWord || "";
-  const showDetails = revealed && hasDeck;
-  const hint = hasDeck
-    ? revealed
-      ? "Enter = remembered · N = not yet · Space hides"
-      : "Enter or Space reveals meaning + example sentences"
-    : completedByRemoval
-      ? "All the work is done! Undo or Reset to continue."
-      : "Deck empty. Press Reset to reload.";
-  const activeDeckLength = mode === "spell" ? spellDeck.length : deck.length;
+  const item = hasDeck
+    ? sourceItemById.get(studyQueueIds[index]) ?? null
+    : null;
+  const spellCardId = spellQueueIds[spellIndex] ?? null;
+  const spellItem = sourceItemById.get(spellCardId) ?? null;
+  const activeDeckLength =
+    mode === "spell" ? spellQueueIds.length : studyQueueIds.length;
   const activeProgressPosition = activeDeckLength
     ? mode === "spell"
       ? spellIndex + 1
@@ -1569,13 +765,16 @@ export default function App() {
     ? `${activeProgressPosition} / ${activeDeckLength}`
     : "0 / 0";
   const currentStudyProgress = item
-    ? getModeProgress(learningState, cardIdByItem.get(item), "study")
+    ? getModeProgress(learningState, studyQueueIds[index], "study")
+    : null;
+  const currentSpellProgress = spellCardId
+    ? getModeProgress(learningState, spellCardId, "spell")
     : null;
   const familiarEntries = useMemo(
     () =>
       sourceDeck
-        .map((entry) => {
-          const cardId = cardIdByItem.get(entry);
+        .map((entry, entryIndex) => {
+          const cardId = cardIds[entryIndex];
           return {
             entry,
             cardId,
@@ -1587,7 +786,7 @@ export default function App() {
           ({ cardId, study, spell }) =>
             !removedCardIds.includes(cardId) && (study.hidden || spell.hidden),
         ),
-    [cardIdByItem, learningState, removedCardIds, sourceDeck],
+    [cardIds, learningState, removedCardIds, sourceDeck],
   );
   const familiarStudyCount = familiarEntries.filter(
     ({ study }) => study.hidden,
@@ -1601,7 +800,7 @@ export default function App() {
     try {
       await navigator.clipboard.writeText(item.term);
       setImportMessage(`已复制 ${item.term}。`);
-    } catch (error) {
+    } catch {
       setImportMessage("复制失败，请手动选择单词。");
     }
   }, [item?.term]);
@@ -1625,6 +824,15 @@ export default function App() {
     },
     [copyCurrentTerm],
   );
+
+  const clearPasteImport = useCallback(() => {
+    setPasteText("");
+    setImportedDeckData(null);
+  }, []);
+
+  const toggleShuffle = useCallback(() => {
+    setShuffleOnLoop((previousValue) => !previousValue);
+  }, []);
 
   const cardClassName = useMemo(() => {
     return `card${noAnim ? " no-anim" : ""}`;
@@ -1682,7 +890,7 @@ export default function App() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".json,.md,.txt,.doc,.docx,application/json,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"
+          accept=".json,.md,.txt,.csv,.docx,application/json,text/plain,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           onChange={handleImportFile}
           className="file-input"
         />
@@ -1691,507 +899,76 @@ export default function App() {
         ) : null}
       </header>
 
-      {guideOpen ? (
-        <div className="guide-overlay" onClick={() => setGuideOpen(false)}>
-          <section
-            className="guide-panel"
-            role="dialog"
-            aria-modal="true"
-            ref={guidePanelRef}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="guide-header">
-              <h2>使用指南</h2>
-              <button type="button" onClick={() => setGuideOpen(false)}>
-                关闭
-              </button>
-            </div>
-            {importMessage ? (
-              <div className="import-message" aria-live="polite">
-                {importMessage}
-              </div>
-            ) : null}
+      <GuideDialog
+        open={guideOpen}
+        message={importMessage}
+        pasteText={pasteText}
+        importedDeckData={importedDeckData}
+        exportDeckLength={exportDeck.length}
+        panelRef={guidePanelRef}
+        onClose={() => setGuideOpen(false)}
+        onCopyPrompt={handleCopyPrompt}
+        onPasteTextChange={setPasteText}
+        onPasteImport={handlePasteImport}
+        onClearPaste={clearPasteImport}
+        onExportJson={handleExportJson}
+        onExportMd={handleExportMd}
+        onImportClick={handleImportClick}
+        onCopyDeepPrompt={handleCopyDeepPrompt}
+      />
+      {mode === "rest" && <RestScreen />}
 
-            {/* ── 导入词库 ── */}
-            <div className="guide-section">
-              <h3 className="guide-section-title">📥 导入你的单词</h3>
-
-              {/* Step 1 */}
-              <div className="guide-step">
-                <div className="guide-step-num">1</div>
-                <div className="guide-step-body">
-                  <div className="guide-step-title">准备好你的单词表</div>
-                  <p className="guide-step-desc">
-                    把你要背的单词整理成一行一个的列表，可以直接复制课本或笔记里的单词，不需要任何格式。
-                  </p>
-                </div>
-              </div>
-
-              {/* Step 2 */}
-              <div className="guide-step">
-                <div className="guide-step-num">2</div>
-                <div className="guide-step-body">
-                  <div className="guide-step-title">
-                    复制提示词，发给 DeepSeek 或 ChatGPT
-                  </div>
-                  <p className="guide-step-desc">
-                    点下方「复制提示词」，让 AI 补全词根词源、对应概念和 B1-B2
-                    日常例句，生成可直接导入的 JSON 词卡。
-                  </p>
-                  <button
-                    className="primary guide-step-btn"
-                    type="button"
-                    onClick={handleCopyPrompt}
-                  >
-                    复制提示词
-                  </button>
-                </div>
-              </div>
-
-              {/* Step 3 */}
-              <div className="guide-step">
-                <div className="guide-step-num">3</div>
-                <div className="guide-step-body">
-                  <div className="guide-step-title">把 AI 的回复粘贴进来</div>
-                  <p className="guide-step-desc">
-                    AI 会生成一段包含 2-3 条日常语境例句和高亮片段的 JSON 代码，把它全选复制，粘贴到下方输入框。
-                  </p>
-                  <div className="paste-block">
-                    <textarea
-                      id="paste-input"
-                      className="paste-textarea"
-                      placeholder="把 AI 生成的内容粘贴到这里…"
-                      value={pasteText}
-                      onChange={(event) => setPasteText(event.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Step 4 */}
-              <div className="guide-step">
-                <div className="guide-step-num">4</div>
-                <div className="guide-step-body">
-                  <div className="guide-step-title">点「导入」，开始刷词！</div>
-                  <p className="guide-step-desc">
-                    导入成功后关掉这个面板，就能看到你的单词卡了。
-                  </p>
-                  <div className="paste-actions">
-                    <button
-                      className="primary guide-step-btn"
-                      type="button"
-                      onClick={handlePasteImport}
-                      disabled={!pasteText.trim()}
-                    >
-                      识别并导入
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPasteText("");
-                        setImportedDeckData(null);
-                      }}
-                      disabled={!pasteText.trim()}
-                    >
-                      清空
-                    </button>
-                  </div>
-                  {importedDeckData && (
-                    <div className="export-actions">
-                      <span className="export-label">
-                        ✅ 导入成功，保存副本：
-                      </span>
-                      <button
-                        type="button"
-                        className="export-btn"
-                        onClick={handleExportJson}
-                        disabled={!exportDeck.length}
-                        title="下载 JSON 文件"
-                      >
-                        ⬇ JSON
-                      </button>
-                      <button
-                        type="button"
-                        className="export-btn"
-                        onClick={handleExportMd}
-                        disabled={!exportDeck.length}
-                        title="下载 Markdown 文件"
-                      >
-                        ⬇ Markdown
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* 也可以直接上传文件 */}
-              <p className="guide-alt-import">
-                已有 <code>.json / .txt / .docx</code> 文件？
-                <button
-                  type="button"
-                  className="guide-link-btn"
-                  onClick={handleImportClick}
-                >
-                  直接上传
-                </button>
-              </p>
-            </div>
-
-            <hr className="guide-divider" />
-
-            <div className="guide-section">
-              <h3 className="guide-section-title">
-                🧠 词根词缀词源—感觉—画面
-              </h3>
-              <p className="guide-import-desc">
-                学习某个难词时，把这套提示词发给 AI，再发送一个英文单词。它会从可靠词源、底层感觉、脑内画面、现实场景和近义词边界逐层讲解，帮助你绕开机械中英对照。
-              </p>
-              <button
-                className="primary guide-step-btn"
-                type="button"
-                onClick={handleCopyDeepPrompt}
-              >
-                复制深度理解提示词
-              </button>
-            </div>
-
-            <hr className="guide-divider" />
-
-            {/* ── 怎么用（折叠） ── */}
-            <details className="guide-details">
-              <summary className="guide-details-summary">📖 怎么用</summary>
-
-              <div className="guide-section guide-details-body">
-                <div className="guide-mode-block">
-                  <div className="guide-mode-badge">刷词模式</div>
-                  <p className="guide-mode-desc">
-                    默认状态，每次显示一张单词卡。
-                  </p>
-                  <ul className="guide-key-list">
-                    <li>
-                      <kbd>Space</kbd> 或 <kbd>Enter</kbd> — 翻开释义和 2-3
-                      条例句；翻开本身不计分
-                    </li>
-                    <li>
-                      翻开后按 <kbd>Enter</kbd> — 记为「想起来了」并进入下一张
-                    </li>
-                    <li>
-                      翻开后按 <kbd>N</kbd> — 记为「没想起来」并进入下一张
-                    </li>
-                    <li>
-                      <kbd>Tab</kbd> 或 <kbd>←</kbd> — 上一张
-                    </li>
-                    <li>
-                      <kbd>Delete</kbd> — 从本轮移除当前单词
-                    </li>
-                    <li>点击单词本身 — 复制原始拼写，不触发翻面</li>
-                    <li>
-                      顶部 <kbd>Export JSON</kbd> —
-                      按原始顺序导出所有未 Remove 的单词，熟悉池中的词也保留
-                    </li>
-                    <li>
-                      刷完最后一张后按 <kbd>Enter</kbd> — 进入休息屏
-                    </li>
-                    <li>
-                      每轮从头开始时自动打乱顺序，底部 Shuffle Loop 按钮可关闭
-                    </li>
-                  </ul>
-                  <p className="guide-mobile-tip">
-                    📱 手机：直接点卡片翻面，用底部按钮切换。
-                  </p>
-                </div>
-
-                <div className="guide-mode-block">
-                  <div className="guide-mode-badge guide-mode-badge--spell">
-                    随手拼模式
-                  </div>
-                  <p className="guide-mode-desc">
-                    刷完一轮后，在休息屏按 <kbd>Space</kbd> 进入。
-                    <br />
-                    屏幕只显示词义，你需要凭记忆键入单词拼写。
-                  </p>
-                  <ul className="guide-key-list">
-                    <li>直接键入字母（及空格）— 累积输入</li>
-                    <li>
-                      <kbd>Enter</kbd> — 提交答案
-                    </li>
-                    <li>
-                      答对后按 <kbd>Enter</kbd> — 下一个词
-                    </li>
-                    <li>答错后继续键入 — 自动清空重拼</li>
-                    <li>第一次提交决定本轮成绩，改正答案不会覆盖错误</li>
-                    <li>
-                      <kbd>Backspace</kbd> — 删除最后一个字符
-                    </li>
-                    <li>
-                      <kbd>Esc</kbd> — 退出，回到刷词模式
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="guide-mode-block">
-                  <div className="guide-mode-badge">暂时熟悉池</div>
-                  <p className="guide-mode-desc">
-                    辨识和拼写分别累计。某个 mode 连续正确 4 轮后，该词会隐藏完整的 1-2 轮，再分批随机返场；每轮返场词最多约占最终队列的四分之一。返场错误只重置当前 mode。
-                  </p>
-                </div>
-              </div>
-            </details>
-          </section>
-        </div>
-      ) : null}
-
-      {/* ── Rest Screen ── */}
-      {mode === "rest" && (
-        <section className={`card rest-screen`} aria-live="polite">
-          <h2 className="rest-title">随手拼？</h2>
-          <p className="rest-subtitle">
-            enter 继续刷词 &nbsp;/&nbsp; space 开始随手拼
-          </p>
-        </section>
+      {mode === "spell" && (
+        <SpellCard
+          currentRound={currentSpellRound}
+          input={spellInput}
+          item={spellItem}
+          progress={currentSpellProgress}
+          progressLabel={progressLabel}
+          result={spellResult}
+          shakeKey={shakeKey}
+        />
       )}
 
-      {/* ── Spell Mode ── */}
-      {mode === "spell" &&
-        (() => {
-          const spellItem = spellDeck[spellIndex] ?? null;
-          const spellProgress = spellItem
-            ? getModeProgress(
-                learningState,
-                cardIdByItem.get(spellItem),
-                "spell",
-              )
-            : null;
-          const spellPos = spellItem?.pos || "";
-          const spellMeaning = spellItem
-            ? [spellItem.meaning, spellItem.meaningZh].filter(Boolean).join(" / ")
-            : "";
-          const spellCorrectDisplay =
-            spellItem?.syllables || spellItem?.term || "";
-          return (
-            <section className={`card spell-card`} aria-live="polite">
-              <div className="hint">
-                {spellResult === "correct"
-                  ? "enter 下一个"
-                  : spellResult === "wrong"
-                    ? "继续键入重拼 / enter 再shake / esc 退出"
-                    : "键入单词 · enter 提交 · esc 退出"}
-              </div>
-              <div className="memory-status">
-                拼写 {Math.min(spellProgress?.streak ?? 0, 4)}/4 · 第 {currentSpellRound} 轮
-                {spellProgress?.hidden ? " · 返场复习" : ""}
-              </div>
-
-              {/* Meaning only — no word shown */}
-              <p className="meaning">
-                {spellPos ? <span className="pos-tag">{spellPos}</span> : null}
-                <span>{spellMeaning}</span>
-              </p>
-
-              {/* Live input display */}
-              <div className="spell-input-row">
-                <div
-                  className={`spell-input-display${
-                    spellResult === "correct"
-                      ? " correct"
-                      : spellResult === "wrong"
-                        ? " wrong"
-                        : ""
-                  }`}
-                  key={shakeKey}
-                >
-                  {spellInput}
-                  {spellResult !== "correct" && (
-                    <span className="spell-cursor" key={spellInput.length} />
-                  )}
-                </div>
-              </div>
-
-              {/* Answer revealed after submit */}
-              {spellResult && (
-                <p className="spell-answer">{spellCorrectDisplay}</p>
-              )}
-
-              <div className="spell-progress">{progressLabel}</div>
-            </section>
-          );
-        })()}
-
-      {/* ── Study Card ── */}
       {mode === "study" && (
-        <section
-          className={cardClassName}
-          aria-live="polite"
-          onClick={toggleReveal}
-        >
-          <div className="hint">{hint}</div>
-          <div className="memory-status">
-            辨识 {Math.min(currentStudyProgress?.streak ?? 0, 4)}/4 · 第 {currentStudyRound} 轮
-            {currentStudyProgress?.hidden ? " · 返场复习" : ""}
-          </div>
-          <div className="term-row">
-            <h2
-              className="term term-copy"
-              role={hasDeck ? "button" : undefined}
-              tabIndex={hasDeck ? 0 : undefined}
-              title={hasDeck ? `复制 ${item?.term}` : undefined}
-              aria-label={hasDeck ? `复制单词 ${item?.term}` : undefined}
-              onClick={hasDeck ? handleTermClick : undefined}
-              onKeyDown={hasDeck ? handleTermKeyDown : undefined}
-            >
-              {term}
-            </h2>
-            <div className={`pronounce${showDetails ? "" : " is-hidden"}`}>
-              <div className="pronounce-value">{respell}</div>
-            </div>
-          </div>
-          <p className={`meaning${showDetails ? "" : " is-hidden"}`}>
-            {posTag ? <span className="pos-tag">{posTag}</span> : null}
-            <span>{meaningText}</span>
-          </p>
-          {showDetails && (wordOrigin || relatedWord) ? (
-            <div className="word-insight">
-              {wordOrigin ? (
-                <p>
-                  <strong>词根·词缀·词源</strong>
-                  <span>{wordOrigin}</span>
-                </p>
-              ) : null}
-              {relatedWord ? (
-                <p>
-                  <strong>对应概念</strong>
-                  <span>{relatedWord}</span>
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-          {examples.length ? (
-            <ul
-              className={`examples${showDetails ? "" : " is-hidden"}`}
-              aria-label="Example sentences"
-            >
-              {examples.map((example, exampleIndex) => {
-                const sentenceHighlight = getHighlightedSentence(
-                  example?.sentence,
-                  example?.focus,
-                  item?.term,
-                );
-
-                return (
-                  <li
-                    key={`${example?.sentence ?? "example"}-${exampleIndex}`}
-                    className="example-item"
-                  >
-                    {sentenceHighlight ? (
-                      <>
-                        {sentenceHighlight.before}
-                        <strong>{sentenceHighlight.highlight}</strong>
-                        {sentenceHighlight.after}
-                      </>
-                    ) : (
-                      example?.sentence
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          ) : null}
-          {showDetails ? (
-            <div className="study-rating" onClick={(event) => event.stopPropagation()}>
-              <button
-                className="primary"
-                type="button"
-                onClick={() => completeStudyAnswer(true)}
-              >
-                想起来了 (Enter)
-              </button>
-              <button type="button" onClick={() => completeStudyAnswer(false)}>
-                没想起来 (N)
-              </button>
-            </div>
-          ) : null}
-        </section>
+        <StudyCard
+          cardClassName={cardClassName}
+          completedByRemoval={completedByRemoval}
+          currentRound={currentStudyRound}
+          hasDeck={hasDeck}
+          item={item}
+          onCompleteAnswer={completeStudyAnswer}
+          onTermClick={handleTermClick}
+          onTermKeyDown={handleTermKeyDown}
+          onToggleReveal={toggleReveal}
+          progress={currentStudyProgress}
+          revealed={revealed}
+        />
       )}
 
-      <section className="meta">
-        <div className="progress">
-          <div className="progress-bar">
-            <span style={{ transform: `scaleX(${progress})` }}></span>
-          </div>
-          <div className="count">{progressLabel}</div>
-        </div>
-        <div className="controls">
-          <button
-            className="primary"
-            type="button"
-            onClick={toggleReveal}
-            disabled={mode !== "study" || !hasDeck}
-          >
-            {revealed ? "Hide (Space)" : "Reveal (Space)"}
-          </button>
-          <button
-            type="button"
-            onClick={prevCard}
-            disabled={mode !== "study" || !hasDeck}
-          >
-            Prev (Tab / &lt;-)
-          </button>
-          <button
-            type="button"
-            onClick={revealed ? () => completeStudyAnswer(true) : toggleReveal}
-            disabled={mode !== "study" || !hasDeck}
-          >
-            {revealed ? "Remembered (Enter)" : "Reveal (Enter)"}
-          </button>
-          <button
-            type="button"
-            onClick={removeCard}
-            disabled={mode === "spell" ? !hasSpellDeck : !hasDeck}
-          >
-            Remove (Delete)
-          </button>
-          <button type="button" onClick={undoRemove} disabled={!lastRemoved}>
-            Undo Remove
-          </button>
-          <button
-            type="button"
-            className={shuffleOnLoop ? "primary" : undefined}
-            aria-pressed={shuffleOnLoop}
-            onClick={() => setShuffleOnLoop((prev) => !prev)}
-          >
-            Shuffle Loop: {shuffleOnLoop ? "On" : "Off"}
-          </button>
-          <button type="button" onClick={resetDeck}>
-            Reset Deck
-          </button>
-        </div>
-        <div className="loop">
-          辨识第 {currentStudyRound} 轮 · 拼写第 {currentSpellRound} 轮 · 暂时熟悉：辨识 {familiarStudyCount} / 拼写 {familiarSpellCount}
-        </div>
-      </section>
+      <LearningControls
+        currentSpellRound={currentSpellRound}
+        currentStudyRound={currentStudyRound}
+        familiarSpellCount={familiarSpellCount}
+        familiarStudyCount={familiarStudyCount}
+        hasDeck={hasDeck}
+        hasSpellDeck={hasSpellDeck}
+        lastRemoved={lastRemoved}
+        mode={mode}
+        onCompleteAnswer={completeStudyAnswer}
+        onPrevCard={prevCard}
+        onRemoveCard={removeCard}
+        onResetDeck={resetDeck}
+        onToggleReveal={toggleReveal}
+        onToggleShuffle={toggleShuffle}
+        onUndoRemove={undoRemove}
+        progress={progress}
+        progressLabel={progressLabel}
+        revealed={revealed}
+        shuffleOnLoop={shuffleOnLoop}
+      />
 
-      <details className="familiar-pool">
-        <summary>
-          暂时熟悉池（{familiarEntries.length} 个词）
-        </summary>
-        {familiarEntries.length ? (
-          <div className="familiar-list">
-            {familiarEntries.map(({ entry, cardId, study, spell }) => (
-              <div className="familiar-item" key={cardId}>
-                <strong>{entry.term}</strong>
-                <span>
-                  辨识：{study.hidden ? `隐藏至第 ${study.dueRound} 轮` : `${Math.min(study.streak, 4)}/4`}
-                </span>
-                <span>
-                  拼写：{spell.hidden ? `隐藏至第 ${spell.dueRound} 轮` : `${Math.min(spell.streak, 4)}/4`}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p>连续正确 4 轮的词会出现在这里。</p>
-        )}
-      </details>
+      <FamiliarPool entries={familiarEntries} />
 
       <div className="footer-note">
         No limits — keep cycling as long as you want.

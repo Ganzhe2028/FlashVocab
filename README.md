@@ -7,6 +7,7 @@ Vite + React 单词卡应用：刷词、休息屏、随手拼三种模式循环�
 ```bash
 ./run.sh          # 缺 node_modules 会自动 npm install，然后起 dev server
 npm run dev       # 手动启动
+npm run check     # lint + 全部测试 + 生产构建
 npm run build     # 构建到 dist/
 npm run preview   # 预览构建产物
 ```
@@ -31,16 +32,30 @@ npm run preview   # 预览构建产物
 
 ## 词库
 
-内置词库在 `src/App.jsx` 的 `baseDeck`，`vocab.md` 是配套词表，两边保持同步。顶部 Import 可选文件导入（JSON / Markdown / txt / docx），Guidebook 里可粘贴 AI 生成的词卡 JSON。字段约定见 `AGENTS.md`。
+内置词库的唯一来源是 `src/data/baseDeck.js`，`vocab.md` 是配套词表，两边保持同步。顶部 Import 支持 JSON、Markdown、纯文本、CSV 和 DOCX；Guidebook 里也可直接粘贴 AI 生成的 JSON 或 Markdown。导入会统一归一化字段，CSV 支持引号包裹的逗号与换行；旧版 `.doc` 不支持，请另存为 `.docx`。字段约定见 `AGENTS.md`。
 
 顶部 `Export JSON` 会导出本轮尚未删除的单词，保持原始导入顺序；导入 JSON 中的自定义字段也会保留。标准词卡还支持 `wordOrigin`（词根、词缀和词源说明）及 `relatedWord`（最直接的相反词或对应概念），翻开卡片后显示。
 
 ## 验证
 
 ```bash
-npm test          # 轮次、入池、返场比例和模式隔离测试
+npm run lint      # 静态检查
+npm test          # 32 个逻辑测试 + 7 个 UI 行为测试
 npm run build     # 生产构建
+npm run check     # 一次执行以上全部检查
 ```
+
+## 代码结构
+
+- `src/App.jsx`：状态协调和三种模式切换
+- `src/components/`：卡片、控制栏、Guidebook 与熟悉池界面
+- `src/hooks/useAppKeyboard.js`：全局键盘行为
+- `src/learningAlgorithm.js`：纯学习调度算法
+- `src/storage/learningStorage.js`：带版本与校验的浏览器持久化
+- `src/utils/deckImport.js`：所有导入、归一化与 Markdown 导出
+- `src/data/baseDeck.js`：内置词库
+
+学习队列只保存稳定 card ID，不保存词卡对象引用；刷新恢复、删除、Undo、导入和导出都以同一 ID 模型处理。损坏或过期的本地数据会被安全忽略，不会阻止应用启动。
 
 ## 提示词
 
