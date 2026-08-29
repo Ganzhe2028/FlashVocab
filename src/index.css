@@ -71,6 +71,11 @@
   box-sizing: border-box;
 }
 
+*:focus,
+*:focus-visible {
+  outline: none;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -256,11 +261,6 @@ h1 {
   color: var(--ink);
   font-family: "SFMono-Regular", "Menlo", "Monaco", "Courier New", monospace;
   font-size: 13px;
-}
-
-.paste-textarea:focus {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
 }
 
 .paste-actions {
@@ -559,11 +559,6 @@ kbd {
   transition: none !important;
 }
 
-.card:focus-within {
-  outline: 2px solid var(--focus);
-  outline-offset: 4px;
-}
-
 .term {
   font-family:
     "Iowan Old Style", "Baskerville", "Garamond", "Times New Roman", serif;
@@ -572,18 +567,12 @@ kbd {
   letter-spacing: 1px;
 }
 
-.term-copy[role="button"] {
+.term-copy {
   cursor: copy;
 }
 
-.term-copy[role="button"]:hover {
+.term-copy:hover {
   color: var(--accent-2);
-}
-
-.term-copy[role="button"]:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 5px;
-  border-radius: 8px;
 }
 
 .term-row {
@@ -741,11 +730,6 @@ kbd {
   box-shadow: none;
 }
 
-.pronounce-button:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
-
 .hint {
   font-size: 14px;
   text-transform: uppercase;
@@ -865,11 +849,6 @@ kbd {
 .feature-switch input:checked + .switch-track span {
   background: var(--accent);
   transform: translateX(14px);
-}
-
-.feature-switch input:focus-visible + .switch-track {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
 }
 
 .feature-switch:has(input:disabled) {

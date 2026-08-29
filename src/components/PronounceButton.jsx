@@ -1,3 +1,5 @@
+import PointerButton from "./PointerButton.jsx";
+
 export default function PronounceButton({ disabled, onPronounce, term }) {
   const handleClick = (event) => {
     event.stopPropagation();
@@ -5,7 +7,7 @@ export default function PronounceButton({ disabled, onPronounce, term }) {
   };
 
   return (
-    <button
+    <PointerButton
       type="button"
       className="pronounce-button"
       aria-label={`播放 ${term} 的美式发音`}
@@ -23,6 +25,6 @@ export default function PronounceButton({ disabled, onPronounce, term }) {
           strokeLinejoin="round"
         />
       </svg>
-    </button>
+    </PointerButton>
   );
 }

@@ -1,6 +1,7 @@
 import { getHighlightedSentence } from "./highlightSentence.js";
 import { FAMILIAR_STREAK_TARGET } from "../learningAlgorithm.js";
 import PronounceButton from "./PronounceButton.jsx";
+import PointerButton from "./PointerButton.jsx";
 
 export default function StudyCard({
   cardClassName,
@@ -12,7 +13,6 @@ export default function StudyCard({
   onCompleteAnswer,
   onPronounce,
   onTermClick,
-  onTermKeyDown,
   onToggleReveal,
   progress,
   revealed,
@@ -60,12 +60,9 @@ export default function StudyCard({
       <div className="term-row">
         <h2
           className="term term-copy"
-          role={hasDeck ? "button" : undefined}
-          tabIndex={hasDeck ? 0 : undefined}
           title={hasDeck ? `复制 ${item?.term}` : undefined}
           aria-label={hasDeck ? `复制单词 ${item?.term}` : undefined}
           onClick={hasDeck ? onTermClick : undefined}
-          onKeyDown={hasDeck ? onTermKeyDown : undefined}
         >
           {term}
         </h2>
@@ -139,16 +136,16 @@ export default function StudyCard({
           className="study-rating"
           onClick={(event) => event.stopPropagation()}
         >
-          <button
+          <PointerButton
             className="primary"
             type="button"
             onClick={() => onCompleteAnswer(true)}
           >
             想起来了 (Enter)
-          </button>
-          <button type="button" onClick={() => onCompleteAnswer(false)}>
+          </PointerButton>
+          <PointerButton type="button" onClick={() => onCompleteAnswer(false)}>
             没想起来 (N)
-          </button>
+          </PointerButton>
         </div>
       ) : null}
     </section>

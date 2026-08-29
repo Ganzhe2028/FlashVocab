@@ -48,14 +48,13 @@ export function usePronunciation() {
     };
   }, [isSupported]);
 
-  const speak = useCallback(
+  const createUtterance = useCallback(
     (text) => {
       const spokenText = typeof text === "string" ? text.trim() : "";
-      if (!isSupported || !spokenText) return false;
+      if (!isSupported || !spokenText) return null;
 
       try {
-        const synthesis = window.speechSynthesis;
-        const currentVoices = synthesis.getVoices();
+        const currentVoices = window.speechSynthesis.getVoices();
         if (currentVoices.length) {
           voicesRef.current = currentVoices;
         }
@@ -68,7 +67,21 @@ export function usePronunciation() {
         if (americanVoice) {
           utterance.voice = americanVoice;
         }
+        return utterance;
+      } catch {
+        return null;
+      }
+    },
+    [isSupported],
+  );
 
+  const speak = useCallback(
+    (text) => {
+      const utterance = createUtterance(text);
+      if (!utterance) return false;
+
+      try {
+        const synthesis = window.speechSynthesis;
         synthesis.cancel();
         synthesis.speak(utterance);
         return true;
@@ -76,8 +89,23 @@ export function usePronunciation() {
         return false;
       }
     },
-    [isSupported],
+    [createUtterance],
   );
 
-  return { isSupported, speak };
+  const queueSpeech = useCallback(
+    (text) => {
+      const utterance = createUtterance(text);
+      if (!utterance) return false;
+
+      try {
+        window.speechSynthesis.speak(utterance);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [createUtterance],
+  );
+
+  return { isSupported, queueSpeech, speak };
 }

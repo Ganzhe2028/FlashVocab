@@ -24,7 +24,7 @@ This repository is a Vite + React flashcard app with a separate vocabulary list.
 
 Standard flashcard loop. Shows one card at a time; Space/Enter reveal the answer. When revealed, the card shows part of speech, EN/ZH meaning, and a light-weight list of 2-3 B1-B2-friendly example sentences with bolded focus phrases. In default simple mode, Enter advances without a recognition rating. When `两轮熟悉返场` is enabled, the explicit rating buttons appear: Enter / `想起来了` records correct and advances; N / `没想起来` records wrong and advances. Revealing alone does not score the card.
 
-When `自动美式发音` is enabled, revealing a hidden answer speaks the raw `term` through the browser's Web Speech API. A recognition failure (`N` / `没想起来`) speaks it once more before advancing. The pronunciation pill contains an accessible speaker button for manual replay whether automatic playback is enabled or not. Playback requests use `en-US`, prefer a local American voice, cancel queued speech before speaking, and safely do nothing when speech synthesis is unavailable.
+When `自动美式发音` is enabled, revealing a hidden answer and advancing to the next recognition card each speak the raw `term` through the browser's Web Speech API. A recognition failure (`N` / `没想起来`) speaks the current term once more, then queues the next card's term so neither playback is lost. The pronunciation pill contains an accessible speaker button for manual replay whether automatic playback is enabled or not. Playback requests use `en-US`, prefer a local American voice, cancel queued speech before a new immediate playback, and safely do nothing when speech synthesis is unavailable.
 
 Bottom progress bar and count follow the study card position in this mode.
 
@@ -32,7 +32,7 @@ Bottom progress bar and count follow the study card position in this mode.
 
 - `Space` — toggle reveal/hide meaning
 - `Enter` — reveal if hidden; advance if revealed; when familiarity is enabled, the advance records recognition success
-- `N` — only when familiarity is enabled and the card is revealed, record recognition failure, play the pronunciation when enabled, and advance
+- `N` — only when familiarity is enabled and the card is revealed, record recognition failure, replay the current pronunciation and queue the next card when enabled, then advance
 - `Tab` / `←` — previous card
 - `Delete` / `Backspace` — remove current card from deck
 - `ArrowLeft` — previous card

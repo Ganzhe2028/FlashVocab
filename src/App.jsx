@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import FamiliarPool from "./components/FamiliarPool.jsx";
 import GuideDialog from "./components/GuideDialog.jsx";
 import LearningControls from "./components/LearningControls.jsx";
+import PointerButton from "./components/PointerButton.jsx";
 import RestScreen from "./components/RestScreen.jsx";
 import SpellCard from "./components/SpellCard.jsx";
 import StudyCard from "./components/StudyCard.jsx";
@@ -184,6 +185,7 @@ export default function App() {
   const [shakeKey, setShakeKey] = useState(0);
   const {
     isSupported: pronunciationSupported,
+    queueSpeech,
     speak: pronounce,
   } = usePronunciation();
 
@@ -452,10 +454,20 @@ export default function App() {
       if (nextUnscoredIndex === -1) {
         enterRestMode();
       } else {
+        const nextTerm = sourceItemById.get(
+          studyQueueIds[nextUnscoredIndex],
+        )?.term;
         runInstantly(() => {
           setIndex(nextUnscoredIndex);
           setRevealed(false);
         });
+        if (autoPronounceEnabled) {
+          if (correct) {
+            pronounce(nextTerm);
+          } else {
+            queueSpeech(nextTerm);
+          }
+        }
       }
     },
     [
@@ -467,6 +479,7 @@ export default function App() {
       recordModeReview,
       revealed,
       pronounce,
+      queueSpeech,
       runInstantly,
       sourceItemById,
       studyQueueIds,
@@ -924,17 +937,6 @@ export default function App() {
     [copyCurrentTerm],
   );
 
-  const handleTermKeyDown = useCallback(
-    (event) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      event.preventDefault();
-      event.stopPropagation();
-      event.currentTarget.blur();
-      copyCurrentTerm();
-    },
-    [copyCurrentTerm],
-  );
-
   const clearPasteImport = useCallback(() => {
     setPasteText("");
     setImportedDeckData(null);
@@ -980,6 +982,7 @@ export default function App() {
         className="github-btn"
         title="View on GitHub"
         aria-label="View on GitHub"
+        tabIndex={-1}
       >
         <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
           <path
@@ -998,22 +1001,22 @@ export default function App() {
         <div className="title-row">
           <h1>Vocabulary Loop</h1>
           <div className="header-actions">
-            <button type="button" onClick={handleImportClick}>
+            <PointerButton type="button" onClick={handleImportClick}>
               Import
-            </button>
-            <button
+            </PointerButton>
+            <PointerButton
               type="button"
               onClick={handleExportJson}
               disabled={!exportDeck.length}
             >
               Export JSON
-            </button>
-            <button type="button" onClick={() => setGuideOpen(true)}>
+            </PointerButton>
+            <PointerButton type="button" onClick={() => setGuideOpen(true)}>
               Guidebook
-            </button>
-            <button type="button" onClick={handleCopyDeepPrompt}>
+            </PointerButton>
+            <PointerButton type="button" onClick={handleCopyDeepPrompt}>
               词根·感觉·画面
-            </button>
+            </PointerButton>
           </div>
         </div>
         <div className="subhead">
@@ -1078,7 +1081,6 @@ export default function App() {
           onCompleteAnswer={completeStudyAnswer}
           onPronounce={() => pronounce(item?.term)}
           onTermClick={handleTermClick}
-          onTermKeyDown={handleTermKeyDown}
           onToggleReveal={toggleReveal}
           progress={currentStudyProgress}
           pronunciationSupported={pronunciationSupported}

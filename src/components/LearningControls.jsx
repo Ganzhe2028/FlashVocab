@@ -1,3 +1,5 @@
+import PointerButton from "./PointerButton.jsx";
+
 export default function LearningControls({
   autoPronounceEnabled,
   currentSpellRound,
@@ -35,22 +37,22 @@ export default function LearningControls({
         <div className="count">{progressLabel}</div>
       </div>
       <div className="controls">
-        <button
+        <PointerButton
           className="primary"
           type="button"
           onClick={onToggleReveal}
           disabled={mode !== "study" || !hasDeck}
         >
           {revealed ? "Hide (Space)" : "Reveal (Space)"}
-        </button>
-        <button
+        </PointerButton>
+        <PointerButton
           type="button"
           onClick={onPrevCard}
           disabled={mode !== "study" || !hasDeck}
         >
           Prev (Tab / &lt;-)
-        </button>
-        <button
+        </PointerButton>
+        <PointerButton
           type="button"
           onClick={revealed ? () => onCompleteAnswer(true) : onToggleReveal}
           disabled={mode !== "study" || !hasDeck}
@@ -60,28 +62,28 @@ export default function LearningControls({
               ? "Remembered (Enter)"
               : "Next (Enter)"
             : "Reveal (Enter)"}
-        </button>
-        <button
+        </PointerButton>
+        <PointerButton
           type="button"
           onClick={onRemoveCard}
           disabled={mode === "spell" ? !hasSpellDeck : !hasDeck}
         >
           Remove (Delete)
-        </button>
-        <button type="button" onClick={onUndoRemove} disabled={!lastRemoved}>
+        </PointerButton>
+        <PointerButton type="button" onClick={onUndoRemove} disabled={!lastRemoved}>
           Undo Remove
-        </button>
-        <button
+        </PointerButton>
+        <PointerButton
           type="button"
           className={shuffleOnLoop ? "primary" : undefined}
           aria-pressed={shuffleOnLoop}
           onClick={onToggleShuffle}
         >
           Shuffle Loop: {shuffleOnLoop ? "On" : "Off"}
-        </button>
-        <button type="button" onClick={onResetDeck}>
+        </PointerButton>
+        <PointerButton type="button" onClick={onResetDeck}>
           Reset Deck
-        </button>
+        </PointerButton>
       </div>
       <div className="feature-switches" aria-label="可选学习功能">
         <label
@@ -97,8 +99,12 @@ export default function LearningControls({
             type="checkbox"
             role="switch"
             checked={autoPronounceEnabled}
+            tabIndex={-1}
             disabled={!pronunciationSupported}
-            onChange={onToggleAutoPronounce}
+            onChange={(event) => {
+              event.currentTarget.blur();
+              onToggleAutoPronounce();
+            }}
           />
           <span className="switch-track" aria-hidden="true">
             <span />
@@ -110,7 +116,11 @@ export default function LearningControls({
             type="checkbox"
             role="switch"
             checked={showWordInsights}
-            onChange={onToggleWordInsights}
+            tabIndex={-1}
+            onChange={(event) => {
+              event.currentTarget.blur();
+              onToggleWordInsights();
+            }}
           />
           <span className="switch-track" aria-hidden="true">
             <span />
@@ -122,7 +132,11 @@ export default function LearningControls({
             type="checkbox"
             role="switch"
             checked={familiarModeEnabled}
-            onChange={onToggleFamiliarMode}
+            tabIndex={-1}
+            onChange={(event) => {
+              event.currentTarget.blur();
+              onToggleFamiliarMode();
+            }}
           />
           <span className="switch-track" aria-hidden="true">
             <span />

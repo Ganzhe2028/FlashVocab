@@ -1,3 +1,5 @@
+import PointerButton from "./PointerButton.jsx";
+
 export default function GuideDialog({
   open,
   message,
@@ -28,9 +30,9 @@ export default function GuideDialog({
       >
         <div className="guide-header">
           <h2>使用指南</h2>
-          <button type="button" onClick={onClose}>
+          <PointerButton type="button" onClick={onClose}>
             关闭
-          </button>
+          </PointerButton>
         </div>
         {message ? (
           <div className="import-message" aria-live="polite">
@@ -64,13 +66,13 @@ export default function GuideDialog({
                 点下方「复制提示词」，让 AI 补全词根词源、对应概念和 B1-B2
                 日常例句，生成可直接导入的 JSON 词卡。
               </p>
-              <button
+              <PointerButton
                 className="primary guide-step-btn"
                 type="button"
                 onClick={onCopyPrompt}
               >
                 复制提示词
-              </button>
+              </PointerButton>
             </div>
           </div>
 
@@ -104,26 +106,26 @@ export default function GuideDialog({
                 导入成功后关掉这个面板，就能看到你的单词卡了。
               </p>
               <div className="paste-actions">
-                <button
+                <PointerButton
                   className="primary guide-step-btn"
                   type="button"
                   onClick={onPasteImport}
                   disabled={!pasteText.trim()}
                 >
                   识别并导入
-                </button>
-                <button
+                </PointerButton>
+                <PointerButton
                   type="button"
                   onClick={onClearPaste}
                   disabled={!pasteText.trim()}
                 >
                   清空
-                </button>
+                </PointerButton>
               </div>
               {importedDeckData && (
                 <div className="export-actions">
                   <span className="export-label">✅ 导入成功，保存副本：</span>
-                  <button
+                  <PointerButton
                     type="button"
                     className="export-btn"
                     onClick={onExportJson}
@@ -131,8 +133,8 @@ export default function GuideDialog({
                     title="下载 JSON 文件"
                   >
                     ⬇ JSON
-                  </button>
-                  <button
+                  </PointerButton>
+                  <PointerButton
                     type="button"
                     className="export-btn"
                     onClick={onExportMd}
@@ -140,7 +142,7 @@ export default function GuideDialog({
                     title="下载 Markdown 文件"
                   >
                     ⬇ Markdown
-                  </button>
+                  </PointerButton>
                 </div>
               )}
             </div>
@@ -149,13 +151,13 @@ export default function GuideDialog({
           {/* 也可以直接上传文件 */}
           <p className="guide-alt-import">
             已有 <code>.json / .md / .txt / .csv / .docx</code> 文件？
-            <button
+            <PointerButton
               type="button"
               className="guide-link-btn"
               onClick={onImportClick}
             >
               直接上传
-            </button>
+            </PointerButton>
           </p>
         </div>
 
@@ -166,13 +168,13 @@ export default function GuideDialog({
           <p className="guide-import-desc">
             学习某个难词时，把这套提示词发给 AI，再发送一个英文单词。它会从可靠词源、底层感觉、脑内画面、现实场景和近义词边界逐层讲解，帮助你绕开机械中英对照。
           </p>
-          <button
+          <PointerButton
             className="primary guide-step-btn"
             type="button"
             onClick={onCopyDeepPrompt}
           >
             复制深度理解提示词
-          </button>
+          </PointerButton>
         </div>
 
         <hr className="guide-divider" />

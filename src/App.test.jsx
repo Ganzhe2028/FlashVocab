@@ -68,7 +68,7 @@ const press = (code, key) => {
 };
 
 const currentTerm = (term) =>
-  screen.getByRole("button", { name: `复制单词 ${term}` });
+  screen.getByRole("heading", { name: `复制单词 ${term}` });
 
 const alphaMeaning = () => screen.getByText("alpha meaning / 阿尔法");
 
@@ -91,6 +91,24 @@ describe("App behavior", () => {
     expect(alphaMeaning().closest("p").classList).toContain(
       "is-hidden",
     );
+  });
+
+  test("buttons cannot retain focus or become keyboard Tab targets", () => {
+    saveDeckSnapshot();
+    render(<App />);
+
+    const importButton = screen.getByRole("button", { name: "Import" });
+    importButton.focus();
+    fireEvent.click(importButton);
+
+    fireEvent.click(screen.getByRole("button", { name: "Guidebook" }));
+    expect(document.activeElement).not.toBe(importButton);
+    expect(document.querySelectorAll("button").length).toBeGreaterThan(4);
+    expect(
+      [...document.querySelectorAll("button")].every(
+        (button) => button.tabIndex === -1,
+      ),
+    ).toBe(true);
   });
 
   test("revealing an answer plays its American pronunciation and allows replay", () => {
@@ -131,9 +149,13 @@ describe("App behavior", () => {
     fireEvent.click(pronunciationSwitch);
     press("Space", " ");
 
+    press("Enter", "Enter");
+
     expect(window.speechSynthesis.speak).not.toHaveBeenCalled();
+    expect(currentTerm("Beta")).toBeTruthy();
+    press("Space", " ");
     fireEvent.click(
-      screen.getByRole("button", { name: "播放 Alpha 的美式发音" }),
+      screen.getByRole("button", { name: "播放 Beta 的美式发音" }),
     );
     expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
 
@@ -266,7 +288,7 @@ describe("App behavior", () => {
     });
   });
 
-  test("Space reveals, Enter remembers, and N records a miss before rest", async () => {
+  test("Space reveals, advancing plays the next word, and N records a miss before rest", async () => {
     const [alphaId, betaId] = saveDeckSnapshot();
     render(<App />);
 
@@ -277,12 +299,14 @@ describe("App behavior", () => {
 
     press("Enter", "Enter");
     expect(currentTerm("Beta")).toBeTruthy();
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(2);
+    expect(window.speechSynthesis.speak.mock.calls[1][0].text).toBe("Beta");
 
     press("Enter", "Enter");
     press("KeyN", "n");
     await screen.findByRole("heading", { name: "随手拼？" });
-    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(3);
-    expect(window.speechSynthesis.speak.mock.calls[2][0].text).toBe("Beta");
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(4);
+    expect(window.speechSynthesis.speak.mock.calls[3][0].text).toBe("Beta");
 
     await waitFor(() => {
       const snapshot = readSnapshot();
