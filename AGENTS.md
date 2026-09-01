@@ -165,6 +165,10 @@ For deeper behaviour checks: `npm run build`, serve with `npm run preview`, then
 
 This is a git repository. Use short, imperative commit messages like “Add 5 new words” and keep PRs focused; include a brief summary, the number of entries added or edited, and note any reorderings.
 
+## Document Navigation
+
+When a document has a numbered summary, decision table, checklist, or index whose detailed content appears elsewhere in the same document, every item number must be an internal link to a stable anchor at the corresponding detailed section. Apply this to both opening and closing summaries so readers never need to manually search backward through a long document.
+
 ## Skills
 
 - ui-ux-pro-max: Searchable database of UI styles, color palettes, font pairings, chart types, product recommendations, UX guidelines, and stack-specific best practices. Installed globally at `/Users/mac/.agents/skills/ui-ux-pro-max/SKILL.md` and mirrored to `/Users/mac/.hermes/skills/ui-ux-pro-max/SKILL.md`; project-local `.cursor`, `.shared`, and `.codex` artifacts have been removed.

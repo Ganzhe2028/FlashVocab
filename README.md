@@ -2,6 +2,14 @@
 
 Vite + React 单词卡应用：刷词、休息屏、随手拼三种模式循环，词库可导入替换。
 
+## Figma 设计基线
+
+当前界面的可编辑桌面基线位于 [FlashVocab 2 Figma 文件](https://www.figma.com/design/JMqqOQf8ea2AlytCwNKt53/FlashVocab-2?node-id=1-2)。`FlashVocab 2 — Current UI Baseline` Section 覆盖刷词的隐藏、默认展开与熟悉模式状态，休息屏，拼写中的输入、正确与错误反馈，熟悉词池、Guidebook 导入弹窗和空词库完成态。它包含 13 个画板与可播放原型：刷词、休息、拼写和设置变化支持对应的鼠标与键盘跳转；Guidebook 和 GitHub 也可直接打开。Figma 不支持浏览器文件选择器或自由文本输入判断，因此 Import / Export、复制提示词与拼写的对错输入仅保留对应结果状态，不模拟浏览器原生操作。后续 UI/UX 设计应从这些画板开始，不把它们当作新视觉方案。
+
+3.0 的产品与设计准备结论记录在 [`docs/flashvocab-3-design-brief.md`](docs/flashvocab-3-design-brief.md)。该文档定义目标用户、核心场景、产品边界、推荐主循环、功能分层、关键状态、UI/UX 原则和待验证假设；当前阶段不涉及代码实现。
+
+完整阶段与分支记录在 [`docs/flashvocab-3-user-flow.md`](docs/flashvocab-3-user-flow.md)。它覆盖首次准备、导入与恢复、逐词辨识、轮末自动分流、合格词拼写、返场、完成、移除、重置和异常恢复，并把每个尚未确认的产品选择写成可比较的流程路径。对应的 [可编辑 FigJam](https://www.figma.com/board/opENWBAXDlHYoPrVyzZQMM) 包含一张总图和五张分流程图。
+
 ## 快速开始
 
 ```bash
