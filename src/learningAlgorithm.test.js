@@ -194,29 +194,40 @@ test("pause preserves one spell queue, clears half input, and can resume after r
   assert.equal(afterSecond.spellIndex, 1);
 });
 
-test("all-resting one-card state advances empty rounds with a bounded transition", () => {
-  const [cardId] = createCardIds([deck[0]]);
-  const base = createInitialState({ assets: { sourceDeck: [deck[0]], removedCardIds: [] }, random: almostOne });
-  const state = {
-    ...base,
-    mode: "spell",
-    completedRounds: { study: 2, spell: 1 },
-    spellQueueIds: [cardId],
-    learningState: {
-      [cardId]: {
-        study: { streak: 2, hidden: true, dueRound: 4, lastScoredRound: 2 },
-        spell: { streak: 1, hidden: false, dueRound: null, lastScoredRound: 1 },
-      },
-    },
-    spellInput: "Alpha",
-    spellResult: null,
-  };
-  const submitted = learningReducer(state, { type: "SUBMIT_SPELL" });
-  const next = learningReducer(submitted, { type: "ADVANCE_SPELL", random: almostOne });
-  assert.equal(next.mode, "study");
-  assert.deepEqual(next.studyQueueIds, [cardId]);
-  assert.equal(next.completedRounds.study, 3);
-  assert.equal(next.completedRounds.spell, 3);
+test("one-card and two-card all-resting states advance empty rounds with a bounded transition", () => {
+  for (const size of [1, 2]) {
+    const selectedDeck = deck.slice(0, size);
+    const cardIds = createCardIds(selectedDeck);
+    const lastIndex = cardIds.length - 1;
+    const base = createInitialState({
+      assets: { sourceDeck: selectedDeck, removedCardIds: [] },
+      random: almostOne,
+    });
+    const state = {
+      ...base,
+      mode: "spell",
+      completedRounds: { study: 2, spell: 1 },
+      spellQueueIds: cardIds,
+      spellIndex: lastIndex,
+      learningState: Object.fromEntries(cardIds.map((cardId, index) => [
+        cardId,
+        {
+          study: { streak: 2, hidden: true, dueRound: 4, lastScoredRound: 2 },
+          spell: index === lastIndex
+            ? { streak: 1, hidden: false, dueRound: null, lastScoredRound: 1 }
+            : { streak: 2, hidden: true, dueRound: 4, lastScoredRound: 2 },
+        },
+      ])),
+      spellInput: selectedDeck[lastIndex].term,
+      spellResult: null,
+    };
+    const submitted = learningReducer(state, { type: "SUBMIT_SPELL" });
+    const next = learningReducer(submitted, { type: "ADVANCE_SPELL", random: almostOne });
+    assert.equal(next.mode, "study");
+    assert.deepEqual(new Set(next.studyQueueIds), new Set(cardIds));
+    assert.equal(next.completedRounds.study, 3);
+    assert.equal(next.completedRounds.spell, 3);
+  }
 });
 
 test("removing and restoring the last card enters and leaves the explicit empty state", () => {

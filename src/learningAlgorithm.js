@@ -186,7 +186,8 @@ const getActiveCardIds = (state) => {
 };
 
 const moveToNextPlayableRound = (state, completedMode, random) => {
-  if (!getActiveCardIds(state).length) {
+  const activeCardIds = getActiveCardIds(state);
+  if (!activeCardIds.length) {
     return {
       ...state,
       mode: "empty",
@@ -221,7 +222,16 @@ const moveToNextPlayableRound = (state, completedMode, random) => {
       ? state.studyQueueIds[state.studyIndex]
       : state.spellQueueIds[state.spellIndex];
 
-  for (let attempts = 0; attempts < 8; attempts += 1) {
+  const largestDueGap = activeCardIds.reduce((largest, cardId) => {
+    return ["study", "spell"].reduce((modeLargest, mode) => {
+      const progress = getModeProgress(state.learningState, cardId, mode);
+      if (!progress.hidden || !Number.isFinite(progress.dueRound)) return modeLargest;
+      return Math.max(modeLargest, progress.dueRound - (completedRounds[mode] + 1));
+    }, largest);
+  }, 0);
+  const maxAttempts = Math.max(4, (largestDueGap + 2) * 2);
+
+  for (let attempts = 0; attempts < maxAttempts; attempts += 1) {
     const round = completedRounds[targetMode] + 1;
     const queue = buildRoundCardIds({
       cardIds,
@@ -252,11 +262,26 @@ const moveToNextPlayableRound = (state, completedMode, random) => {
     targetMode = targetMode === "study" ? "spell" : "study";
   }
 
+  const recoveryQueue = buildRoundCardIds({
+    cardIds: activeCardIds,
+    mode: targetMode,
+    round: completedRounds[targetMode] + 1,
+    avoidFirstCardId: lastCardId,
+    random,
+  });
   return {
     ...state,
     completedRounds,
-    mode: "complete",
-    notice: "这一轮没有到期词。词还在，之后会回来检查。",
+    mode: targetMode,
+    studyQueueIds: targetMode === "study" ? recoveryQueue : state.studyQueueIds,
+    studyIndex: targetMode === "study" ? 0 : state.studyIndex,
+    revealed: false,
+    spellQueueIds: targetMode === "spell" ? recoveryQueue : state.spellQueueIds,
+    spellIndex: targetMode === "spell" ? 0 : state.spellIndex,
+    spellInput: "",
+    spellResult: null,
+    pausedSpell: false,
+    notice: "休息轮次已整理，现在继续练习。",
   };
 };
 
