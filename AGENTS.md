@@ -2,6 +2,21 @@
 
 > MUST DO：Things that must be done: Every time there is a modification or update, the corresponding document content must also be updated. Every time a task begins, one needs to re-read the document.
 
+## FlashVocab 3.0 Current Implementation (2026-09-07)
+
+The current implementation is the completed rewrite defined by `docs/flashvocab-3-rewrite-plan.md`. This section supersedes the older product-behavior descriptions below; the remaining content stays as historical detail and still governs content format, testing, documentation, git, and repository hygiene.
+
+- `src/App.jsx` composes a one-page reducer application and owns storage, clipboard, speech and download side effects. `src/learningAlgorithm.js` owns stable IDs, independent study/spell scoring, shuffled queues, bounded empty-round advancement and the single Undo slot.
+- Current views are `StudyView`, `SpellView`, `StatusView` (prepare/pause/empty) and one right-side `ManagePanel`. `useAppKeyboard`, `useQuietChrome` and `usePronunciation` isolate shortcuts, 2.5-second peripheral hiding and Web Speech.
+- The mode set is `prepare | study | spell | pause | empty`; there is no `rest` choice screen, familiar-mode switch, familiar pool, return cap, shuffle switch, route system, or persistent learning snapshot.
+- The fixed loop is recognition → spelling → recognition. In each mode, two correct results in distinct rounds hide a word for exactly the next complete round (`dueRound = scoredRound + 2`); return success rests it again and failure releases only that mode. Every due word returns and all-empty scheduling is bounded.
+- Recognition uses Enter/Space to reveal, revealed Enter to score success, revealed N to score failure, Space to hide, ← to review and Delete/Backspace to move a word out. Tab remains native. Spelling uses a real input; the first submission scores, a wrong answer must be retyped correctly, and Esc pauses the one retained spelling queue.
+- Reading shows easy English first and Chinese separately. It selects one example per supplied `usage` for display, while JSON/Markdown normalization and export preserve all examples and JSON unknown fields. Word origin/counterpart content is folded by default.
+- Only source deck and removed IDs persist under `flashvocab-3-assets-v1`. A fresh page resets learning, queue, preferences and Undo. If the new key is absent, only those two assets are read from legacy `vocab2-learning-v1`; the old key is not changed.
+- Replace, remove, find-back and reset share one labelled in-memory Undo slot. Reset keeps source deck and removed IDs and restores default preferences. Import failure never changes the active deck or learning scene.
+- The quiet header contains brand, Import, More, Undo and GitHub; it fades on learning keys or 2.5 seconds of pointer inactivity, returns on pointer/Tab, and stays active while the overlay panel is open. Reduced motion, narrow layouts and 200% zoom must remain usable.
+- `docs/validation-2026-09-07/` contains the bounded real-Chrome visual evidence. `npm run check` plus the execution plan's acceptance matrix remain the delivery gate.
+
 ## Project Structure & Module Organization
 
 This repository is a Vite + React flashcard app with a separate vocabulary list.

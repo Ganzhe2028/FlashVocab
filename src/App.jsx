@@ -1,1129 +1,378 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import FamiliarPool from "./components/FamiliarPool.jsx";
-import GuideDialog from "./components/GuideDialog.jsx";
-import LearningControls from "./components/LearningControls.jsx";
-import PointerButton from "./components/PointerButton.jsx";
-import RestScreen from "./components/RestScreen.jsx";
-import SpellCard from "./components/SpellCard.jsx";
-import StudyCard from "./components/StudyCard.jsx";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import ManagePanel from "./components/ManagePanel.jsx";
+import SpellView from "./components/SpellView.jsx";
+import StudyView from "./components/StudyView.jsx";
+import { EmptyView, PauseView, PrepareView } from "./components/StatusView.jsx";
 import { cloneDeck } from "./data/baseDeck.js";
 import { useAppKeyboard } from "./hooks/useAppKeyboard.js";
 import { usePronunciation } from "./hooks/usePronunciation.js";
+import { useQuietChrome } from "./hooks/useQuietChrome.js";
 import deepUnderstandingPrompt from "./prompts/deep-understanding.md?raw";
 import {
+  buildExportDeck,
+  createCardIds,
+  createInitialState,
+  learningReducer,
+} from "./learningAlgorithm.js";
+import { readDeckAssets, writeDeckAssets } from "./storage/learningStorage.js";
+import {
   buildMarkdownExport,
-  parseDeckFromText,
   normalizeDeck,
+  parseDeckFromText,
   readImportFile,
 } from "./utils/deckImport.js";
-import {
-  LEARNING_STORAGE_VERSION,
-  readLearningSnapshot,
-  writeLearningSnapshot,
-} from "./storage/learningStorage.js";
-import {
-  buildRoundCardIds,
-  createCardIds,
-  FAMILIAR_STREAK_TARGET,
-  findNextUnscoredCardIndex,
-  getModeProgress,
-  recordReview,
-} from "./learningAlgorithm.js";
 
-const includeAllActiveCardIds = (queueIds, cardIds, removedCardIds) => {
-  const removed = new Set(removedCardIds);
-  const next = queueIds.filter((cardId) => !removed.has(cardId));
-  const queued = new Set(next);
-  cardIds.forEach((cardId) => {
-    if (!removed.has(cardId) && !queued.has(cardId)) {
-      next.push(cardId);
-    }
-  });
-  return next;
-};
+const COMPLETION_PROMPT = `请把我提供的英语单词整理成可导入闪词的 JSON 数组。每项保留 term、syllables、respell、pos、meaning、meaningZh、wordOrigin、relatedWord 和 examples。meaning 使用简短易懂的英英释义；examples 提供 2–3 个自然的 B1–B2 例句，每项包含 sentence 与在句中原样出现的 focus。只输出 JSON 代码块，不要附加说明。`;
 
-const createInitialAppSnapshot = () => {
-  const stored = readLearningSnapshot();
-  const storedDeck = Array.isArray(stored?.sourceDeck)
-    ? normalizeDeck(stored.sourceDeck)
-    : [];
-  const sourceDeck = storedDeck.length ? storedDeck : cloneDeck();
-  const cardIds = createCardIds(sourceDeck);
-  const removedCardIds = Array.isArray(stored?.removedCardIds)
-    ? stored.removedCardIds
-    : [];
-  const learningState = stored?.learningState ?? {};
-  const completedRounds = {
-    study: Number.isInteger(stored?.completedRounds?.study)
-      ? stored.completedRounds.study
-      : 0,
-    spell: Number.isInteger(stored?.completedRounds?.spell)
-      ? stored.completedRounds.spell
-      : 0,
-  };
-  const shuffleOnLoop = stored?.shuffleOnLoop ?? true;
-  const showWordInsights = stored?.showWordInsights ?? false;
-  const familiarModeEnabled = stored?.familiarModeEnabled ?? false;
-  const autoPronounceEnabled = stored?.autoPronounceEnabled ?? true;
-  const defaultStudyIds = buildRoundCardIds({
-    cardIds,
-    removedCardIds,
-    learningState,
-    mode: "study",
-    round: completedRounds.study + 1,
-    familiarModeEnabled,
-    shuffleOnLoop: false,
-  });
-  const validCardIds = new Set(cardIds);
-  const restoredStudyQueueIds = (
-    Array.isArray(stored?.studyQueueIds)
-      ? stored.studyQueueIds
-      : defaultStudyIds
-  ).filter((cardId) => validCardIds.has(cardId));
-  const restoredSpellQueueIds = (Array.isArray(stored?.spellQueueIds)
-    ? stored.spellQueueIds
-    : []
-  ).filter((cardId) => validCardIds.has(cardId));
-  const studyQueueIds = familiarModeEnabled
-    ? restoredStudyQueueIds
-    : includeAllActiveCardIds(
-        restoredStudyQueueIds,
-        cardIds,
-        removedCardIds,
-      );
-  const spellQueueIds =
-    !familiarModeEnabled && restoredSpellQueueIds.length
-      ? includeAllActiveCardIds(
-          restoredSpellQueueIds,
-          cardIds,
-          removedCardIds,
-        )
-      : restoredSpellQueueIds;
-  const mode = ["study", "rest", "spell"].includes(stored?.mode)
-    ? stored.mode
-    : "study";
-  const lastRemoved =
-    typeof stored?.lastRemoved?.cardId === "string" &&
-    removedCardIds.includes(stored.lastRemoved.cardId)
-      ? stored.lastRemoved
-      : null;
-
-  return {
-    sourceDeck,
-    studyQueueIds,
-    spellQueueIds,
-    removedCardIds,
-    learningState,
-    completedRounds,
-    shuffleOnLoop,
-    showWordInsights,
-    familiarModeEnabled,
-    autoPronounceEnabled,
-    mode,
-    lastRemoved,
-    index: Math.min(
-      Math.max(Number.isInteger(stored?.index) ? stored.index : 0, 0),
-      Math.max(studyQueueIds.length - 1, 0),
-    ),
-    spellIndex: Math.min(
-      Math.max(
-        Number.isInteger(stored?.spellIndex) ? stored.spellIndex : 0,
-        0,
-      ),
-      Math.max(spellQueueIds.length - 1, 0),
-    ),
-  };
+const downloadText = (content, type, filename) => {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 };
 
 export default function App() {
-  const [initialSnapshot] = useState(createInitialAppSnapshot);
-  const [sourceDeck, setSourceDeck] = useState(initialSnapshot.sourceDeck);
-  const [studyQueueIds, setStudyQueueIds] = useState(
-    initialSnapshot.studyQueueIds,
+  const [loaded] = useState(() => readDeckAssets());
+  const [state, dispatch] = useReducer(
+    learningReducer,
+    loaded.assets,
+    (assets) =>
+      createInitialState({
+        assets: assets
+          ? { ...assets, sourceDeck: normalizeDeck(assets.sourceDeck) }
+          : null,
+      }),
   );
-  const [spellQueueIds, setSpellQueueIds] = useState(
-    initialSnapshot.spellQueueIds,
-  );
-  const [index, setIndex] = useState(initialSnapshot.index);
-  const [revealed, setRevealed] = useState(false);
-  const [lastRemoved, setLastRemoved] = useState(initialSnapshot.lastRemoved);
-  const [noAnim, setNoAnim] = useState(false);
-  const [shuffleOnLoop, setShuffleOnLoop] = useState(
-    initialSnapshot.shuffleOnLoop,
-  );
-  const [showWordInsights, setShowWordInsights] = useState(
-    initialSnapshot.showWordInsights,
-  );
-  const [familiarModeEnabled, setFamiliarModeEnabled] = useState(
-    initialSnapshot.familiarModeEnabled,
-  );
-  const [autoPronounceEnabled, setAutoPronounceEnabled] = useState(
-    initialSnapshot.autoPronounceEnabled,
-  );
-  const [removedCardIds, setRemovedCardIds] = useState(
-    initialSnapshot.removedCardIds,
-  );
-  const [learningState, setLearningState] = useState(
-    initialSnapshot.learningState,
-  );
-  const [completedRounds, setCompletedRounds] = useState(
-    initialSnapshot.completedRounds,
-  );
-  const [guideOpen, setGuideOpen] = useState(false);
-  const [importMessage, setImportMessage] = useState("");
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [panelConfirmRequest, setPanelConfirmRequest] = useState(null);
   const [pasteText, setPasteText] = useState("");
-  const [importedDeckData, setImportedDeckData] = useState(null);
-  const fileInputRef = useRef(null);
-  const guidePanelRef = useRef(null);
+  const [panelMessage, setPanelMessage] = useState(loaded.warning ?? "");
+  const [copyFeedback, setCopyFeedback] = useState("");
+  const [manualCopy, setManualCopy] = useState("");
+  const [undoToastVisible, setUndoToastVisible] = useState(false);
+  const panelRef = useRef(null);
+  const panelTriggerRef = useRef(null);
+  const spellInputRef = useRef(null);
+  const queuedAfterFailureRef = useRef(false);
+  const { isSupported: pronunciationSupported, queueSpeech, speak } = usePronunciation();
+  const { quiet, showChrome, hideForLearning } = useQuietChrome({ heldOpen: panelOpen });
 
-  // ── Mode state ──────────────────────────────────────
-  // 'study' | 'rest' | 'spell'
-  const [mode, setMode] = useState(initialSnapshot.mode);
-  const [spellIndex, setSpellIndex] = useState(initialSnapshot.spellIndex);
-  const [spellInput, setSpellInput] = useState("");
-  const [spellResult, setSpellResult] = useState(null); // null | 'correct' | 'wrong'
-  const [shakeKey, setShakeKey] = useState(0);
-  const {
-    isSupported: pronunciationSupported,
-    queueSpeech,
-    speak: pronounce,
-  } = usePronunciation();
-
-  const cardIds = useMemo(() => createCardIds(sourceDeck), [sourceDeck]);
-  const sourceItemById = useMemo(
+  const cardIds = useMemo(() => createCardIds(state.sourceDeck), [state.sourceDeck]);
+  const itemById = useMemo(
+    () => new Map(cardIds.map((cardId, index) => [cardId, state.sourceDeck[index]])),
+    [cardIds, state.sourceDeck],
+  );
+  const currentStudyId = state.studyQueueIds[state.studyIndex] ?? null;
+  const currentSpellId = state.spellQueueIds[state.spellIndex] ?? null;
+  const currentStudyItem = itemById.get(currentStudyId) ?? null;
+  const currentSpellItem = itemById.get(currentSpellId) ?? null;
+  const removedEntries = useMemo(
     () =>
-      new Map(
-        cardIds.map((cardId, entryIndex) => [cardId, sourceDeck[entryIndex]]),
-      ),
-    [cardIds, sourceDeck],
+      state.removedCardIds
+        .map((cardId) => ({ cardId, term: itemById.get(cardId)?.term }))
+        .filter((entry) => entry.term),
+    [itemById, state.removedCardIds],
   );
-  const currentStudyItem =
-    sourceItemById.get(studyQueueIds[index] ?? null) ?? null;
-  const currentSpellCardId = spellQueueIds[spellIndex] ?? null;
-  const currentSpellItem =
-    sourceItemById.get(currentSpellCardId) ?? null;
-  const currentStudyRound = completedRounds.study + 1;
-  const currentSpellRound = completedRounds.spell + 1;
-
-  const buildModeQueueIds = useCallback(
-    (targetMode, round, avoidFirstCardId = null, studyRound = null) => {
-      return buildRoundCardIds({
-        cardIds,
-        removedCardIds,
-        learningState,
-        mode: targetMode,
-        round,
-        studyRound,
-        familiarModeEnabled,
-        shuffleOnLoop,
-        avoidFirstCardId,
-      });
-    },
-    [
-      cardIds,
-      familiarModeEnabled,
-      learningState,
-      removedCardIds,
-      shuffleOnLoop,
-    ],
-  );
-
-  const promptText = `你是英语词汇整理助手。请把用户提供的单词逐个补全为以下字段，并输出为可导入的 JSON 数组：
-
-字段要求（严格遵守）：
-- term: 单词，首字母大写
-- syllables: 分节写法（用中点分隔）
-- respell: 发音重拼（用方括号包裹）
-- pos: 词性缩写（如 "n.", "v.", "adj.", "adv."）
-- meaning: 英文简明释义
-- meaningZh: 中文释义
-- wordOrigin: 用 1-3 句中文简述可靠的词根、词缀和词源，以及各部分怎样组合成当前含义；不确定或仅为助记时必须明确说明
-- relatedWord: 一个最直接的相反词或对应概念，并简短说明区别；没有自然、可靠的配对时输出空字符串
-- examples: 例句数组，必须提供 2-3 个对象
-  - sentence: 例句，必须自然、简洁，适合 B1-B2 学习者理解
-  - focus: 例句中需要加粗显示的原文片段，必须与 sentence 中的字符完全一致
-
-例句要求：
-- 优先使用学校、家庭、商店、工作、出行等日常语境
-- 尽量用短句，方便直接看懂上下文
-- 除目标词外，不要再塞进多个难词
-- 除非词本身必须如此，否则避免法律、政治、新闻、学术语境
-
-输出格式示例（仅 JSON，不要多余文字）：
-[
-  {
-    "term": "Example",
-    "syllables": "Ex·am·ple",
-    "respell": "[ig-ZAM-puhl]",
-    "pos": "n.",
-    "meaning": "a thing that illustrates a rule",
-    "meaningZh": "例子；示例",
-    "wordOrigin": "来自 Latin exemplum，指从一组事物中取出来作为样本的东西。",
-    "relatedWord": "counterexample — 用来反驳或推翻某个说法的反例",
-    "examples": [
-      {
-        "sentence": "This is a clear example of the rule.",
-        "focus": "clear example"
-      },
-      {
-        "sentence": "The teacher gave another example in class.",
-        "focus": "another example"
-      }
-    ]
-  }
-]
-
-不要输出 phrases / sentence / sentenceFocus 这些旧字段。一定确保每条 example 的 sentence 中原样包含 focus。
-
-一定记得需要以代码块的方式输出 JSON 文件以便用户导入。`;
+  const exportDeck = useMemo(() => {
+    return buildExportDeck(state.sourceDeck, state.removedCardIds);
+  }, [state.removedCardIds, state.sourceDeck]);
 
   useEffect(() => {
-    const snapshot = {
-      version: LEARNING_STORAGE_VERSION,
-      sourceDeck,
-      removedCardIds,
-      learningState,
-      completedRounds,
-      shuffleOnLoop,
-      showWordInsights,
-      familiarModeEnabled,
-      autoPronounceEnabled,
-      mode,
-      lastRemoved,
-      studyQueueIds,
-      spellQueueIds,
-      index,
-      spellIndex,
-    };
-    const result = writeLearningSnapshot(snapshot);
+    const result = writeDeckAssets({
+      sourceDeck: state.sourceDeck,
+      removedCardIds: state.removedCardIds,
+    });
     if (!result.success) {
-      setImportMessage(
-        (previous) =>
-          previous || "学习进度暂时无法保存，本次使用不受影响。",
-      );
+      setPanelMessage("本次可继续，下次可能不保留。浏览器没有允许保存这份词表。");
+    }
+  }, [state.removedCardIds, state.sourceDeck]);
+
+  useEffect(() => {
+    if (!state.undo) {
+      setUndoToastVisible(false);
+      return undefined;
+    }
+    setUndoToastVisible(true);
+    const timer = window.setTimeout(() => setUndoToastVisible(false), 5000);
+    return () => window.clearTimeout(timer);
+  }, [state.undo]);
+
+  useEffect(() => {
+    if (state.mode !== "study") {
+      queuedAfterFailureRef.current = false;
+      return;
+    }
+    if (!state.autoPronounceEnabled || !currentStudyItem?.term) return;
+    if (queuedAfterFailureRef.current) {
+      queuedAfterFailureRef.current = false;
+      queueSpeech(currentStudyItem.term);
+    } else {
+      speak(currentStudyItem.term);
     }
   }, [
-    completedRounds,
-    autoPronounceEnabled,
-    familiarModeEnabled,
-    index,
-    learningState,
-    lastRemoved,
-    mode,
-    removedCardIds,
-    shuffleOnLoop,
-    showWordInsights,
-    sourceDeck,
-    spellQueueIds,
-    spellIndex,
-    studyQueueIds,
+    currentStudyId,
+    currentStudyItem?.term,
+    queueSpeech,
+    speak,
+    state.autoPronounceEnabled,
+    state.mode,
   ]);
 
-  const runInstantly = useCallback((action) => {
-    setNoAnim(true);
-    action();
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setNoAnim(false);
-      });
-    });
+  useEffect(() => {
+    if (state.mode === "spell") spellInputRef.current?.focus();
+  }, [state.mode, state.spellIndex, state.spellResult]);
+
+  useEffect(() => {
+    if (!panelOpen) return;
+    panelRef.current?.querySelector("button, input, textarea")?.focus();
+  }, [panelOpen]);
+
+  const closePanel = useCallback(() => {
+    setPanelOpen(false);
+    setPanelConfirmRequest(null);
+    window.setTimeout(() => panelTriggerRef.current?.focus(), 0);
   }, []);
 
-  const toggleReveal = useCallback(() => {
-    if (!studyQueueIds.length) return;
-    if (!revealed && autoPronounceEnabled) {
-      pronounce(currentStudyItem?.term);
+  const openPanel = useCallback(() => {
+    panelTriggerRef.current = document.activeElement;
+    setPanelConfirmRequest(null);
+    setPanelOpen(true);
+  }, []);
+
+  const openSampleConfirm = useCallback(() => {
+    panelTriggerRef.current = document.activeElement;
+    setPanelConfirmRequest("sample");
+    setPanelOpen(true);
+  }, []);
+
+  const copyText = useCallback(async (text, successMessage) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyFeedback(successMessage);
+      setManualCopy("");
+      window.setTimeout(() => setCopyFeedback(""), 1800);
+    } catch {
+      setCopyFeedback("复制失败，可在下方手动复制。");
+      setManualCopy(text);
     }
-    setRevealed(!revealed);
-  }, [
-    autoPronounceEnabled,
-    currentStudyItem?.term,
-    pronounce,
-    revealed,
-    studyQueueIds.length,
-  ]);
+  }, []);
 
-  const enterRestMode = useCallback(() => {
-    setCompletedRounds((previous) => ({
-      ...previous,
-      study: currentStudyRound,
-    }));
-    setMode("rest");
-    setRevealed(false);
-  }, [currentStudyRound]);
-
-  const prevCard = useCallback(() => {
-    if (!studyQueueIds.length) return;
-    runInstantly(() => {
-      setIndex(
-        (prev) =>
-          (prev - 1 + studyQueueIds.length) % studyQueueIds.length,
-      );
-      setRevealed(false);
-    });
-  }, [runInstantly, studyQueueIds.length]);
-
-  const enterStudyMode = useCallback(() => {
-    const nextRound = completedRounds.study + 1;
-    const previouslyPresentedCardId =
-      mode === "spell" ? spellQueueIds[spellIndex] : studyQueueIds[index];
-    const nextQueueIds = buildModeQueueIds(
-      "study",
-      nextRound,
-      previouslyPresentedCardId ?? null,
-    );
-    if (!nextQueueIds.length) {
-      setCompletedRounds((previous) => ({
-        ...previous,
-        study: nextRound,
-      }));
-      setMode("rest");
-      setImportMessage(`辨识第 ${nextRound} 轮暂无返场词，已跳过。`);
-      return;
-    }
-    setStudyQueueIds(nextQueueIds);
-    setMode("study");
-    setIndex(0);
-    setRevealed(false);
-  }, [
-    buildModeQueueIds,
-    completedRounds.study,
-    index,
-    mode,
-    spellQueueIds,
-    spellIndex,
-    studyQueueIds,
-  ]);
-
-  const enterSpellMode = useCallback(() => {
-    const nextRound = completedRounds.spell + 1;
-    const nextQueueIds = buildModeQueueIds(
-      "spell",
-      nextRound,
-      null,
-      completedRounds.study,
-    );
-    if (!nextQueueIds.length) {
-      setCompletedRounds((previous) => ({
-        ...previous,
-        spell: nextRound,
-      }));
-      setMode("rest");
-      setImportMessage(`拼写第 ${nextRound} 轮暂无返场词，已跳过。`);
-      return;
-    }
-    setSpellQueueIds(nextQueueIds);
-    setMode("spell");
-    setSpellIndex(0);
-    setSpellInput("");
-    setSpellResult(null);
-  }, [buildModeQueueIds, completedRounds.spell, completedRounds.study]);
-
-  const recordModeReview = useCallback(
-    (cardId, targetMode, round, correct) => {
-      if (!cardId) return;
-      setLearningState((previous) =>
-        recordReview({
-          learningState: previous,
-          cardId,
-          mode: targetMode,
-          round,
-          correct,
-          familiarModeEnabled,
-        }),
+  const copyCurrentWord = useCallback(
+    (event) => {
+      event.stopPropagation();
+      event.currentTarget.blur();
+      if (!currentStudyItem?.term) return;
+      const deepRequest = `${deepUnderstandingPrompt.trim()}\n\n当前单词：${currentStudyItem.term}`;
+      copyText(
+        event.shiftKey ? deepRequest : currentStudyItem.term,
+        event.shiftKey ? "深度理解请求已复制。" : "单词已复制。",
       );
     },
-    [familiarModeEnabled],
+    [copyText, currentStudyItem?.term],
   );
 
-  const completeStudyAnswer = useCallback(
+  const reveal = useCallback(() => {
+    if (state.autoPronounceEnabled) speak(currentStudyItem?.term);
+    dispatch({ type: "REVEAL" });
+  }, [currentStudyItem?.term, speak, state.autoPronounceEnabled]);
+
+  const answerStudy = useCallback(
     (correct) => {
-      const currentCardId = studyQueueIds[index];
-      if (!currentCardId || !revealed) return;
-      const nextUnscoredIndex = findNextUnscoredCardIndex({
-        queueIds: studyQueueIds,
-        currentIndex: index,
-        learningState,
-        mode: "study",
-        round: currentStudyRound,
-      });
-      recordModeReview(currentCardId, "study", currentStudyRound, correct);
-      if (!correct && autoPronounceEnabled) {
-        pronounce(sourceItemById.get(currentCardId)?.term);
+      if (!state.revealed) return;
+      if (!correct && state.autoPronounceEnabled) {
+        speak(currentStudyItem?.term);
+        queuedAfterFailureRef.current = true;
       }
-      if (nextUnscoredIndex === -1) {
-        enterRestMode();
-      } else {
-        const nextTerm = sourceItemById.get(
-          studyQueueIds[nextUnscoredIndex],
-        )?.term;
-        runInstantly(() => {
-          setIndex(nextUnscoredIndex);
-          setRevealed(false);
-        });
-        if (autoPronounceEnabled) {
-          if (correct) {
-            pronounce(nextTerm);
-          } else {
-            queueSpeech(nextTerm);
-          }
-        }
-      }
+      dispatch({ type: "ANSWER_STUDY", correct });
     },
-    [
-      autoPronounceEnabled,
-      currentStudyRound,
-      enterRestMode,
-      index,
-      learningState,
-      recordModeReview,
-      revealed,
-      pronounce,
-      queueSpeech,
-      runInstantly,
-      sourceItemById,
-      studyQueueIds,
-    ],
+    [currentStudyItem?.term, speak, state.autoPronounceEnabled, state.revealed],
   );
 
-  const removeCard = useCallback(() => {
-    const cardId =
-      mode === "spell" ? spellQueueIds[spellIndex] : studyQueueIds[index];
-    if (!cardId) return;
-    runInstantly(() => {
-      setLastRemoved({
-        cardId,
-        studyPosition: mode === "study" ? index : -1,
-        spellPosition: mode === "spell" ? spellIndex : -1,
-        studyRound: mode === "study" ? currentStudyRound : null,
-        spellRound: mode === "spell" ? currentSpellRound : null,
-      });
-      const nextRemovedCardIds = removedCardIds.includes(cardId)
-        ? removedCardIds
-        : [...removedCardIds, cardId];
-      setRemovedCardIds((previous) =>
-        previous.includes(cardId) ? previous : [...previous, cardId],
-      );
-      let nextStudyQueueIds = studyQueueIds.filter(
-        (queuedCardId) => queuedCardId !== cardId,
-      );
-      if (mode !== "study") {
-        nextStudyQueueIds = buildRoundCardIds({
-          cardIds,
-          removedCardIds: nextRemovedCardIds,
-          learningState,
-          mode: "study",
-          round: currentStudyRound,
-          familiarModeEnabled,
-          shuffleOnLoop,
-          avoidFirstCardId: studyQueueIds[index] ?? null,
-        });
-      }
-      const nextSpellQueueIds = spellQueueIds.filter(
-        (queuedCardId) => queuedCardId !== cardId,
-      );
-      const nextRemovedCount = new Set(nextRemovedCardIds).size;
-      const remainingSourceCount = sourceDeck.length - nextRemovedCount;
-      setMode(
-        nextStudyQueueIds.length || remainingSourceCount === 0
-          ? "study"
-          : "rest",
-      );
-      setStudyQueueIds(nextStudyQueueIds);
-      setSpellQueueIds(nextSpellQueueIds);
-      setIndex((previous) => {
-        if (!nextStudyQueueIds.length) return 0;
-        return mode === "study"
-          ? Math.min(previous, nextStudyQueueIds.length - 1)
-          : 0;
-      });
-      setSpellIndex((previous) =>
-        nextSpellQueueIds.length
-          ? Math.min(previous, nextSpellQueueIds.length - 1)
-          : 0,
-      );
-      setRevealed(false);
-    });
-  }, [
-    cardIds,
-    currentSpellRound,
-    currentStudyRound,
-    familiarModeEnabled,
-    index,
-    learningState,
-    mode,
-    removedCardIds,
-    runInstantly,
-    shuffleOnLoop,
-    sourceDeck,
-    spellQueueIds,
-    spellIndex,
-    studyQueueIds,
-  ]);
+  const submitSpell = useCallback(() => {
+    if (!state.spellInput.trim()) return;
+    if (state.autoPronounceEnabled) speak(currentSpellItem?.term);
+    dispatch({ type: "SUBMIT_SPELL" });
+  }, [currentSpellItem?.term, speak, state.autoPronounceEnabled, state.spellInput]);
 
-  const undoRemove = useCallback(() => {
-    if (!lastRemoved) return;
-    if (!sourceItemById.has(lastRemoved.cardId)) return;
-    const studyProgress = getModeProgress(
-      learningState,
-      lastRemoved.cardId,
-      "study",
-    );
-    const spellProgress = getModeProgress(
-      learningState,
-      lastRemoved.cardId,
-      "spell",
-    );
-    const restoreStudyAtSavedPosition =
-      mode === "study" &&
-      lastRemoved.studyPosition >= 0 &&
-      lastRemoved.studyRound === currentStudyRound;
-    const shouldRestoreStudy =
-      (restoreStudyAtSavedPosition ||
-        (mode === "study" &&
-          (!familiarModeEnabled || !studyProgress.hidden))) &&
-      !studyQueueIds.includes(lastRemoved.cardId);
-    const studyInsertIndex = restoreStudyAtSavedPosition
-      ? Math.min(lastRemoved.studyPosition, studyQueueIds.length)
-      : studyQueueIds.length;
-    runInstantly(() => {
-      setRemovedCardIds((previous) =>
-        previous.filter((cardId) => cardId !== lastRemoved.cardId),
-      );
-      if (shouldRestoreStudy) {
-        setStudyQueueIds((previous) => {
-          if (previous.includes(lastRemoved.cardId)) return previous;
-          const next = [...previous];
-          next.splice(
-            Math.min(studyInsertIndex, next.length),
-            0,
-            lastRemoved.cardId,
-          );
-          return next;
-        });
-        setIndex(studyInsertIndex);
-      }
-      const restoreSpellAtSavedPosition =
-        mode === "spell" &&
-        lastRemoved.spellPosition >= 0 &&
-        lastRemoved.spellRound === currentSpellRound;
-      if (
-        restoreSpellAtSavedPosition ||
-        (mode === "spell" &&
-          (!familiarModeEnabled || !spellProgress.hidden))
-      ) {
-        setSpellQueueIds((previous) => {
-          if (previous.includes(lastRemoved.cardId)) return previous;
-          const next = [...previous];
-          const insertIndex = restoreSpellAtSavedPosition
-            ? Math.min(lastRemoved.spellPosition, next.length)
-            : next.length;
-          next.splice(insertIndex, 0, lastRemoved.cardId);
-          return next;
-        });
-      }
-      setLastRemoved(null);
-      setRevealed(false);
-    });
-  }, [
-    currentSpellRound,
-    currentStudyRound,
-    familiarModeEnabled,
-    lastRemoved,
-    learningState,
-    mode,
-    runInstantly,
-    sourceItemById,
-    studyQueueIds,
-  ]);
+  const importDeck = useCallback((rawDeck) => {
+    const normalized = normalizeDeck(rawDeck);
+    if (!normalized.length) throw new Error("内容中没有有效的单词。");
+    dispatch({ type: "REPLACE_DECK", sourceDeck: normalized });
+    setPanelMessage(`已导入 ${normalized.length} 个词，并开始第一轮辨识。`);
+    setPasteText("");
+  }, []);
 
-  const resetDeck = useCallback(() => {
-    runInstantly(() => {
-      const restoredDeck = cloneDeck();
-      setSourceDeck(restoredDeck);
-      setStudyQueueIds(createCardIds(restoredDeck));
-      setSpellQueueIds([]);
-      setIndex(0);
-      setSpellIndex(0);
-      setRevealed(false);
-      setLastRemoved(null);
-      setRemovedCardIds([]);
-      setLearningState({});
-      setCompletedRounds({ study: 0, spell: 0 });
-      setMode("study");
-    });
-  }, [runInstantly]);
-
-  const handleImportClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  const handleImportFile = useCallback(
+  const handleFile = useCallback(
     async (event) => {
       const file = event.target.files?.[0];
       if (!file) return;
       try {
-        const rawText = await readImportFile(file);
-        const importedDeck = parseDeckFromText(rawText);
-        const normalized = normalizeDeck(importedDeck);
-        if (!normalized.length) {
-          throw new Error("内容中没有有效的单词。");
-        }
-        runInstantly(() => {
-          setSourceDeck(normalized);
-          setStudyQueueIds(createCardIds(normalized));
-          setSpellQueueIds([]);
-          setIndex(0);
-          setSpellIndex(0);
-          setRevealed(false);
-          setLastRemoved(null);
-          setRemovedCardIds([]);
-          setLearningState({});
-          setCompletedRounds({ study: 0, spell: 0 });
-          setMode("study");
-        });
-        setImportedDeckData(normalized);
-        setImportMessage(`已导入 ${normalized.length} 个单词。`);
+        const text = await readImportFile(file);
+        importDeck(parseDeckFromText(text));
       } catch (error) {
-        setImportMessage(`导入失败：${error?.message || "无法解析文件内容。"}`);
+        setPanelMessage(`导入失败：${error?.message || "无法解析文件内容。"} 原词表保持不变。`);
       } finally {
         event.target.value = "";
       }
     },
-    [runInstantly],
+    [importDeck],
   );
 
   const handlePasteImport = useCallback(() => {
-    const trimmed = pasteText.trim();
-    if (!trimmed) {
-      setImportMessage("请先粘贴需要导入的内容。");
-      return;
-    }
     try {
-      const importedDeck = parseDeckFromText(trimmed);
-      const normalized = normalizeDeck(importedDeck);
-      if (!normalized.length) {
-        throw new Error("内容中没有有效的单词。");
-      }
-      runInstantly(() => {
-        setSourceDeck(normalized);
-        setStudyQueueIds(createCardIds(normalized));
-        setSpellQueueIds([]);
-        setIndex(0);
-        setSpellIndex(0);
-        setRevealed(false);
-        setLastRemoved(null);
-        setRemovedCardIds([]);
-        setLearningState({});
-        setCompletedRounds({ study: 0, spell: 0 });
-        setMode("study");
-      });
-      setImportedDeckData(normalized);
-      setImportMessage(`已导入 ${normalized.length} 个单词。`);
+      importDeck(parseDeckFromText(pasteText));
     } catch (error) {
-      setImportedDeckData(null);
-      setImportMessage(`导入失败：${error?.message || "无法识别粘贴内容。"}`);
+      setPanelMessage(`导入失败：${error?.message || "无法识别粘贴内容。"} 原词表保持不变。`);
     }
-  }, [pasteText, runInstantly]);
+  }, [importDeck, pasteText]);
 
-  const exportDeck = useMemo(() => {
-    const removed = new Set(removedCardIds);
-    return sourceDeck.filter((_, entryIndex) => !removed.has(cardIds[entryIndex]));
-  }, [cardIds, removedCardIds, sourceDeck]);
-
-  const handleExportJson = useCallback(() => {
-    if (!exportDeck.length) return;
-    const json = JSON.stringify(exportDeck, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "vocab-deck.json";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
-    setImportMessage(`已导出 ${exportDeck.length} 个剩余单词。`);
-  }, [exportDeck]);
-
-  const handleExportMd = useCallback(() => {
-    if (!exportDeck.length) return;
-    const md = buildMarkdownExport(exportDeck);
-    const blob = new Blob([md], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "vocab-deck.md";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
-  }, [exportDeck]);
-
-  const handleCopyPrompt = async () => {
-    try {
-      await navigator.clipboard.writeText(promptText);
-      setImportMessage("提示词已复制到剪贴板。");
-    } catch {
-      setImportMessage("复制失败，请手动复制提示词。");
-    }
-  };
-
-  const handleCopyDeepPrompt = async () => {
-    try {
-      await navigator.clipboard.writeText(deepUnderstandingPrompt);
-      setImportMessage("词根词源—感觉—画面提示词已复制到剪贴板。");
-    } catch {
-      setImportMessage("复制失败，请在 Guidebook 中手动复制提示词。");
-    }
-  };
-
-  const advanceSpell = useCallback(() => {
-    if (spellIndex + 1 >= spellQueueIds.length) {
-      setCompletedRounds((previous) => ({
-        ...previous,
-        spell: currentSpellRound,
-      }));
-      enterStudyMode();
-      return;
-    }
-    setSpellIndex((previous) => previous + 1);
-    setSpellInput("");
-    setSpellResult(null);
-  }, [
-    currentSpellRound,
-    enterStudyMode,
-    spellIndex,
-    spellQueueIds.length,
-  ]);
-
-  const submitSpell = useCallback(() => {
-    const spellCardId = spellQueueIds[spellIndex];
-    const spellItem = sourceItemById.get(spellCardId);
-    const target = (spellItem?.term ?? "").toLowerCase();
-    const correct = Boolean(target) && spellInput.toLowerCase() === target;
-    recordModeReview(spellCardId, "spell", currentSpellRound, correct);
-    if (autoPronounceEnabled) {
-      pronounce(spellItem?.term);
-    }
-    if (correct) {
-      setSpellResult("correct");
-      return;
-    }
-    setSpellResult("wrong");
-    setShakeKey((previous) => previous + 1);
-  }, [
-    autoPronounceEnabled,
-    currentSpellRound,
-    pronounce,
-    recordModeReview,
-    sourceItemById,
-    spellIndex,
-    spellInput,
-    spellQueueIds,
-  ]);
-
-  const replaySpellShake = useCallback(() => {
-    setShakeKey((previous) => previous + 1);
-  }, []);
-
-  const deleteSpellCharacter = useCallback(() => {
-    setSpellInput((previous) => previous.slice(0, -1));
-    setSpellResult(null);
-  }, []);
-
-  const typeSpellCharacter = useCallback((key, { replace }) => {
-    setSpellInput((previous) => (replace ? key : previous + key));
-    setSpellResult(null);
+  const useSample = useCallback(() => {
+    dispatch({ type: "USE_SAMPLE", sourceDeck: cloneDeck() });
+    setPanelMessage("已恢复 24 个示例词。");
   }, []);
 
   useAppKeyboard({
-    familiarModeEnabled,
-    guideOpen,
-    guidePanelRef,
-    mode,
-    revealed,
-    spellResult,
-    onEnterStudyMode: enterStudyMode,
-    onEnterSpellMode: enterSpellMode,
-    onToggleReveal: toggleReveal,
-    onPreviousCard: prevCard,
-    onCompleteStudyAnswer: completeStudyAnswer,
-    onRemoveCard: removeCard,
-    onAdvanceSpell: advanceSpell,
-    onSubmitSpell: submitSpell,
-    onReplaySpellShake: replaySpellShake,
-    onDeleteSpellCharacter: deleteSpellCharacter,
-    onTypeSpellCharacter: typeSpellCharacter,
+    mode: state.mode,
+    revealed: state.revealed,
+    panelOpen,
+    onReveal: reveal,
+    onHide: () => dispatch({ type: "HIDE" }),
+    onAnswer: answerStudy,
+    onPrevious: () => dispatch({ type: "PREVIOUS_STUDY" }),
+    onRemove: () => dispatch({ type: "REMOVE_CURRENT" }),
+    onResume: () => dispatch({ type: "RESUME_SPELL" }),
+    onPauseToStudy: () => dispatch({ type: "PAUSE_TO_STUDY" }),
+    onPauseSpell: () => dispatch({ type: "PAUSE_SPELL" }),
+    onClosePanel: closePanel,
+    onLearningKey: hideForLearning,
+    onShowChrome: showChrome,
   });
 
-  const hasDeck = studyQueueIds.length > 0;
-  const hasSpellDeck = spellQueueIds.length > 0;
-  const completedByRemoval = !exportDeck.length && Boolean(lastRemoved);
-  const item = hasDeck ? currentStudyItem : null;
-  const spellCardId = currentSpellCardId;
-  const spellItem = currentSpellItem;
-  const activeDeckLength =
-    mode === "spell" ? spellQueueIds.length : studyQueueIds.length;
-  const activeProgressPosition = activeDeckLength
-    ? mode === "spell"
-      ? spellIndex + 1
-      : index + 1
-    : 0;
-  const progress = activeDeckLength
-    ? activeProgressPosition / activeDeckLength
-    : 0;
-  const progressLabel = activeDeckLength
-    ? `${activeProgressPosition} / ${activeDeckLength}`
-    : "0 / 0";
-  const currentStudyProgress = item
-    ? getModeProgress(learningState, studyQueueIds[index], "study")
-    : null;
-  const currentSpellProgress = spellCardId
-    ? getModeProgress(learningState, spellCardId, "spell")
-    : null;
-  const familiarEntries = useMemo(
-    () =>
-      familiarModeEnabled
-        ? sourceDeck
-            .map((entry, entryIndex) => {
-              const cardId = cardIds[entryIndex];
-              return {
-                entry,
-                cardId,
-                study: getModeProgress(learningState, cardId, "study"),
-                spell: getModeProgress(learningState, cardId, "spell"),
-              };
-            })
-            .filter(
-              ({ cardId, study, spell }) =>
-                !removedCardIds.includes(cardId) &&
-                (study.hidden || spell.hidden),
-            )
-        : [],
-    [
-      cardIds,
-      familiarModeEnabled,
-      learningState,
-      removedCardIds,
-      sourceDeck,
-    ],
-  );
-  const familiarStudyCount = familiarEntries.filter(
-    ({ study }) => study.hidden,
-  ).length;
-  const familiarSpellCount = familiarEntries.filter(
-    ({ spell }) => spell.hidden,
-  ).length;
-
-  const copyCurrentTerm = useCallback(async () => {
-    if (!item?.term) return;
-    try {
-      await navigator.clipboard.writeText(item.term);
-      setImportMessage(`已复制 ${item.term}。`);
-    } catch {
-      setImportMessage("复制失败，请手动选择单词。");
-    }
-  }, [item?.term]);
-
-  const handleTermClick = useCallback(
-    (event) => {
-      event.stopPropagation();
-      event.currentTarget.blur();
-      copyCurrentTerm();
-    },
-    [copyCurrentTerm],
-  );
-
-  const clearPasteImport = useCallback(() => {
-    setPasteText("");
-    setImportedDeckData(null);
-  }, []);
-
-  const toggleShuffle = useCallback(() => {
-    setShuffleOnLoop((previousValue) => !previousValue);
-  }, []);
-
-  const toggleWordInsights = useCallback(() => {
-    setShowWordInsights((previousValue) => !previousValue);
-  }, []);
-
-  const toggleFamiliarMode = useCallback(() => {
-    const nextValue = !familiarModeEnabled;
-    setFamiliarModeEnabled(nextValue);
-    if (!nextValue) {
-      setStudyQueueIds((previous) =>
-        includeAllActiveCardIds(previous, cardIds, removedCardIds),
-      );
-      if (spellQueueIds.length) {
-        setSpellQueueIds((previous) =>
-          includeAllActiveCardIds(previous, cardIds, removedCardIds),
-        );
-      }
-    }
-  }, [cardIds, familiarModeEnabled, removedCardIds, spellQueueIds.length]);
-
-  const toggleAutoPronounce = useCallback(() => {
-    setAutoPronounceEnabled((previousValue) => !previousValue);
-  }, []);
-
-  const cardClassName = useMemo(() => {
-    return `card${noAnim ? " no-anim" : ""}`;
-  }, [noAnim]);
+  const progress =
+    state.mode === "study"
+      ? { current: state.studyIndex + 1, total: state.studyQueueIds.length, label: "辨识" }
+      : state.mode === "spell"
+        ? { current: state.spellIndex + 1, total: state.spellQueueIds.length, label: "拼写" }
+        : null;
 
   return (
-    <main className="shell">
-      <a
-        href="https://github.com/Ganzhe2028/vocab2"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="github-btn"
-        title="View on GitHub"
-        aria-label="View on GitHub"
-        tabIndex={-1}
-      >
-        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-          <path
-            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
-            0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13
-            -.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66
-            .07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15
-            -.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27
-            .68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12
-            .51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48
-            0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"
-          />
-        </svg>
-      </a>
-      <header>
-        <div className="title-row">
-          <h1>Vocabulary Loop</h1>
-          <div className="header-actions">
-            <PointerButton type="button" onClick={handleImportClick}>
-              Import
-            </PointerButton>
-            <PointerButton
-              type="button"
-              onClick={handleExportJson}
-              disabled={!exportDeck.length}
-            >
-              Export JSON
-            </PointerButton>
-            <PointerButton type="button" onClick={() => setGuideOpen(true)}>
-              Guidebook
-            </PointerButton>
-            <PointerButton type="button" onClick={handleCopyDeepPrompt}>
-              词根·感觉·画面
-            </PointerButton>
-          </div>
-        </div>
-        <div className="subhead">
-          Enter or Space reveals. Enter advances.
-          {familiarModeEnabled
-            ? ` N marks not yet; ${FAMILIAR_STREAK_TARGET} correct rounds move a word into the familiar pool.`
-            : ""}
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".json,.md,.txt,.csv,.docx,application/json,text/plain,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          onChange={handleImportFile}
-          className="file-input"
-        />
-        {importMessage ? (
-          <div className="import-message">{importMessage}</div>
-        ) : null}
+    <div className={`app-shell${quiet ? " is-quiet" : ""}`}>
+      <header className="app-header" onFocusCapture={showChrome}>
+        <div className="brand">闪词 <span>3.0</span></div>
+        <nav className="header-actions" aria-label="全局工具">
+          {state.undo ? <button type="button" className="header-button undo-button" onClick={() => dispatch({ type: "UNDO" })}>{state.undo.label}</button> : null}
+          <button type="button" className="header-button import-button" onClick={openPanel}>Import</button>
+          <button ref={panelTriggerRef} type="button" className="header-button" onClick={openPanel}>更多</button>
+          <a className="github-link" href="https://github.com/Ganzhe2028/vocab2" target="_blank" rel="noreferrer" aria-label="在 GitHub 查看闪词">GH</a>
+        </nav>
       </header>
 
-      <GuideDialog
-        open={guideOpen}
-        message={importMessage}
-        pasteText={pasteText}
-        importedDeckData={importedDeckData}
-        exportDeckLength={exportDeck.length}
-        panelRef={guidePanelRef}
-        onClose={() => setGuideOpen(false)}
-        onCopyPrompt={handleCopyPrompt}
-        onPasteTextChange={setPasteText}
-        onPasteImport={handlePasteImport}
-        onClearPaste={clearPasteImport}
-        onExportJson={handleExportJson}
-        onExportMd={handleExportMd}
-        onImportClick={handleImportClick}
-        onCopyDeepPrompt={handleCopyDeepPrompt}
-      />
-      {mode === "rest" && <RestScreen />}
+      {undoToastVisible && state.undo ? (
+        <div className="undo-toast" role="status">
+          <span>{state.notice || "管理操作已完成。"}</span>
+          <button type="button" onClick={() => dispatch({ type: "UNDO" })}>{state.undo.label}</button>
+        </div>
+      ) : null}
 
-      {mode === "spell" && (
-        <SpellCard
-          currentRound={currentSpellRound}
-          input={spellInput}
-          item={spellItem}
-          onPronounce={() => pronounce(spellItem?.term)}
-          progress={currentSpellProgress}
-          progressLabel={progressLabel}
-          pronunciationSupported={pronunciationSupported}
-          result={spellResult}
-          shakeKey={shakeKey}
-          showFamiliarStatus={familiarModeEnabled}
-        />
-      )}
+      <main className="reading-column">
+        {state.notice && !undoToastVisible ? <p className="page-notice" role="status">{state.notice}</p> : null}
+        {state.mode === "prepare" ? (
+          <PrepareView
+            pasteText={pasteText}
+            message={panelMessage}
+            onPasteChange={setPasteText}
+            onPasteImport={handlePasteImport}
+            onFile={handleFile}
+            onSample={useSample}
+          />
+        ) : null}
+        {state.mode === "study" && currentStudyItem ? (
+          <StudyView
+            item={currentStudyItem}
+            revealed={state.revealed}
+            insightsExpanded={state.insightsExpanded}
+            pronunciationSupported={pronunciationSupported}
+            copyFeedback={copyFeedback}
+            onCopy={copyCurrentWord}
+            onPronounce={() => speak(currentStudyItem.term)}
+            onReveal={reveal}
+            onHide={() => dispatch({ type: "HIDE" })}
+            onAnswer={answerStudy}
+            onToggleInsights={() => dispatch({ type: "TOGGLE_INSIGHTS" })}
+          />
+        ) : null}
+        {state.mode === "spell" && currentSpellItem ? (
+          <SpellView
+            item={currentSpellItem}
+            value={state.spellInput}
+            result={state.spellResult}
+            inputRef={spellInputRef}
+            onChange={(value) => dispatch({ type: "SET_SPELL_INPUT", value })}
+            onSubmit={submitSpell}
+            onAdvance={() => dispatch({ type: "ADVANCE_SPELL" })}
+            onPause={() => dispatch({ type: "PAUSE_SPELL" })}
+          />
+        ) : null}
+        {state.mode === "pause" ? (
+          <PauseView
+            onResume={() => dispatch({ type: "RESUME_SPELL" })}
+            onStudy={() => dispatch({ type: "PAUSE_TO_STUDY" })}
+          />
+        ) : null}
+        {state.mode === "empty" ? (
+          <EmptyView
+            canUndo={Boolean(state.undo)}
+            onUndo={() => dispatch({ type: "UNDO" })}
+            onManage={openPanel}
+            onSample={openSampleConfirm}
+          />
+        ) : null}
 
-      {mode === "study" && (
-        <StudyCard
-          cardClassName={cardClassName}
-          completedByRemoval={completedByRemoval}
-          currentRound={currentStudyRound}
-          hasDeck={hasDeck}
-          item={item}
-          onCompleteAnswer={completeStudyAnswer}
-          onPronounce={() => pronounce(item?.term)}
-          onTermClick={handleTermClick}
-          onToggleReveal={toggleReveal}
-          progress={currentStudyProgress}
-          pronunciationSupported={pronunciationSupported}
-          revealed={revealed}
-          showFamiliarStatus={familiarModeEnabled}
-          showWordInsights={showWordInsights}
-        />
-      )}
+        {manualCopy ? (
+          <section className="manual-copy" aria-labelledby="manual-copy-title">
+            <div><strong id="manual-copy-title">手动复制</strong><button type="button" className="text-button" onClick={() => setManualCopy("")}>关闭</button></div>
+            <textarea readOnly value={manualCopy} rows="6" onFocus={(event) => event.target.select()} />
+          </section>
+        ) : null}
+      </main>
 
-      <LearningControls
-        autoPronounceEnabled={autoPronounceEnabled}
-        currentSpellRound={currentSpellRound}
-        currentStudyRound={currentStudyRound}
-        familiarSpellCount={familiarSpellCount}
-        familiarStudyCount={familiarStudyCount}
-        hasDeck={hasDeck}
-        hasSpellDeck={hasSpellDeck}
-        lastRemoved={lastRemoved}
-        mode={mode}
-        onCompleteAnswer={completeStudyAnswer}
-        onPrevCard={prevCard}
-        onRemoveCard={removeCard}
-        onResetDeck={resetDeck}
-        onToggleReveal={toggleReveal}
-        onToggleAutoPronounce={toggleAutoPronounce}
-        onToggleFamiliarMode={toggleFamiliarMode}
-        onToggleShuffle={toggleShuffle}
-        onToggleWordInsights={toggleWordInsights}
-        onUndoRemove={undoRemove}
-        progress={progress}
-        progressLabel={progressLabel}
+      {progress ? (
+        <footer className="progress-footer">
+          <div className="progress-meta"><span>{progress.label}</span><span>{progress.current} / {progress.total}</span></div>
+          <div className="progress-track" aria-label={`${progress.label}进度 ${progress.current} / ${progress.total}`} role="progressbar" aria-valuemin="1" aria-valuemax={progress.total} aria-valuenow={progress.current}>
+            <span style={{ width: `${(progress.current / progress.total) * 100}%` }} />
+          </div>
+          <button type="button" className="remove-current" onClick={() => dispatch({ type: "REMOVE_CURRENT" })}>从本词表移出</button>
+        </footer>
+      ) : null}
+
+      <ManagePanel
+        open={panelOpen}
+        panelRef={panelRef}
+        sourceDeck={state.sourceDeck}
+        removedEntries={removedEntries}
+        autoPronounceEnabled={state.autoPronounceEnabled}
         pronunciationSupported={pronunciationSupported}
-        revealed={revealed}
-        familiarModeEnabled={familiarModeEnabled}
-        showWordInsights={showWordInsights}
-        shuffleOnLoop={shuffleOnLoop}
+        pasteText={pasteText}
+        message={panelMessage}
+        initialConfirmAction={panelConfirmRequest}
+        onClose={closePanel}
+        onFile={handleFile}
+        onPasteChange={setPasteText}
+        onPasteImport={handlePasteImport}
+        onExportJson={() => downloadText(JSON.stringify(exportDeck, null, 2), "application/json", "flashvocab-deck.json")}
+        onExportMarkdown={() => downloadText(buildMarkdownExport(exportDeck), "text/markdown", "flashvocab-deck.md")}
+        onCopyCompletionPrompt={() => copyText(COMPLETION_PROMPT, "词表补全提示词已复制。")}
+        onSetAutoPronounce={(value) => dispatch({ type: "SET_AUTO_PRONOUNCE", value })}
+        onRestoreRemoved={(cardId) => dispatch({ type: "RESTORE_REMOVED", cardId })}
+        onReset={() => dispatch({ type: "RESET_PROGRESS" })}
+        onSample={useSample}
+        onConfirmConsumed={() => setPanelConfirmRequest(null)}
       />
-
-      {familiarModeEnabled ? <FamiliarPool entries={familiarEntries} /> : null}
-
-      <div className="footer-note">
-        No limits — keep cycling as long as you want.
-      </div>
-    </main>
+    </div>
   );
 }

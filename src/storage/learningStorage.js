@@ -1,38 +1,11 @@
 import { createCardIds } from "../learningAlgorithm.js";
 
-export const LEARNING_STORAGE_KEY = "vocab2-learning-v1";
-export const LEARNING_STORAGE_VERSION = 1;
-
-const VALID_MODES = new Set(["study", "rest", "spell"]);
+export const DECK_STORAGE_KEY = "flashvocab-3-assets-v1";
+export const DECK_STORAGE_VERSION = 1;
+export const LEGACY_STORAGE_KEY = "vocab2-learning-v1";
 
 const isRecord = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
-
-const normalizeNonNegativeInteger = (value) =>
-  Number.isInteger(value) && value >= 0 ? value : 0;
-
-const clampIndex = (value, queueLength) =>
-  Math.min(
-    normalizeNonNegativeInteger(value),
-    Math.max(queueLength - 1, 0),
-  );
-
-const normalizeCardIdList = (value, allowedCardIds) => {
-  if (!Array.isArray(value)) return [];
-
-  const seen = new Set();
-  return value.filter((cardId) => {
-    if (
-      typeof cardId !== "string" ||
-      !allowedCardIds.has(cardId) ||
-      seen.has(cardId)
-    ) {
-      return false;
-    }
-    seen.add(cardId);
-    return true;
-  });
-};
 
 const getDefaultStorage = () => {
   if (typeof window === "undefined") return null;
@@ -43,124 +16,104 @@ const getDefaultStorage = () => {
   }
 };
 
-export const normalizeLearningSnapshot = (snapshot) => {
+export const normalizeDeckAssets = (value) => {
   if (
-    !isRecord(snapshot) ||
-    snapshot.version !== LEARNING_STORAGE_VERSION ||
-    !Array.isArray(snapshot.sourceDeck) ||
-    !snapshot.sourceDeck.every(isRecord)
+    !isRecord(value) ||
+    value.version !== DECK_STORAGE_VERSION ||
+    !Array.isArray(value.sourceDeck) ||
+    !value.sourceDeck.every(isRecord)
   ) {
     return null;
   }
 
-  const cardIds = createCardIds(snapshot.sourceDeck);
-  const knownCardIds = new Set(cardIds);
-  const removedCardIds = normalizeCardIdList(
-    snapshot.removedCardIds,
-    knownCardIds,
-  );
-  const activeCardIds = new Set(
-    cardIds.filter((cardId) => !removedCardIds.includes(cardId)),
-  );
-  const studyQueueIds = normalizeCardIdList(
-    snapshot.studyQueueIds,
-    activeCardIds,
-  );
-  const spellQueueIds = normalizeCardIdList(
-    snapshot.spellQueueIds,
-    activeCardIds,
-  );
-
-  let mode = VALID_MODES.has(snapshot.mode) ? snapshot.mode : "study";
-  if (mode === "spell" && spellQueueIds.length === 0) {
-    mode = "study";
-  }
-
-  const lastRemoved =
-    isRecord(snapshot.lastRemoved) &&
-    typeof snapshot.lastRemoved.cardId === "string" &&
-    removedCardIds.includes(snapshot.lastRemoved.cardId)
-      ? snapshot.lastRemoved
-      : null;
+  const allowedIds = new Set(createCardIds(value.sourceDeck));
+  const seen = new Set();
+  const removedCardIds = (Array.isArray(value.removedCardIds)
+    ? value.removedCardIds
+    : []
+  ).filter((cardId) => {
+    if (typeof cardId !== "string" || !allowedIds.has(cardId) || seen.has(cardId)) {
+      return false;
+    }
+    seen.add(cardId);
+    return true;
+  });
 
   return {
-    ...snapshot,
-    version: LEARNING_STORAGE_VERSION,
-    sourceDeck: snapshot.sourceDeck,
+    version: DECK_STORAGE_VERSION,
+    sourceDeck: value.sourceDeck,
     removedCardIds,
-    learningState: isRecord(snapshot.learningState)
-      ? snapshot.learningState
-      : {},
-    completedRounds: {
-      study: normalizeNonNegativeInteger(snapshot.completedRounds?.study),
-      spell: normalizeNonNegativeInteger(snapshot.completedRounds?.spell),
-    },
-    shuffleOnLoop:
-      typeof snapshot.shuffleOnLoop === "boolean"
-        ? snapshot.shuffleOnLoop
-        : true,
-    showWordInsights:
-      typeof snapshot.showWordInsights === "boolean"
-        ? snapshot.showWordInsights
-        : false,
-    familiarModeEnabled:
-      typeof snapshot.familiarModeEnabled === "boolean"
-        ? snapshot.familiarModeEnabled
-        : false,
-    autoPronounceEnabled:
-      typeof snapshot.autoPronounceEnabled === "boolean"
-        ? snapshot.autoPronounceEnabled
-        : true,
-    mode,
-    lastRemoved,
-    studyQueueIds,
-    spellQueueIds,
-    index: clampIndex(snapshot.index, studyQueueIds.length),
-    spellIndex: clampIndex(snapshot.spellIndex, spellQueueIds.length),
   };
 };
 
-export const readLearningSnapshot = (storage = getDefaultStorage()) => {
-  if (!storage || typeof storage.getItem !== "function") return null;
-
+const parseStoredValue = (serialized) => {
+  if (serialized === null) return null;
   try {
-    const serialized = storage.getItem(LEARNING_STORAGE_KEY);
-    if (serialized === null) return null;
-    return normalizeLearningSnapshot(JSON.parse(serialized));
+    return JSON.parse(serialized);
   } catch {
     return null;
   }
 };
 
-export const writeLearningSnapshot = (
-  snapshot,
-  storage = getDefaultStorage(),
-) => {
-  if (!storage || typeof storage.setItem !== "function") {
-    return {
-      success: false,
-      error: new Error("Learning storage is unavailable."),
-    };
-  }
-
-  const normalized = normalizeLearningSnapshot(snapshot);
-  if (!normalized) {
-    return {
-      success: false,
-      error: new Error("Learning snapshot is invalid."),
-    };
+export const readDeckAssets = (storage = getDefaultStorage()) => {
+  if (!storage || typeof storage.getItem !== "function") {
+    return { assets: null, source: null, warning: null };
   }
 
   try {
-    storage.setItem(LEARNING_STORAGE_KEY, JSON.stringify(normalized));
+    const currentRaw = storage.getItem(DECK_STORAGE_KEY);
+    if (currentRaw !== null) {
+      const assets = normalizeDeckAssets(parseStoredValue(currentRaw));
+      return {
+        assets,
+        source: assets ? "current" : null,
+        warning: assets ? null : "本地词表记录已损坏，请重新导入或使用示例词表。",
+      };
+    }
+
+    const legacyRaw = storage.getItem(LEGACY_STORAGE_KEY);
+    if (legacyRaw === null) {
+      return { assets: null, source: null, warning: null };
+    }
+    const legacy = parseStoredValue(legacyRaw);
+    const assets = normalizeDeckAssets({
+      version: DECK_STORAGE_VERSION,
+      sourceDeck: legacy?.sourceDeck,
+      removedCardIds: legacy?.removedCardIds,
+    });
+    return {
+      assets,
+      source: assets ? "legacy" : null,
+      warning: assets ? null : "旧版词表记录无法读取，请重新导入。",
+    };
+  } catch {
+    return {
+      assets: null,
+      source: null,
+      warning: "无法读取本地词表，本次仍可继续使用。",
+    };
+  }
+};
+
+export const writeDeckAssets = (assets, storage = getDefaultStorage()) => {
+  if (!storage || typeof storage.setItem !== "function") {
+    return { success: false, error: new Error("Deck storage is unavailable.") };
+  }
+  const normalized = normalizeDeckAssets({
+    version: DECK_STORAGE_VERSION,
+    sourceDeck: assets?.sourceDeck,
+    removedCardIds: assets?.removedCardIds,
+  });
+  if (!normalized) {
+    return { success: false, error: new Error("Deck assets are invalid.") };
+  }
+  try {
+    storage.setItem(DECK_STORAGE_KEY, JSON.stringify(normalized));
     return { success: true };
   } catch (error) {
     return {
       success: false,
-      error:
-        error instanceof Error
-          ? error
-          : new Error("Learning snapshot could not be stored."),
+      error: error instanceof Error ? error : new Error("Deck assets could not be stored."),
     };
   }
 };

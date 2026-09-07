@@ -1,443 +1,297 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, test } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, test, vi } from "vitest";
 import App from "./App.jsx";
 import { createCardIds } from "./learningAlgorithm.js";
-import {
-  LEARNING_STORAGE_KEY,
-  LEARNING_STORAGE_VERSION,
-} from "./storage/learningStorage.js";
+import { DECK_STORAGE_KEY, DECK_STORAGE_VERSION } from "./storage/learningStorage.js";
 
-const testDeck = [
-  {
-    term: "Alpha",
-    syllables: "Al·pha",
-    respell: "[AL-fuh]",
-    pos: "n.",
-    meaning: "alpha meaning",
-    meaningZh: "阿尔法",
-    wordOrigin: "Alpha comes from the first Greek letter.",
-    relatedWord: "omega — the last Greek letter",
-    examples: [
-      { sentence: "Alpha starts this small deck.", focus: "Alpha" },
-    ],
-  },
-  {
-    term: "Beta",
-    syllables: "Be·ta",
-    respell: "[BAY-tuh]",
-    pos: "n.",
-    meaning: "beta meaning",
-    meaningZh: "贝塔",
-    examples: [
-      { sentence: "Beta ends this small deck.", focus: "Beta" },
-    ],
-  },
-];
+const alpha = {
+  term: "Alpha",
+  syllables: "Al·pha",
+  respell: "[AL-fuh]",
+  pos: "n.",
+  meaning: "the first item in a group",
+  meaningZh: "第一项",
+  wordOrigin: "来自希腊字母 alpha。",
+  relatedWord: "omega — 最后一项",
+  examples: [
+    { usage: "order", sentence: "Alpha comes first.", focus: "Alpha" },
+    { usage: "order", sentence: "Alpha is here.", focus: "Alpha" },
+    { usage: "name", sentence: "The team is called Alpha.", focus: "Alpha" },
+  ],
+};
 
-const saveDeckSnapshot = (sourceDeck = testDeck, overrides = {}) => {
-  const cardIds = createCardIds(sourceDeck);
+const beta = {
+  term: "Beta",
+  syllables: "Be·ta",
+  respell: "[BAY-tuh]",
+  pos: "n.",
+  meaning: "the second item in a group",
+  meaningZh: "第二项",
+  examples: [{ sentence: "Beta comes second.", focus: "Beta" }],
+};
+
+const saveAssets = (sourceDeck = [alpha], removedCardIds = []) => {
   window.localStorage.setItem(
-    LEARNING_STORAGE_KEY,
+    DECK_STORAGE_KEY,
     JSON.stringify({
-      version: LEARNING_STORAGE_VERSION,
+      version: DECK_STORAGE_VERSION,
       sourceDeck,
-      removedCardIds: [],
-      learningState: {},
-      completedRounds: { study: 0, spell: 0 },
-      shuffleOnLoop: false,
-      showWordInsights: false,
-      familiarModeEnabled: true,
-      autoPronounceEnabled: true,
-      mode: "study",
-      lastRemoved: null,
-      studyQueueIds: cardIds,
-      spellQueueIds: [],
-      index: 0,
-      spellIndex: 0,
-      ...overrides,
+      removedCardIds,
     }),
   );
-  return cardIds;
 };
 
-const readSnapshot = () =>
-  JSON.parse(window.localStorage.getItem(LEARNING_STORAGE_KEY));
+const press = (key, code = key) => fireEvent.keyDown(document, { key, code });
+const currentWordButton = () => document.querySelector(".word-copy");
 
-const press = (code, key) => {
-  fireEvent.keyDown(document, { code, key });
-};
-
-const currentTerm = (term) =>
-  screen.getByRole("heading", { name: `复制单词 ${term}` });
-
-const alphaMeaning = () => screen.getByText("alpha meaning / 阿尔法");
-
-const finishSingleCardStudyRound = async () => {
-  press("Space", " ");
-  expect(alphaMeaning().closest("p").classList).not.toContain(
-    "is-hidden",
-  );
+const enterSingleCardSpelling = () => {
   press("Enter", "Enter");
-  await screen.findByRole("heading", { name: "随手拼？" });
+  expect(screen.getByText(alpha.meaning)).toBeTruthy();
+  press("Enter", "Enter");
+  return screen.getByRole("textbox", { name: "输入英文拼写" });
 };
 
-describe("App behavior", () => {
-  test("starts in study mode with the first card hidden", () => {
-    saveDeckSnapshot();
+describe("FlashVocab 3.0", () => {
+  test("fresh visits lead with Import and keep the sample deck secondary", () => {
     render(<App />);
-
-    expect(currentTerm("Alpha")).toBeTruthy();
-    expect(screen.getByText("1 / 2")).toBeTruthy();
-    expect(alphaMeaning().closest("p").classList).toContain(
-      "is-hidden",
-    );
+    expect(screen.getByRole("heading", { name: "把这次要考的词放进来。" })).toBeTruthy();
+    expect(screen.getByText("Import 文件")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "先用 24 个示例词体验" })).toBeTruthy();
   });
 
-  test("buttons cannot retain focus or become keyboard Tab targets", () => {
-    saveDeckSnapshot();
+  test("saved decks start a fresh recognition round with layered reading content", () => {
+    saveAssets();
     render(<App />);
 
-    const importButton = screen.getByRole("button", { name: "Import" });
-    importButton.focus();
-    fireEvent.click(importButton);
-
-    fireEvent.click(screen.getByRole("button", { name: "Guidebook" }));
-    expect(document.activeElement).not.toBe(importButton);
-    expect(document.querySelectorAll("button").length).toBeGreaterThan(4);
-    expect(
-      [...document.querySelectorAll("button")].every(
-        (button) => button.tabIndex === -1,
-      ),
-    ).toBe(true);
-  });
-
-  test("revealing an answer plays its American pronunciation and allows replay", () => {
-    saveDeckSnapshot();
-    render(<App />);
-
-    press("Space", " ");
-
-    expect(window.speechSynthesis.cancel).toHaveBeenCalledTimes(1);
-    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
-    const utterance = window.speechSynthesis.speak.mock.calls[0][0];
-    expect(utterance.text).toBe("Alpha");
-    expect(utterance.lang).toBe("en-US");
-    expect(utterance.rate).toBe(0.9);
-    expect(utterance.voice.name).toBe("Test US Voice");
-
-    press("Space", " ");
-    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
-
-    press("Space", " ");
-    fireEvent.click(
-      screen.getByRole("button", { name: "播放 Alpha 的美式发音" }),
-    );
-    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(3);
-    expect(alphaMeaning().closest("p").classList).not.toContain(
-      "is-hidden",
-    );
-  });
-
-  test("automatic pronunciation can be disabled while manual replay remains available", async () => {
-    saveDeckSnapshot();
-    render(<App />);
-
-    const pronunciationSwitch = screen.getByRole("switch", {
-      name: "自动美式发音",
-    });
-    expect(pronunciationSwitch.checked).toBe(true);
-    fireEvent.click(pronunciationSwitch);
-    press("Space", " ");
-
+    expect(screen.getByRole("button", { name: "Al·pha" })).toBeTruthy();
+    expect(screen.queryByText(alpha.meaning)).toBeNull();
     press("Enter", "Enter");
-
-    expect(window.speechSynthesis.speak).not.toHaveBeenCalled();
-    expect(currentTerm("Beta")).toBeTruthy();
-    press("Space", " ");
-    fireEvent.click(
-      screen.getByRole("button", { name: "播放 Beta 的美式发音" }),
-    );
-    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
-
-    await waitFor(() => {
-      expect(readSnapshot().autoPronounceEnabled).toBe(false);
-    });
+    expect(screen.getByText(alpha.meaning)).toBeTruthy();
+    expect(screen.getByText(alpha.meaningZh)).toBeTruthy();
+    expect(screen.getByText((_, element) => element.tagName === "LI" && element.textContent.includes("Alpha comes first."))).toBeTruthy();
+    expect(screen.queryByText("Alpha is here.")).toBeNull();
+    expect(screen.getByText((_, element) => element.tagName === "LI" && element.textContent.includes("The team is called Alpha."))).toBeTruthy();
+    expect(screen.queryByText(alpha.wordOrigin)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "查看词源与对应概念" }));
+    expect(screen.getByText(alpha.wordOrigin)).toBeTruthy();
   });
 
-  test("missing speech synthesis support does not interrupt study", () => {
-    const speechSynthesis = window.speechSynthesis;
-    Object.defineProperty(window, "speechSynthesis", {
-      configurable: true,
-      value: undefined,
-    });
-
-    try {
-      saveDeckSnapshot();
-      render(<App />);
-
-      const pronunciationSwitch = screen.getByRole("switch", {
-        name: "自动美式发音",
-      });
-      expect(pronunciationSwitch.disabled).toBe(true);
-      expect(() => press("Space", " ")).not.toThrow();
-      expect(alphaMeaning().closest("p").classList).not.toContain(
-        "is-hidden",
-      );
-    } finally {
-      Object.defineProperty(window, "speechSynthesis", {
-        configurable: true,
-        value: speechSynthesis,
-      });
-    }
-  });
-
-  test("optional complex features default off and persist independently", async () => {
-    saveDeckSnapshot(testDeck, {
-      showWordInsights: false,
-      familiarModeEnabled: false,
-    });
+  test("Enter runs recognition to spelling, and a first spelling error must be corrected", () => {
+    saveAssets();
     render(<App />);
+    const input = enterSingleCardSpelling();
+    expect(screen.queryByText("Alpha")).toBeNull();
 
-    const insightsSwitch = screen.getByRole("switch", {
-      name: "词源与对应概念",
-    });
-    const familiarSwitch = screen.getByRole("switch", {
-      name: "两轮熟悉返场",
-    });
-    expect(insightsSwitch.checked).toBe(false);
-    expect(familiarSwitch.checked).toBe(false);
-    expect(screen.queryByText(/辨识 0\/2/)).toBeNull();
-    expect(screen.queryByText(/暂时熟悉池/)).toBeNull();
+    fireEvent.change(input, { target: { value: "Alfa" } });
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+    expect(window.speechSynthesis.speak.mock.calls.at(-1)[0].text).toBe("Alpha");
+    expect(screen.getByText(/第一次没拼对/)).toBeTruthy();
+    expect(screen.getByText("Alpha", { selector: "strong" })).toBeTruthy();
 
-    press("Space", " ");
-    expect(
-      screen.queryByRole("button", { name: "想起来了 (Enter)" }),
-    ).toBeNull();
-    expect(
-      screen.queryByRole("button", { name: "没想起来 (N)" }),
-    ).toBeNull();
-    expect(screen.getByRole("button", { name: "Next (Enter)" })).toBeTruthy();
-    press("KeyN", "n");
-    expect(currentTerm("Alpha")).toBeTruthy();
-    expect(
-      screen.queryByText("Alpha comes from the first Greek letter."),
-    ).toBeNull();
-
-    fireEvent.click(insightsSwitch);
-    expect(
-      screen.getByText("Alpha comes from the first Greek letter."),
-    ).toBeTruthy();
-
-    fireEvent.click(familiarSwitch);
-    expect(
-      screen.getByRole("button", { name: "想起来了 (Enter)" }),
-    ).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "没想起来 (N)" }),
-    ).toBeTruthy();
-    expect(screen.getByText(/辨识 0\/2/)).toBeTruthy();
-    expect(screen.getByText(/暂时熟悉池/)).toBeTruthy();
-
-    await waitFor(() => {
-      const snapshot = readSnapshot();
-      expect(snapshot.showWordInsights).toBe(true);
-      expect(snapshot.familiarModeEnabled).toBe(true);
-    });
+    fireEvent.change(input, { target: { value: "Alpha" } });
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+    expect(screen.getByText(/已经改正/)).toBeTruthy();
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+    expect(screen.getByRole("progressbar", { name: /辨识进度/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Al·pha" })).toBeTruthy();
   });
 
-  test("simple mode completes a round without changing familiarity", async () => {
-    const [alphaId] = saveDeckSnapshot([testDeck[0]], {
-      familiarModeEnabled: false,
-    });
+  test("spelling uses a native input and pause preserves the single queue", () => {
+    saveAssets();
     render(<App />);
+    let input = enterSingleCardSpelling();
+    fireEvent.change(input, { target: { value: "Al" } });
+    fireEvent.keyDown(input, { key: "Escape", code: "Escape" });
 
-    await finishSingleCardStudyRound();
-
-    await waitFor(() => {
-      const snapshot = readSnapshot();
-      expect(snapshot.learningState[alphaId].study.streak).toBe(0);
-      expect(snapshot.learningState[alphaId].study.hidden).toBe(false);
-      expect(snapshot.learningState[alphaId].study.lapseCount).toBe(0);
-      expect(snapshot.completedRounds.study).toBe(1);
-    });
-  });
-
-  test("turning off familiar mode immediately restores hidden cards", async () => {
-    const cardIds = createCardIds(testDeck);
-    saveDeckSnapshot(testDeck, {
-      familiarModeEnabled: true,
-      learningState: {
-        [cardIds[1]]: {
-          study: { streak: 2, hidden: true, dueRound: 9 },
-        },
-      },
-      studyQueueIds: [cardIds[0]],
-    });
-    render(<App />);
-
-    expect(screen.getByText("1 / 1")).toBeTruthy();
-    fireEvent.click(
-      screen.getByRole("switch", { name: "两轮熟悉返场" }),
-    );
-    expect(screen.getByText("1 / 2")).toBeTruthy();
-
-    await waitFor(() => {
-      const snapshot = readSnapshot();
-      expect(snapshot.familiarModeEnabled).toBe(false);
-      expect(snapshot.studyQueueIds).toEqual(cardIds);
-    });
-  });
-
-  test("Space reveals, advancing plays the next word, and N records a miss before rest", async () => {
-    const [alphaId, betaId] = saveDeckSnapshot();
-    render(<App />);
-
-    press("Space", " ");
-    expect(alphaMeaning().closest("p").classList).not.toContain(
-      "is-hidden",
-    );
-
+    expect(screen.getByRole("heading", { name: "停一下，答案不会丢。" })).toBeTruthy();
     press("Enter", "Enter");
-    expect(currentTerm("Beta")).toBeTruthy();
-    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(2);
-    expect(window.speechSynthesis.speak.mock.calls[1][0].text).toBe("Beta");
+    input = screen.getByRole("textbox", { name: "输入英文拼写" });
+    expect(input.value).toBe("");
 
-    press("Enter", "Enter");
-    press("KeyN", "n");
-    await screen.findByRole("heading", { name: "随手拼？" });
-    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(4);
-    expect(window.speechSynthesis.speak.mock.calls[3][0].text).toBe("Beta");
+    fireEvent.keyDown(input, { key: "Escape", code: "Escape" });
+    press(" ", "Space");
+    expect(screen.getByRole("progressbar", { name: /辨识进度/ })).toBeTruthy();
+  });
+
+  test("invalid replacement keeps the current deck; valid replacement can be undone", async () => {
+    saveAssets();
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "更多" }));
+    const paste = screen.getByRole("textbox", { name: "粘贴导入" });
+
+    fireEvent.change(paste, { target: { value: "not a deck" } });
+    fireEvent.click(screen.getByRole("button", { name: "使用粘贴内容" }));
+    expect(screen.getByText(/原词表保持不变/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "关闭管理面板" }));
+    expect(screen.getByRole("button", { name: "Al·pha" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "更多" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "粘贴导入" }), {
+      target: { value: JSON.stringify([{ ...beta, extraField: "preserved" }]) },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "使用粘贴内容" }));
+    fireEvent.click(screen.getByRole("button", { name: "关闭管理面板" }));
+    expect(screen.getByRole("button", { name: "Be·ta" })).toBeTruthy();
+    fireEvent.click(screen.getAllByRole("button", { name: "撤销替换词表" })[0]);
+    expect(screen.getByRole("button", { name: "Al·pha" })).toBeTruthy();
 
     await waitFor(() => {
-      const snapshot = readSnapshot();
-      expect(snapshot.learningState[alphaId].study.streak).toBe(1);
-      expect(snapshot.learningState[betaId].study.streak).toBe(0);
-      expect(snapshot.learningState[betaId].study.lapseCount).toBe(1);
-      expect(snapshot.completedRounds.study).toBe(1);
-      expect(snapshot.mode).toBe("rest");
+      const stored = JSON.parse(window.localStorage.getItem(DECK_STORAGE_KEY));
+      expect(stored.sourceDeck[0].term).toBe("Alpha");
     });
   });
 
-  test("rest mode enters spelling practice with Space", async () => {
-    saveDeckSnapshot([testDeck[0]]);
+  test("removing the final word shows a recoverable empty state and manual find-back", () => {
+    saveAssets();
     render(<App />);
-    await finishSingleCardStudyRound();
+    press("Delete", "Delete");
+    expect(screen.getByRole("heading", { name: "所有词都已移出。" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "撤销上次移出" }));
+    expect(screen.getByRole("button", { name: "Al·pha" })).toBeTruthy();
 
-    press("Space", " ");
-
-    expect(alphaMeaning()).toBeTruthy();
-    expect(screen.getByText(/键入单词/)).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "复制单词 Alpha" })).toBeNull();
+    press("Delete", "Delete");
+    fireEvent.click(screen.getByRole("button", { name: "打开管理" }));
+    fireEvent.click(screen.getByRole("button", { name: "找回" }));
+    fireEvent.click(screen.getByRole("button", { name: "关闭管理面板" }));
+    expect(screen.getByRole("button", { name: "Al·pha" })).toBeTruthy();
   });
 
-  test("a corrected spelling does not overwrite the first wrong score", async () => {
-    const [alphaId] = saveDeckSnapshot([testDeck[0]]);
+  test("a reload keeps deck assets and removals but resets the learning session", () => {
+    const ids = createCardIds([alpha, beta]);
+    saveAssets([alpha, beta], [ids[1]]);
+    const first = render(<App />);
+    press("Enter", "Enter");
+    press("Enter", "Enter");
+    expect(screen.getByRole("textbox", { name: "输入英文拼写" })).toBeTruthy();
+    first.unmount();
+
     render(<App />);
-    await finishSingleCardStudyRound();
-    press("Space", " ");
+    expect(screen.getByRole("progressbar", { name: /辨识进度/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Al·pha" })).toBeTruthy();
+    expect(screen.queryByRole("textbox", { name: "输入英文拼写" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "更多" }));
+    expect(screen.getByText("Beta")).toBeTruthy();
+  });
+
+  test("reset keeps the deck and removed words, then Undo restores the learning scene", () => {
+    const ids = createCardIds([alpha, beta]);
+    saveAssets([alpha, beta], [ids[1]]);
+    render(<App />);
+    enterSingleCardSpelling();
+
+    fireEvent.click(screen.getByRole("button", { name: "更多" }));
+    fireEvent.click(screen.getByRole("button", { name: "重置学习进度" }));
+    fireEvent.click(screen.getByRole("button", { name: "确认重置" }));
+    fireEvent.click(screen.getByRole("button", { name: "关闭管理面板" }));
+    expect(screen.getByRole("button", { name: "Al·pha" })).toBeTruthy();
+    fireEvent.click(screen.getAllByRole("button", { name: "撤销重置进度" })[0]);
+    expect(screen.getByRole("textbox", { name: "输入英文拼写" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "更多" }));
+    expect(screen.getByText("Beta")).toBeTruthy();
+  });
+
+  test("plain and Shift clicks copy the right content without revealing", async () => {
+    saveAssets();
+    render(<App />);
+    const word = screen.getByRole("button", { name: "Al·pha" });
+    fireEvent.click(word);
+    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith("Alpha"));
+    expect(document.activeElement).not.toBe(word);
+    expect(screen.queryByText(alpha.meaning)).toBeNull();
+
+    fireEvent.click(word, { shiftKey: true });
+    await waitFor(() => {
+      const copied = navigator.clipboard.writeText.mock.calls.at(-1)[0];
+      expect(copied).toContain("当前单词：Alpha");
+      expect(copied.length).toBeGreaterThan(200);
+    });
+    expect(screen.queryByText(alpha.meaning)).toBeNull();
+  });
+
+  test("clipboard failure exposes the full text for manual copying", async () => {
+    navigator.clipboard.writeText.mockRejectedValueOnce(new Error("denied"));
+    saveAssets();
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Al·pha" }), { shiftKey: true });
+    expect(await screen.findByRole("textbox", { name: "" })).toBeTruthy();
+    expect(screen.getByText("手动复制")).toBeTruthy();
+    expect(document.querySelector(".manual-copy textarea").value).toContain("当前单词：Alpha");
+  });
+
+  test("pronunciation follows reveal, recognition failure order, and spelling submission", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.999999);
+    saveAssets([alpha, beta]);
+    render(<App />);
+    const firstTerm = currentWordButton().textContent;
+    const firstSpokenCount = window.speechSynthesis.speak.mock.calls.length;
+    press("Enter", "Enter");
+    expect(window.speechSynthesis.speak.mock.calls.length).toBe(firstSpokenCount + 1);
+    press("n", "KeyN");
+    const speech = window.speechSynthesis.speak.mock.calls.map(([utterance]) => utterance.text);
+    expect(speech.at(-2)).toBe(firstTerm.replaceAll("·", ""));
+    expect(speech.at(-1)).not.toBe(speech.at(-2));
+    vi.restoreAllMocks();
+  });
+
+  test("automatic pronunciation can be turned off while manual replay remains", () => {
+    saveAssets();
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "更多" }));
+    const toggle = screen.getByRole("switch", { name: /自动美式发音/ });
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole("button", { name: "关闭管理面板" }));
     window.speechSynthesis.speak.mockClear();
-    window.speechSynthesis.cancel.mockClear();
-
-    press("KeyX", "x");
     press("Enter", "Enter");
-    expect(screen.getByText("Al·pha")).toBeTruthy();
+    expect(window.speechSynthesis.speak).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "播放 Alpha 的美式发音" }));
     expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
-    expect(window.speechSynthesis.speak.mock.calls[0][0].text).toBe("Alpha");
+  });
 
-    for (const letter of "Alpha") {
-      press(`Key${letter.toUpperCase()}`, letter);
-    }
+  test("quiet chrome hides after inactivity and learning keys, then returns on pointer or Tab", () => {
+    vi.useFakeTimers();
+    saveAssets();
+    const { container } = render(<App />);
+    const shell = container.querySelector(".app-shell");
+    act(() => vi.advanceTimersByTime(2500));
+    expect(shell.classList.contains("is-quiet")).toBe(true);
+    fireEvent.pointerMove(window);
+    expect(shell.classList.contains("is-quiet")).toBe(false);
     press("Enter", "Enter");
-    expect(screen.getByText("enter 下一个")).toBeTruthy();
-    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(2);
-    expect(window.speechSynthesis.speak.mock.calls[1][0].text).toBe("Alpha");
-    expect(
-      screen.getByRole("button", { name: "播放 Alpha 的美式发音" }),
-    ).toBeTruthy();
-
-    await waitFor(() => {
-      const spellProgress = readSnapshot().learningState[alphaId].spell;
-      expect(spellProgress.lastScoredRound).toBe(1);
-      expect(spellProgress.streak).toBe(0);
-      expect(spellProgress.lapseCount).toBe(1);
-    });
+    expect(shell.classList.contains("is-quiet")).toBe(true);
+    press("Tab", "Tab");
+    expect(shell.classList.contains("is-quiet")).toBe(false);
+    vi.useRealTimers();
   });
 
-  test("one correct spelling links to an already familiar recognition card", async () => {
-    const [alphaId] = createCardIds([testDeck[0]]);
-    saveDeckSnapshot([testDeck[0]], {
-      mode: "rest",
-      completedRounds: { study: 2, spell: 0 },
-      learningState: {
-        [alphaId]: {
-          study: {
-            streak: 2,
-            hidden: true,
-            dueRound: 4,
-            skipRounds: 1,
-          },
-        },
-      },
-      studyQueueIds: [alphaId],
-    });
+  test("Undo toast lasts five seconds while the quiet header action remains available", () => {
+    vi.useFakeTimers();
+    saveAssets([alpha, beta]);
     render(<App />);
-
-    press("Space", " ");
-    for (const letter of "Alpha") {
-      press(`Key${letter.toUpperCase()}`, letter);
-    }
+    press("Delete", "Delete");
+    expect(document.querySelector(".undo-toast")).toBeTruthy();
     press("Enter", "Enter");
-
-    await waitFor(() => {
-      const progress = readSnapshot().learningState[alphaId];
-      expect(progress.study.hidden).toBe(true);
-      expect(progress.spell.streak).toBe(1);
-      expect(progress.spell.hidden).toBe(true);
-      expect(progress.spell.syncedWithStudy).toBe(true);
-      expect(progress.spell.dueRound).toBe(4);
-    });
+    expect(document.querySelector(".undo-toast")).toBeTruthy();
+    act(() => vi.advanceTimersByTime(5000));
+    expect(document.querySelector(".undo-toast")).toBeNull();
+    expect(screen.getByRole("button", { name: "撤销移出单词" })).toBeTruthy();
   });
 
-  test("Remove hides the card and Undo Remove restores it", async () => {
-    const [alphaId] = saveDeckSnapshot();
+  test("modified and repeated study shortcuts do not change learning state", () => {
+    saveAssets();
     render(<App />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Remove (Delete)" }));
-    expect(currentTerm("Beta")).toBeTruthy();
-    await waitFor(() => {
-      expect(readSnapshot().removedCardIds).toContain(alphaId);
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "Undo Remove" }));
-    expect(currentTerm("Alpha")).toBeTruthy();
-    await waitFor(() => {
-      expect(readSnapshot().removedCardIds).not.toContain(alphaId);
-    });
+    fireEvent.keyDown(document, { key: "Enter", code: "Enter", metaKey: true });
+    fireEvent.keyDown(document, { key: "Enter", code: "Enter", repeat: true });
+    expect(screen.queryByText(alpha.meaning)).toBeNull();
   });
 
-  test("imports a Markdown deck pasted into the Guidebook", async () => {
-    saveDeckSnapshot();
+  test("management panel closes with Esc and returns focus to its trigger", async () => {
+    saveAssets();
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Guidebook" }));
-
-    const markdown = `[Lantern]\n\n- Meaning (EN): a portable light\n- Meaning (ZH): 灯笼\n- Sentence 1: We carried a lantern at night.\n- Focus 1: a lantern`;
-    fireEvent.change(screen.getByPlaceholderText("把 AI 生成的内容粘贴到这里…"), {
-      target: { value: markdown },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "识别并导入" }));
-    fireEvent.click(screen.getByRole("button", { name: "关闭" }));
-
-    expect(currentTerm("Lantern")).toBeTruthy();
-    expect(screen.getByText("已导入 1 个单词。")).toBeTruthy();
-    await waitFor(() => {
-      expect(readSnapshot().sourceDeck[0].term).toBe("Lantern");
-    });
-  });
-
-  test("starts safely when localStorage contains corrupt JSON", () => {
-    window.localStorage.setItem(LEARNING_STORAGE_KEY, "{not-valid-json");
-
-    expect(() => render(<App />)).not.toThrow();
-    expect(currentTerm("Vacant")).toBeTruthy();
+    const trigger = screen.getByRole("button", { name: "更多" });
+    trigger.focus();
+    fireEvent.click(trigger);
+    expect(screen.getByRole("dialog", { name: "管理这份词表" })).toBeTruthy();
+    press("Escape", "Escape");
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
 });

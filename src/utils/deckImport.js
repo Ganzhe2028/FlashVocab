@@ -180,8 +180,7 @@ const parseVocabMarkdown = (text) => {
         .map(Number)
         .sort((a, b) => a - b)
         .map((index) => current.exampleParts[index])
-        .filter((example) => example.sentence)
-        .slice(0, 3);
+        .filter((example) => example.sentence);
       delete current.exampleParts;
       entries.push(current);
     }
@@ -372,7 +371,7 @@ const normalizeEntry = (entry) => {
   const rawExamples =
     entry?.examples ?? entry?.sentences ?? entry?.usageExamples ?? [];
   const examples = Array.isArray(rawExamples)
-    ? rawExamples.map(normalizeExample).filter(Boolean).slice(0, 3)
+    ? rawExamples.map(normalizeExample).filter(Boolean)
     : [];
 
   if (!examples.length) {
@@ -447,7 +446,7 @@ export const buildMarkdownExport = (items) =>
         entry.wordOrigin ? `- Word Origin: ${entry.wordOrigin}` : "",
         entry.relatedWord ? `- Related Word: ${entry.relatedWord}` : "",
       ];
-      (entry.examples ?? []).slice(0, 3).forEach((example, index) => {
+      (entry.examples ?? []).forEach((example, index) => {
         lines.push(`- Sentence ${index + 1}: ${example.sentence || ""}`);
         lines.push(`- Focus ${index + 1}: ${example.focus || ""}`);
       });

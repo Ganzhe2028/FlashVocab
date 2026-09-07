@@ -146,7 +146,7 @@ test("normalization supports legacy sentence aliases and safely ignores invalid 
   assert.deepEqual(normalizeDeck(null), []);
 });
 
-test("normalization accepts string examples and caps examples at three", () => {
+test("normalization accepts string examples and preserves every imported example", () => {
   const deck = normalizeDeck([
     {
       term: "Many",
@@ -158,6 +158,7 @@ test("normalization accepts string examples and caps examples at three", () => {
     { sentence: "One.", focus: "" },
     { sentence: "Two.", focus: "" },
     { sentence: "Three.", focus: "" },
+    { sentence: "Four.", focus: "" },
   ]);
 });
 
@@ -203,6 +204,8 @@ test("Markdown export emits all modern examples and can be parsed again", () => 
       examples: [
         { sentence: "A vacant seat.", focus: "vacant seat" },
         { sentence: "The room is vacant.", focus: "is vacant" },
+        { sentence: "This desk remains vacant.", focus: "remains vacant" },
+        { sentence: "One vacant place was left.", focus: "vacant place" },
       ],
     },
   ]);
@@ -211,6 +214,8 @@ test("Markdown export emits all modern examples and can be parsed again", () => 
   assert.deepEqual(deck[0].examples, [
     { sentence: "A vacant seat.", focus: "vacant seat" },
     { sentence: "The room is vacant.", focus: "is vacant" },
+    { sentence: "This desk remains vacant.", focus: "remains vacant" },
+    { sentence: "One vacant place was left.", focus: "vacant place" },
   ]);
   assert.equal(deck[0].syllables, "Va·cant");
   assert.equal(deck[0].respell, "[VAY-kunt]");

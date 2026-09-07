@@ -1,79 +1,65 @@
-# Vocabulary Loop
+# 闪词 3.0
 
-Vite + React 单词卡应用：刷词、休息屏、随手拼三种模式循环，词库可导入替换。
+面向临近课堂 quiz 的键盘优先个人词表练习页。导入一份十几到几十个词的临时词表后，应用会沿着一条固定循环推进：**辨识 → 拼写 → 辨识**。
 
-## Figma 设计基线
-
-当前界面的可编辑桌面基线位于 [FlashVocab 2 Figma 文件](https://www.figma.com/design/JMqqOQf8ea2AlytCwNKt53/FlashVocab-2?node-id=1-2)。`FlashVocab 2 — Current UI Baseline` Section 覆盖刷词的隐藏、默认展开与熟悉模式状态，休息屏，拼写中的输入、正确与错误反馈，熟悉词池、Guidebook 导入弹窗和空词库完成态。它包含 13 个画板与可播放原型：刷词、休息、拼写和设置变化支持对应的鼠标与键盘跳转；Guidebook 和 GitHub 也可直接打开。Figma 不支持浏览器文件选择器或自由文本输入判断，因此 Import / Export、复制提示词与拼写的对错输入仅保留对应结果状态，不模拟浏览器原生操作。后续 UI/UX 设计应从这些画板开始，不把它们当作新视觉方案。
-
-3.0 的产品与设计准备结论记录在 [`docs/flashvocab-3-design-brief.md`](docs/flashvocab-3-design-brief.md)。该文档定义目标用户、核心场景、产品边界、推荐主循环、功能分层、关键状态、UI/UX 原则和待验证假设；当前阶段不涉及代码实现。
-
-完整阶段与分支记录在 [`docs/flashvocab-3-user-flow.md`](docs/flashvocab-3-user-flow.md)。它覆盖首次准备、导入与恢复、逐词辨识、轮末自动分流、合格词拼写、返场、完成、移除、重置和异常恢复，并把每个尚未确认的产品选择写成可比较的流程路径。对应的 [可编辑 FigJam](https://www.figma.com/board/opENWBAXDlHYoPrVyzZQMM) 包含一张总图和五张分流程图。
+3.0 的执行范围、行为合同和验收证据见 [从零重写执行计划](docs/flashvocab-3-rewrite-plan.md)。旧版 Figma 与两份设计底稿保留为历史来源，不是当前页面模板。
 
 ## 快速开始
 
 ```bash
-./run.sh          # 缺 node_modules 会自动 npm install，然后起 dev server
-npm run dev       # 手动启动
-npm run check     # lint + 全部测试 + 生产构建
-npm run build     # 构建到 dist/
-npm run preview   # 预览构建产物
+npm install
+npm run dev
+npm run check
+npm run build
+npm run preview
 ```
 
-## 三种模式
+`./run.sh` 也会在缺少依赖时安装并启动开发服务器。
 
-**刷词 study**：先看单词，Enter 或 Space 翻开释义和例句，同时按设置播放美式发音。简约模式翻开后按 Enter 直接进入下一张，并按设置朗读新出现的单词；开启「两轮熟悉返场」后才显示「想起来了 / 没想起来」按钮，并启用 Enter 记正确、N 记错误；选择「没想起来」时会重播当前词，再朗读下一张。Tab 或 ← 上一张，Delete 移除当前词，移除后可 Undo。点击单词标题会复制原始拼写且不会翻面；答案旁的扬声器按钮可手动重播。页面按钮不接受键盘焦点，点击后会立即释放焦点，因此 Import 后按 Enter 会继续翻词，不会再次触发导入。最后一张完成后进入休息屏；若手动删完所有单词，会显示完成祝贺，并保留 Undo 与 Reset。
+## 当前学习循环
 
-**休息屏 rest**：Enter 回第 1 张继续刷词，Space 进随手拼。
+首次没有本地词表时，页面以文件 Import 和粘贴导入为主入口，内置 24 词只是次级试用入口。有保留的词表时，新访问会从第一轮辨识开始。
 
-**随手拼 spell**：只显示词性和词义，键入拼写，Enter 提交；第一次提交决定本轮成绩，拼错后重新输入正确也不会覆盖本轮错误。拼对或拼错都会按设置播放一次美式发音；拼对显示带音节的写法和手动重播按钮，拼错显示正确答案。Esc 退出，拼完全部词自动回刷词。
+辨识未翻面时，`Enter` 或 `Space` 显示答案；翻面后 `Enter` 记为认出，`N` 记为忘记，`Space` 重新遮住。`←` 回看上一词，`Delete` 或 `Backspace` 将当前词从词表移出。翻面本身不计分，回看与重复提交不会重复计分。
 
-## 美式发音
+辨识轮结束后直接进入拼写。拼写使用真实输入框，`Enter` 提交；首次结果决定本轮成绩。拼错后必须重新正确输入一次，改正不会覆盖首次错误；结果完成后再按 `Enter` 前进。`Esc` 进入暂停页，随后 `Enter` 继续原队列，`Space` 先开始一轮辨识；暂停队列始终只有一份。
 
-应用使用浏览器 Web Speech API，不需要额外服务或 API Key。`自动美式发音` 默认开启并保存在本地：辨识翻开答案、辨识进入下一张、辨识选择「没想起来」，以及拼写正确或错误时都会朗读原始单词；关闭后不会自动播放，扬声器按钮仍可手动重播。辨识答错时，当前词重播后会保留下一词的播放队列。应用优先选择设备上的本地 `en-US` voice，并在每次立即播放前清除旧队列；具体声音由浏览器和操作系统提供，不支持语音合成时答题功能不受影响。
+每个词在辨识和拼写中独立累计连续正确。某个模式连续两轮正确后，该词跳过该模式下一整轮，并在再下一轮返场；返场正确后再次休息一整轮，失败则只释放当前模式。每轮返回全部到期词，不做比例上限或跨模式绑定。所有词都在休息时，应用用有界计算跨过空轮，不显示空白故障页。
 
-## 可选复杂模式
+## 内容与工具
 
-应用默认保持简约模式。底部的三个功能开关会独立保存，其中发音默认开启，另外两个复杂功能默认关闭：
+- 英英释义优先，中文独立下一行；缺失释义明确显示“未提供释义”。
+- 阅读时按已有 `usage` 标签每种显示一句；JSON 与 Markdown 导出仍保留全部例句。
+- 词源与对应概念默认折叠；自动美式发音默认开启，可在右侧管理面板关闭，手动发音始终保留。
+- 单击单词复制原始 `term`；Shift＋单击复制完整的 `src/prompts/deep-understanding.md` 加当前词。复制失败时显示可手动复制的全文。
+- Import 支持 JSON、Markdown、txt、CSV 与 DOCX；旧 `.doc` 会提示另存为 `.docx`。JSON 与 Markdown 可导出。
+- 替换、移出、找回、重置均使用一个最近操作 Undo 槽。重置只清学习现场并恢复默认偏好，保留词表和已移出集合。
 
-- `自动美式发音`：控制辨识揭示、辨识进入下一张、辨识错误及拼写提交后的自动播放，不影响手动重播。
-- `词源与对应概念`：打开后，翻开词卡会额外显示 `wordOrigin` 和 `relatedWord`；关闭只隐藏展示，不删除字段。
-- `两轮熟悉返场`：打开后显示「想起来了 / 没想起来」自评按钮，并让辨识和拼写累计连续正确次数。任一 mode 连续正确 2 轮后，该词从下一轮开始隐藏；若辨识已经隐藏，拼写首次正确就会与辨识同步隐藏，之后只在辨识实际返场的学习循环中一起进入拼写返场。每次完整间隔 1-2 轮后分批返场。关闭时隐藏自评按钮和 `N` 快捷键，所有词参与普通循环，Enter 仅进入下一张，不改变 streak、隐藏或返场状态；已有熟悉进度保留，重新打开后继续。
+## 本地保存
 
-复杂模式开启时，返场词最多约占新一轮最终队列的 25%；同步词优先进入拼写返场，未排进当轮的词会继续等待。辨识返场正确会为绑定的两边一起安排下次间隔，辨识返场错误会解除两边的同步隐藏；拼写返场错误只解除拼写侧。池中词仍保留在导出结果里，与 Remove/Delete 不同。两个开关、学习进度、当前队列、导入词库、删除及最后一次 Undo 状态都会保存在浏览器本地。
+3.0 只长期保存完整 source deck 与手动移出 ID，使用独立 key `flashvocab-3-assets-v1`。刷新会开始新的学习现场；同一页面切换标签或窗口不会重置。首次没有新 key 时，会从旧 `vocab2-learning-v1` 仅读入词表与移出 ID，不迁移学习记录，也不删除旧 key。
 
-## 循环洗牌
+导入 JSON 的未知字段、源顺序和全部例句会保留。导出排除手动移出词，但包含正在自动休息的词。
 
-每轮从头开始（休息屏返回、拼写完成）会按当前模式生成队列：简约模式包含所有未删除单词，复杂模式会应用熟悉池隐藏与返场，再按开关决定是否洗牌。新首卡不会是刚看完的那张。底部 Shuffle Loop 按钮可一键关闭；Reset Deck 恢复内置词库并清空本地学习记录，但保留功能开关偏好。
+## 安静的阅读桌面
 
-## 词库
-
-内置词库的唯一来源是 `src/data/baseDeck.js`，`vocab.md` 是配套词表，两边保持同步。顶部 Import 支持 JSON、Markdown、纯文本、CSV 和 DOCX；Guidebook 里也可直接粘贴 AI 生成的 JSON 或 Markdown。导入会统一归一化字段，CSV 支持引号包裹的逗号与换行；旧版 `.doc` 不支持，请另存为 `.docx`。字段约定见 `AGENTS.md`。
-
-顶部 `Export JSON` 会导出本轮尚未删除的单词，保持原始导入顺序；导入 JSON 中的自定义字段也会保留。标准词卡支持 `wordOrigin`（词根、词缀和词源说明）及 `relatedWord`（最直接的相反词或对应概念）；打开「词源与对应概念」后会在翻面时显示。内置 24 词已全部填好这两个字段。
-
-## 验证
-
-```bash
-npm run lint      # 静态检查
-npm test          # 以当前输出为准，包含逻辑与 UI 行为测试
-npm run build     # 生产构建
-npm run check     # 一次执行以上全部检查
-```
+页面使用暖白背景和窄阅读列。外围品牌、Import、更多、Undo 与 GitHub 在 2.5 秒无指针活动或学习按键后淡出；鼠标、Tab 或打开管理面板会恢复。核心内容和单一进度条不移动。管理内容集中在一个右侧覆盖面板，小屏与 200% 放大可纵向滚动阅读。
 
 ## 代码结构
 
-- `src/App.jsx`：状态协调和三种模式切换
-- `src/components/`：卡片、控制栏、Guidebook 与熟悉池界面
-- `src/hooks/useAppKeyboard.js`：全局键盘行为
-- `src/hooks/usePronunciation.js`：浏览器发音、voice 选择与安全降级
-- `src/learningAlgorithm.js`：纯学习调度算法
-- `src/storage/learningStorage.js`：带版本与校验的浏览器持久化
+- `src/App.jsx`：副作用边界、页面状态组合与管理操作
+- `src/learningAlgorithm.js`：reducer、稳定 ID、评分、洗牌、轮次与 Undo 的纯逻辑
+- `src/components/StudyView.jsx`：辨识阅读区
+- `src/components/SpellView.jsx`：真实拼写输入与反馈
+- `src/components/StatusView.jsx`：准备、暂停和空词表状态
+- `src/components/ManagePanel.jsx`：词表、帮助、设置、找回与重置
+- `src/hooks/useAppKeyboard.js`：全局学习快捷键
+- `src/hooks/useQuietChrome.js`：外围静默规则
+- `src/hooks/usePronunciation.js`：Web Speech API 和美式 voice 选择
+- `src/storage/learningStorage.js`：3.0 资产保存与旧 key 兼容读取
 - `src/utils/deckImport.js`：所有导入、归一化与 Markdown 导出
-- `src/data/baseDeck.js`：内置词库
+- `src/data/baseDeck.js`：内置 24 词唯一来源
 
-学习队列只保存稳定 card ID，不保存词卡对象引用；刷新恢复、删除、Undo、导入和导出都以同一 ID 模型处理。损坏或过期的本地数据会被安全忽略，不会阻止应用启动。
+## 验证
 
-## 提示词
-
-Guidebook 的批量词卡提示词会生成可导入 JSON，包括词根词源和对应概念。顶部「词根·感觉·画面」及 Guidebook 内的同名入口可复制单词深度理解提示词；原文保存在 `src/prompts/deep-understanding.md`。
+`npm run check` 会执行 ESLint、Node 纯逻辑/解析/存储测试、Vitest/jsdom UI 行为测试和生产构建。2026-09-07 的真实 Chrome 验收还完整走过 24 词辨识与拼写，覆盖 1366×768、1440×900、窄窗、200% 放大、减少动态效果、静默和焦点；截图在 [`docs/validation-2026-09-07/`](docs/validation-2026-09-07/)。

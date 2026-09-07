@@ -1,387 +1,244 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildExportDeck,
   buildRoundCardIds,
   createCardIds,
+  createInitialState,
   findNextUnscoredCardIndex,
   getModeProgress,
+  learningReducer,
   recordReview,
-  restoreQueue,
+  selectExamples,
 } from "./learningAlgorithm.js";
 
-const alwaysLow = () => 0;
-const alwaysHigh = () => 0.99;
+const almostOne = () => 0.999999;
+const deck = [
+  { term: "Alpha", pos: "n.", meaning: "first", meaningZh: "第一" },
+  { term: "Beta", pos: "n.", meaning: "second", meaningZh: "第二" },
+];
 
-test("duplicate terms receive independent stable IDs", () => {
-  const entries = [
-    { term: "Same", pos: "adj.", meaning: "equal" },
-    { term: "Same", pos: "adj.", meaning: "equal" },
-  ];
+test("stable IDs distinguish identical duplicate entries", () => {
+  const entries = [deck[0], { ...deck[0] }, deck[1]];
   const first = createCardIds(entries);
   const second = createCardIds(entries.map((entry) => ({ ...entry })));
-
   assert.deepEqual(first, second);
   assert.notEqual(first[0], first[1]);
 });
 
-test("two correct reviews hide only the scored mode after the current round", () => {
-  let state = {};
-  for (let round = 1; round <= 2; round += 1) {
-    state = recordReview({
-      learningState: state,
-      cardId: "a",
-      mode: "study",
-      round,
-      correct: true,
-      random: alwaysLow,
-    });
-  }
-
-  assert.equal(getModeProgress(state, "a", "study").streak, 2);
-  assert.equal(getModeProgress(state, "a", "study").hidden, true);
-  assert.equal(getModeProgress(state, "a", "study").dueRound, 4);
-  assert.equal(getModeProgress(state, "a", "spell").hidden, false);
-});
-
-test("a two-round gap returns on current round plus three", () => {
-  let state = {};
-  for (let round = 1; round <= 2; round += 1) {
-    state = recordReview({
-      learningState: state,
-      cardId: "a",
-      mode: "spell",
-      round,
-      correct: true,
-      random: alwaysHigh,
-    });
-  }
-
-  assert.equal(getModeProgress(state, "a", "spell").dueRound, 5);
-});
-
-test("one spelling success links both modes when recognition is hidden", () => {
-  const state = recordReview({
-    learningState: {
-      a: {
-        study: {
-          streak: 2,
-          hidden: true,
-          dueRound: 5,
-          skipRounds: 2,
-        },
-      },
-    },
-    cardId: "a",
-    mode: "spell",
-    round: 1,
-    correct: true,
-    random: alwaysLow,
-  });
-
-  const spell = getModeProgress(state, "a", "spell");
-  assert.equal(spell.streak, 1);
-  assert.equal(spell.hidden, true);
-  assert.equal(spell.syncedWithStudy, true);
-  assert.equal(spell.dueRound, 5);
-  assert.equal(spell.skipRounds, 2);
-});
-
-test("recognition promotion also links an existing spelling success", () => {
-  const state = recordReview({
-    learningState: {
-      a: {
-        study: { streak: 1, lastScoredRound: 1 },
-        spell: { streak: 1, lastScoredRound: 1 },
-      },
-    },
-    cardId: "a",
-    mode: "study",
-    round: 2,
-    correct: true,
-    random: alwaysLow,
-  });
-
-  assert.equal(getModeProgress(state, "a", "study").hidden, true);
-  assert.equal(getModeProgress(state, "a", "spell").hidden, true);
-  assert.equal(getModeProgress(state, "a", "spell").syncedWithStudy, true);
-});
-
-test("linked spelling returns only after recognition actually returned", () => {
-  const baseState = {
-    a: {
-      study: { hidden: true, dueRound: 3, lastReturnedRound: null },
-      spell: {
-        hidden: true,
-        dueRound: 3,
-        syncedWithStudy: true,
-        lastSyncedStudyRound: null,
-      },
-    },
-  };
-  const beforeStudyReturn = buildRoundCardIds({
-    cardIds: ["active", "a"],
-    learningState: baseState,
-    mode: "spell",
-    round: 20,
-    studyRound: 3,
-    shuffleOnLoop: false,
-    random: alwaysLow,
-  });
-  assert.deepEqual(beforeStudyReturn, ["active"]);
-
-  const afterStudyReturn = buildRoundCardIds({
-    cardIds: ["active", "a"],
-    learningState: {
-      ...baseState,
-      a: {
-        ...baseState.a,
-        study: {
-          ...baseState.a.study,
-          dueRound: 5,
-          lastReturnedRound: 3,
-        },
-      },
-    },
-    mode: "spell",
-    round: 20,
-    studyRound: 3,
-    shuffleOnLoop: false,
-    random: alwaysLow,
-  });
-  assert.deepEqual(afterStudyReturn, ["active", "a"]);
-});
-
-test("a recognition lapse releases a linked spelling card", () => {
-  const state = recordReview({
-    learningState: {
-      a: {
-        study: { streak: 2, hidden: true, dueRound: 3 },
-        spell: { streak: 1, hidden: true, syncedWithStudy: true },
-      },
-    },
-    cardId: "a",
-    mode: "study",
-    round: 3,
-    correct: false,
-  });
-
-  assert.equal(getModeProgress(state, "a", "study").hidden, false);
-  assert.equal(getModeProgress(state, "a", "spell").hidden, false);
-  assert.equal(getModeProgress(state, "a", "spell").syncedWithStudy, false);
-});
-
-test("the same card can only score once per mode and round", () => {
+test("two correct results in distinct rounds rest exactly one full round", () => {
+  const cardId = "alpha";
   const once = recordReview({
-    learningState: {},
-    cardId: "a",
-    mode: "study",
-    round: 1,
-    correct: true,
-    random: alwaysLow,
+    learningState: {}, cardId, mode: "study", round: 1, correct: true,
   });
-  const twice = recordReview({
-    learningState: once,
-    cardId: "a",
-    mode: "study",
-    round: 1,
-    correct: true,
-    random: alwaysLow,
+  const duplicate = recordReview({
+    learningState: once, cardId, mode: "study", round: 1, correct: true,
   });
+  assert.equal(getModeProgress(duplicate, cardId, "study").streak, 1);
 
-  assert.deepEqual(twice, once);
-  assert.equal(getModeProgress(twice, "a", "study").streak, 1);
+  const promoted = recordReview({
+    learningState: duplicate, cardId, mode: "study", round: 2, correct: true,
+  });
+  assert.deepEqual(getModeProgress(promoted, cardId, "study"), {
+    streak: 2,
+    hidden: true,
+    dueRound: 4,
+    lastScoredRound: 2,
+  });
+  assert.deepEqual(buildRoundCardIds({
+    cardIds: [cardId], learningState: promoted, mode: "study", round: 3, random: almostOne,
+  }), []);
+  assert.deepEqual(buildRoundCardIds({
+    cardIds: [cardId], learningState: promoted, mode: "study", round: 4, random: almostOne,
+  }), [cardId]);
 });
 
-test("simple mode completes rounds without changing familiarity progress", () => {
-  const previous = {
-    a: {
-      study: {
-        streak: 3,
-        hidden: true,
-        dueRound: 8,
-        lapseCount: 1,
-      },
-    },
-  };
-  const next = recordReview({
-    learningState: previous,
-    cardId: "a",
-    mode: "study",
-    round: 4,
-    correct: false,
-    familiarModeEnabled: false,
-  });
-
-  assert.equal(next.a.study.streak, 3);
-  assert.equal(next.a.study.hidden, true);
-  assert.equal(next.a.study.dueRound, 8);
-  assert.equal(next.a.study.lapseCount, 1);
-  assert.equal(next.a.study.lastScoredRound, 4);
-});
-
-test("round completion waits for cards skipped by previous navigation", () => {
-  const queueIds = ["a", "b", "c", "d"];
+test("a successful return rests again and a failure releases only that mode", () => {
+  const cardId = "alpha";
   const learningState = {
-    d: { study: { lastScoredRound: 1 } },
+    [cardId]: {
+      study: { streak: 2, hidden: true, dueRound: 4, lastScoredRound: 2 },
+      spell: { streak: 2, hidden: true, dueRound: 4, lastScoredRound: 2 },
+    },
   };
+  const returned = recordReview({
+    learningState, cardId, mode: "study", round: 4, correct: true,
+  });
+  assert.equal(getModeProgress(returned, cardId, "study").dueRound, 6);
 
-  assert.equal(
-    findNextUnscoredCardIndex({
-      queueIds,
-      currentIndex: 3,
+  const lapsed = recordReview({
+    learningState: returned, cardId, mode: "study", round: 6, correct: false,
+  });
+  assert.equal(getModeProgress(lapsed, cardId, "study").hidden, false);
+  assert.equal(getModeProgress(lapsed, cardId, "study").streak, 0);
+  assert.equal(getModeProgress(lapsed, cardId, "spell").hidden, true);
+  assert.equal(getModeProgress(lapsed, cardId, "spell").dueRound, 4);
+});
+
+test("every due card returns without a proportional cap", () => {
+  const dueIds = ["a", "b", "c", "d", "e"];
+  const learningState = Object.fromEntries(
+    dueIds.map((cardId) => [cardId, { spell: { hidden: true, dueRound: 3 } }]),
+  );
+  assert.deepEqual(
+    buildRoundCardIds({
+      cardIds: dueIds,
       learningState,
-      mode: "study",
-      round: 1,
+      mode: "spell",
+      round: 3,
+      random: almostOne,
     }),
-    0,
-  );
-  assert.equal(
-    findNextUnscoredCardIndex({
-      queueIds,
-      currentIndex: 2,
-      learningState: {
-        a: { study: { lastScoredRound: 1 } },
-        b: { study: { lastScoredRound: 1 } },
-        d: { study: { lastScoredRound: 1 } },
-      },
-      mode: "study",
-      round: 1,
-    }),
-    -1,
+    dueIds,
   );
 });
 
-test("a lapse resets only the failed mode", () => {
-  let state = {
-    a: {
-      study: { streak: 3 },
-      spell: { streak: 4, hidden: true, dueRound: 8 },
-    },
-  };
-  state = recordReview({
-    learningState: state,
-    cardId: "a",
-    mode: "study",
-    round: 4,
-    correct: false,
-  });
-
-  assert.equal(getModeProgress(state, "a", "study").streak, 0);
-  assert.equal(getModeProgress(state, "a", "study").hidden, false);
-  assert.equal(getModeProgress(state, "a", "spell").hidden, true);
-});
-
-test("returning cards are capped at one quarter of the final normal queue", () => {
-  const active = Array.from({ length: 12 }, (_, index) => `active-${index}`);
-  const due = Array.from({ length: 7 }, (_, index) => `due-${index}`);
-  const learningState = Object.fromEntries(
-    due.map((cardId) => [
-      cardId,
-      { study: { hidden: true, dueRound: 2 } },
-    ]),
-  );
-
-  const queue = buildRoundCardIds({
-    cardIds: [...active, ...due],
-    learningState,
-    mode: "study",
-    round: 2,
-    shuffleOnLoop: false,
-    random: alwaysLow,
-  });
-
-  const returned = queue.filter((cardId) => cardId.startsWith("due-"));
-  assert.equal(returned.length, 4);
-  assert.equal(queue.length, 16);
-});
-
-test("overdue cards remain eligible and older due rounds take priority", () => {
-  const queue = buildRoundCardIds({
-    cardIds: ["active-1", "active-2", "active-3", "old", "new"],
-    learningState: {
-      old: { study: { hidden: true, dueRound: 2 } },
-      new: { study: { hidden: true, dueRound: 4 } },
-    },
-    mode: "study",
-    round: 5,
-    shuffleOnLoop: false,
-    random: alwaysHigh,
-  });
-
-  assert.ok(queue.includes("old"));
-  assert.ok(!queue.includes("new"));
-});
-
-test("small active queues still return one card to avoid starvation", () => {
-  const queue = buildRoundCardIds({
-    cardIds: ["active-1", "active-2", "due"],
-    learningState: {
-      due: { study: { hidden: true, dueRound: 2 } },
-    },
-    mode: "study",
-    round: 2,
-    shuffleOnLoop: false,
-    random: alwaysLow,
-  });
-
-  assert.deepEqual(queue, ["active-1", "active-2", "due"]);
-});
-
-test("a due-only round returns a quarter of the pool with a minimum of one", () => {
-  const due = ["a", "b", "c", "d", "e"];
-  const learningState = Object.fromEntries(
-    due.map((cardId) => [
-      cardId,
-      { spell: { hidden: true, dueRound: 3 } },
-    ]),
-  );
-  const queue = buildRoundCardIds({
-    cardIds: due,
-    learningState,
-    mode: "spell",
-    round: 3,
-    random: alwaysLow,
-  });
-
-  assert.equal(queue.length, 1);
-});
-
-test("simple mode includes hidden cards without applying return caps", () => {
-  const queue = buildRoundCardIds({
-    cardIds: ["active", "hidden-1", "hidden-2"],
-    learningState: {
-      "hidden-1": { study: { hidden: true, dueRound: 99 } },
-      "hidden-2": { study: { hidden: true, dueRound: 2 } },
-    },
-    mode: "study",
-    round: 2,
-    familiarModeEnabled: false,
-    shuffleOnLoop: false,
-  });
-
-  assert.deepEqual(queue, ["active", "hidden-1", "hidden-2"]);
-});
-
-test("a new round avoids the last presented card when alternatives exist", () => {
+test("new queues avoid the last card when an alternative exists", () => {
   const queue = buildRoundCardIds({
     cardIds: ["a", "b", "c"],
-    learningState: {},
     mode: "study",
-    round: 2,
-    shuffleOnLoop: false,
+    round: 1,
     avoidFirstCardId: "a",
-    random: alwaysLow,
+    random: almostOne,
   });
-
-  assert.deepEqual(queue, ["b", "a", "c"]);
+  assert.notEqual(queue[0], "a");
+  assert.deepEqual([...queue].sort(), ["a", "b", "c"]);
+  assert.deepEqual(
+    buildRoundCardIds({
+      cardIds: ["a"], mode: "study", round: 1, avoidFirstCardId: "a", random: almostOne,
+    }),
+    ["a"],
+  );
 });
 
-test("restoreQueue drops missing IDs and preserves the requested order", () => {
-  const sourceDeck = [{ term: "A" }, { term: "B" }, { term: "C" }];
+test("review navigation returns only unscored cards", () => {
+  const queueIds = ["a", "b", "c"];
+  const learningState = {
+    a: { study: { lastScoredRound: 2 } },
+    b: { study: { lastScoredRound: 2 } },
+  };
+  assert.equal(findNextUnscoredCardIndex({
+    queueIds, currentIndex: 0, learningState, mode: "study", round: 2,
+  }), 2);
+});
 
-  assert.deepEqual(
-    restoreQueue(sourceDeck, ["a", "b", "c"], ["c", "missing", "a"]),
-    [sourceDeck[2], sourceDeck[0]],
-  );
-  assert.deepEqual(restoreQueue(sourceDeck, ["a", "b", "c"], null), []);
+test("usage examples keep one sentence per supplied usage", () => {
+  const examples = [
+    { usage: "place", sentence: "one" },
+    { usage: "place", sentence: "two" },
+    { usage: "job", sentence: "three" },
+  ];
+  assert.deepEqual(selectExamples(examples), [examples[0], examples[2]]);
+  assert.deepEqual(selectExamples([{ sentence: "one" }, { sentence: "two" }]), [{ sentence: "one" }]);
+});
+
+test("export keeps source order, unknown fields, resting cards, and every example", () => {
+  const sourceDeck = [
+    { ...deck[0], extra: "kept", examples: [{ sentence: "1" }, { sentence: "2" }, { sentence: "3" }, { sentence: "4" }] },
+    deck[1],
+  ];
+  const ids = createCardIds(sourceDeck);
+  const exported = buildExportDeck(sourceDeck, [ids[1]]);
+  assert.equal(exported.length, 1);
+  assert.equal(exported[0], sourceDeck[0]);
+  assert.equal(exported[0].extra, "kept");
+  assert.equal(exported[0].examples.length, 4);
+});
+
+test("study completion goes directly to spelling and wrong correction cannot overwrite first score", () => {
+  let state = createInitialState({ assets: { sourceDeck: [deck[0]], removedCardIds: [] }, random: almostOne });
+  state = learningReducer(state, { type: "REVEAL" });
+  state = learningReducer(state, { type: "ANSWER_STUDY", correct: true, random: almostOne });
+  assert.equal(state.mode, "spell");
+
+  state = learningReducer(state, { type: "SET_SPELL_INPUT", value: "wrong" });
+  state = learningReducer(state, { type: "SUBMIT_SPELL" });
+  assert.equal(state.spellResult, "wrong");
+  assert.equal(getModeProgress(state.learningState, state.spellQueueIds[0], "spell").streak, 0);
+
+  state = learningReducer(state, { type: "SET_SPELL_INPUT", value: "Alpha" });
+  state = learningReducer(state, { type: "SUBMIT_SPELL" });
+  assert.equal(state.spellResult, "corrected");
+  assert.equal(getModeProgress(state.learningState, state.spellQueueIds[0], "spell").streak, 0);
+});
+
+test("pause preserves one spell queue, clears half input, and can resume after recognition", () => {
+  const ids = createCardIds(deck);
+  let state = {
+    ...createInitialState({ assets: { sourceDeck: deck, removedCardIds: [] }, random: almostOne }),
+    mode: "spell",
+    spellQueueIds: ids,
+    spellIndex: 1,
+    spellInput: "Be",
+    spellResult: null,
+  };
+  state = learningReducer(state, { type: "PAUSE_SPELL" });
+  assert.equal(state.mode, "pause");
+  assert.equal(state.spellInput, "");
+  assert.deepEqual(state.spellQueueIds, ids);
+
+  const resumed = learningReducer(state, { type: "RESUME_SPELL" });
+  assert.equal(resumed.mode, "spell");
+  assert.equal(resumed.spellIndex, 1);
+
+  const studying = learningReducer(state, { type: "PAUSE_TO_STUDY", random: almostOne });
+  assert.equal(studying.mode, "study");
+  assert.equal(studying.pausedSpell, true);
+  const afterFirst = learningReducer(learningReducer(studying, { type: "REVEAL" }), {
+    type: "ANSWER_STUDY", correct: true, random: almostOne,
+  });
+  const afterSecond = learningReducer(learningReducer(afterFirst, { type: "REVEAL" }), {
+    type: "ANSWER_STUDY", correct: true, random: almostOne,
+  });
+  assert.equal(afterSecond.mode, "spell");
+  assert.deepEqual(afterSecond.spellQueueIds, ids);
+  assert.equal(afterSecond.spellIndex, 1);
+});
+
+test("all-resting one-card state advances empty rounds with a bounded transition", () => {
+  const [cardId] = createCardIds([deck[0]]);
+  const base = createInitialState({ assets: { sourceDeck: [deck[0]], removedCardIds: [] }, random: almostOne });
+  const state = {
+    ...base,
+    mode: "spell",
+    completedRounds: { study: 2, spell: 1 },
+    spellQueueIds: [cardId],
+    learningState: {
+      [cardId]: {
+        study: { streak: 2, hidden: true, dueRound: 4, lastScoredRound: 2 },
+        spell: { streak: 1, hidden: false, dueRound: null, lastScoredRound: 1 },
+      },
+    },
+    spellInput: "Alpha",
+    spellResult: null,
+  };
+  const submitted = learningReducer(state, { type: "SUBMIT_SPELL" });
+  const next = learningReducer(submitted, { type: "ADVANCE_SPELL", random: almostOne });
+  assert.equal(next.mode, "study");
+  assert.deepEqual(next.studyQueueIds, [cardId]);
+  assert.equal(next.completedRounds.study, 3);
+  assert.equal(next.completedRounds.spell, 3);
+});
+
+test("removing and restoring the last card enters and leaves the explicit empty state", () => {
+  let state = createInitialState({ assets: { sourceDeck: [deck[0]], removedCardIds: [] }, random: almostOne });
+  const cardId = state.studyQueueIds[0];
+  state = learningReducer(state, { type: "REMOVE_CURRENT", random: almostOne });
+  assert.equal(state.mode, "empty");
+  state = learningReducer(state, { type: "RESTORE_REMOVED", cardId, random: almostOne });
+  assert.equal(state.mode, "study");
+  assert.deepEqual(state.studyQueueIds, [cardId]);
+  assert.deepEqual(getModeProgress(state.learningState, cardId, "study"), {
+    streak: 0, hidden: false, dueRound: null, lastScoredRound: null,
+  });
+});
+
+test("ordinary answers do not overwrite the one management undo slot", () => {
+  let state = createInitialState({ assets: { sourceDeck: deck, removedCardIds: [] }, random: almostOne });
+  state = learningReducer(state, { type: "REMOVE_CURRENT", random: almostOne });
+  const undo = state.undo;
+  state = learningReducer(state, { type: "REVEAL" });
+  state = learningReducer(state, { type: "ANSWER_STUDY", correct: true, random: almostOne });
+  assert.equal(state.undo, undo);
+  state = learningReducer(state, { type: "UNDO" });
+  assert.equal(state.removedCardIds.length, 0);
 });

@@ -2,146 +2,101 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createCardIds } from "../learningAlgorithm.js";
 import {
-  LEARNING_STORAGE_KEY,
-  LEARNING_STORAGE_VERSION,
-  normalizeLearningSnapshot,
-  readLearningSnapshot,
-  writeLearningSnapshot,
+  DECK_STORAGE_KEY,
+  DECK_STORAGE_VERSION,
+  LEGACY_STORAGE_KEY,
+  normalizeDeckAssets,
+  readDeckAssets,
+  writeDeckAssets,
 } from "./learningStorage.js";
 
-const createSnapshot = (overrides = {}) => {
-  const sourceDeck = [{ term: "One", meaning: "the first number" }];
-  const [cardId] = createCardIds(sourceDeck);
-  return {
-    version: LEARNING_STORAGE_VERSION,
-    sourceDeck,
-    removedCardIds: [],
-    learningState: {},
-    completedRounds: { study: 0, spell: 0 },
-    shuffleOnLoop: true,
-    showWordInsights: true,
-    familiarModeEnabled: true,
-    autoPronounceEnabled: false,
-    mode: "study",
-    lastRemoved: null,
-    studyQueueIds: [cardId],
-    spellQueueIds: [],
-    index: 0,
-    spellIndex: 0,
-    ...overrides,
-  };
-};
+const sourceDeck = [
+  { term: "One", meaning: "the first number", custom: { kept: true } },
+  { term: "Two", meaning: "the second number" },
+];
 
-const createReadableStorage = (value) => ({
-  getItem(key) {
-    assert.equal(key, LEARNING_STORAGE_KEY);
-    return value;
-  },
+const assets = (overrides = {}) => ({
+  version: DECK_STORAGE_VERSION,
+  sourceDeck,
+  removedCardIds: [],
+  ...overrides,
 });
 
-test("damaged JSON is ignored without throwing", () => {
-  assert.equal(readLearningSnapshot(createReadableStorage("{broken")), null);
+test("current assets keep source fields and normalize removed IDs", () => {
+  const cardIds = createCardIds(sourceDeck);
+  const normalized = normalizeDeckAssets(assets({
+    removedCardIds: [cardIds[1], cardIds[1], "unknown"],
+  }));
+  assert.deepEqual(normalized.removedCardIds, [cardIds[1]]);
+  assert.deepEqual(normalized.sourceDeck[0].custom, { kept: true });
 });
 
-test("a snapshot from another storage version is ignored", () => {
-  const serialized = JSON.stringify(createSnapshot({ version: 999 }));
-  assert.equal(readLearningSnapshot(createReadableStorage(serialized)), null);
-});
-
-test("a quota write failure is returned instead of thrown", () => {
-  const quotaError = new Error("Quota exceeded");
-  quotaError.name = "QuotaExceededError";
+test("current storage is preferred and does not restore learning queues", () => {
   const storage = {
-    setItem() {
-      throw quotaError;
+    getItem(key) {
+      if (key === DECK_STORAGE_KEY) return JSON.stringify(assets());
+      throw new Error("legacy key should not be read");
     },
   };
+  const result = readDeckAssets(storage);
+  assert.equal(result.source, "current");
+  assert.deepEqual(result.assets.sourceDeck, sourceDeck);
+  assert.equal("learningState" in result.assets, false);
+});
 
-  const result = writeLearningSnapshot(createSnapshot(), storage);
+test("legacy storage contributes only the deck and removed IDs", () => {
+  const [removedId] = createCardIds(sourceDeck);
+  const legacy = {
+    version: 1,
+    sourceDeck,
+    removedCardIds: [removedId],
+    learningState: { secret: "must not migrate" },
+    studyQueueIds: ["old queue"],
+    mode: "spell",
+  };
+  const storage = {
+    getItem(key) {
+      return key === DECK_STORAGE_KEY ? null : JSON.stringify(legacy);
+    },
+  };
+  const result = readDeckAssets(storage);
+  assert.equal(result.source, "legacy");
+  assert.deepEqual(result.assets, assets({ removedCardIds: [removedId] }));
+});
 
+test("damaged current storage reports a warning and does not fall through to legacy", () => {
+  const storage = {
+    getItem(key) {
+      return key === DECK_STORAGE_KEY ? "{broken" : JSON.stringify({ sourceDeck });
+    },
+  };
+  const result = readDeckAssets(storage);
+  assert.equal(result.assets, null);
+  assert.match(result.warning, /损坏/);
+});
+
+test("a rejected write is returned without throwing", () => {
+  const quotaError = new Error("Quota exceeded");
+  const result = writeDeckAssets(assets(), {
+    setItem() { throw quotaError; },
+  });
   assert.equal(result.success, false);
   assert.equal(result.error, quotaError);
 });
 
-test("missing window storage has explicit safe read and write results", () => {
-  assert.equal(readLearningSnapshot(), null);
-
-  const result = writeLearningSnapshot(createSnapshot());
-  assert.equal(result.success, false);
-  assert.match(result.error.message, /unavailable/i);
-});
-
-test("spell mode with an empty queue degrades to a consistent study state", () => {
-  const sourceDeck = [
-    { term: "One", meaning: "the first number" },
-    { term: "Two", meaning: "the second number" },
-  ];
-  const cardIds = createCardIds(sourceDeck);
-  const normalized = normalizeLearningSnapshot(
-    createSnapshot({
-      sourceDeck,
-      mode: "spell",
-      studyQueueIds: cardIds,
-      spellQueueIds: [],
-      index: 99,
-      spellIndex: 99,
-    }),
-  );
-
-  assert.equal(normalized.mode, "study");
-  assert.equal(normalized.index, 1);
-  assert.equal(normalized.spellIndex, 0);
-});
-
-test("optional features receive safe defaults for older snapshots", () => {
-  const snapshot = createSnapshot();
-  delete snapshot.showWordInsights;
-  delete snapshot.familiarModeEnabled;
-  delete snapshot.autoPronounceEnabled;
-
-  const normalized = normalizeLearningSnapshot(snapshot);
-
-  assert.equal(normalized.showWordInsights, false);
-  assert.equal(normalized.familiarModeEnabled, false);
-  assert.equal(normalized.autoPronounceEnabled, true);
-});
-
-test("queues discard removed, unknown, and duplicate IDs", () => {
-  const sourceDeck = [
-    { term: "One", meaning: "the first number" },
-    { term: "Two", meaning: "the second number" },
-  ];
-  const cardIds = createCardIds(sourceDeck);
-  const normalized = normalizeLearningSnapshot(
-    createSnapshot({
-      sourceDeck,
-      removedCardIds: [cardIds[1], "unknown"],
-      studyQueueIds: [cardIds[0], cardIds[0], cardIds[1], "unknown"],
-      spellQueueIds: [cardIds[1]],
-    }),
-  );
-
-  assert.deepEqual(normalized.removedCardIds, [cardIds[1]]);
-  assert.deepEqual(normalized.studyQueueIds, [cardIds[0]]);
-  assert.deepEqual(normalized.spellQueueIds, []);
-});
-
-test("a valid snapshot is stored under the versioned key", () => {
-  let storedKey;
-  let storedValue;
-  const storage = {
-    setItem(key, value) {
-      storedKey = key;
-      storedValue = value;
-    },
-  };
-
-  const result = writeLearningSnapshot(createSnapshot(), storage);
-
+test("valid assets write only the new versioned key", () => {
+  const writes = [];
+  const result = writeDeckAssets(assets(), {
+    setItem(key, value) { writes.push([key, JSON.parse(value)]); },
+  });
   assert.deepEqual(result, { success: true });
-  assert.equal(storedKey, LEARNING_STORAGE_KEY);
-  assert.equal(JSON.parse(storedValue).version, LEARNING_STORAGE_VERSION);
-  assert.equal(JSON.parse(storedValue).showWordInsights, true);
-  assert.equal(JSON.parse(storedValue).familiarModeEnabled, true);
-  assert.equal(JSON.parse(storedValue).autoPronounceEnabled, false);
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0][0], DECK_STORAGE_KEY);
+  assert.notEqual(writes[0][0], LEGACY_STORAGE_KEY);
+  assert.equal(writes[0][1].version, DECK_STORAGE_VERSION);
+});
+
+test("missing storage has safe read and write results", () => {
+  assert.deepEqual(readDeckAssets(null), { assets: null, source: null, warning: null });
+  assert.equal(writeDeckAssets(assets(), null).success, false);
 });
