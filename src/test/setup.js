@@ -15,6 +15,7 @@ const speechSynthesisSpeak = vi.fn();
 const speechSynthesisGetVoices = vi.fn(() => [americanVoice]);
 const speechSynthesisAddEventListener = vi.fn();
 const speechSynthesisRemoveEventListener = vi.fn();
+const speechSynthesisResume = vi.fn();
 
 class MockSpeechSynthesisUtterance {
   constructor(text) {
@@ -22,7 +23,10 @@ class MockSpeechSynthesisUtterance {
     this.lang = "";
     this.rate = 1;
     this.pitch = 1;
+    this.volume = 1;
     this.voice = null;
+    this.onend = null;
+    this.onerror = null;
   }
 }
 
@@ -48,7 +52,11 @@ Object.defineProperty(window, "speechSynthesis", {
     cancel: speechSynthesisCancel,
     getVoices: speechSynthesisGetVoices,
     removeEventListener: speechSynthesisRemoveEventListener,
+    resume: speechSynthesisResume,
     speak: speechSynthesisSpeak,
+    speaking: false,
+    pending: false,
+    paused: false,
   },
 });
 
@@ -73,6 +81,10 @@ beforeEach(() => {
   speechSynthesisGetVoices.mockClear();
   speechSynthesisAddEventListener.mockClear();
   speechSynthesisRemoveEventListener.mockClear();
+  speechSynthesisResume.mockClear();
+  window.speechSynthesis.speaking = false;
+  window.speechSynthesis.pending = false;
+  window.speechSynthesis.paused = false;
 });
 
 afterEach(() => {

@@ -243,8 +243,35 @@ describe("FlashVocab 3.0", () => {
     window.speechSynthesis.speak.mockClear();
     press("Enter", "Enter");
     expect(window.speechSynthesis.speak).not.toHaveBeenCalled();
+    window.speechSynthesis.speaking = true;
     fireEvent.click(screen.getByRole("button", { name: "播放 Alpha 的美式发音" }));
     expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
+    expect(window.speechSynthesis.cancel).toHaveBeenCalled();
+    expect(window.speechSynthesis.resume).toHaveBeenCalled();
+    expect(window.speechSynthesis.speak.mock.calls[0][0].volume).toBe(1);
+  });
+
+  test("pointer-clicked controls release focus so the next learning key keeps working", () => {
+    vi.useFakeTimers();
+    saveAssets();
+    render(<App />);
+
+    const speaker = screen.getByRole("button", { name: "播放 Alpha 的美式发音" });
+    speaker.focus();
+    fireEvent.click(speaker, { detail: 1 });
+    act(() => vi.runOnlyPendingTimers());
+    expect(document.activeElement).not.toBe(speaker);
+
+    press("Enter", "Enter");
+    expect(screen.getByText(alpha.meaning)).toBeTruthy();
+    const insightButton = screen.getByRole("button", { name: "查看词源与对应概念" });
+    insightButton.focus();
+    fireEvent.click(insightButton, { detail: 1 });
+    act(() => vi.runOnlyPendingTimers());
+    expect(document.activeElement).not.toBe(insightButton);
+
+    press("Enter", "Enter");
+    expect(screen.getByRole("textbox", { name: "输入英文拼写" })).toBeTruthy();
   });
 
   test("quiet chrome hides after inactivity and learning keys, then returns on pointer or Tab", () => {
@@ -284,14 +311,20 @@ describe("FlashVocab 3.0", () => {
     expect(screen.queryByText(alpha.meaning)).toBeNull();
   });
 
-  test("management panel closes with Esc and returns focus to its trigger", async () => {
-    saveAssets();
-    render(<App />);
-    const trigger = screen.getByRole("button", { name: "更多" });
-    trigger.focus();
-    fireEvent.click(trigger);
-    expect(screen.getByRole("dialog", { name: "管理这份词表" })).toBeTruthy();
-    press("Escape", "Escape");
-    await waitFor(() => expect(document.activeElement).toBe(trigger));
-  });
+  test.each(["Import", "更多"])(
+    "%s panel trigger releases focus after Esc so Enter keeps learning",
+    async (triggerName) => {
+      saveAssets();
+      const { unmount } = render(<App />);
+      const trigger = screen.getByRole("button", { name: triggerName });
+      trigger.focus();
+      fireEvent.click(trigger);
+      expect(screen.getByRole("dialog", { name: "管理这份词表" })).toBeTruthy();
+      press("Escape", "Escape");
+      await waitFor(() => expect(document.activeElement).not.toBe(trigger));
+      press("Enter", "Enter");
+      expect(screen.getByText(alpha.meaning)).toBeTruthy();
+      unmount();
+    },
+  );
 });

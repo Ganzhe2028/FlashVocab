@@ -24,6 +24,9 @@ import {
 
 const COMPLETION_PROMPT = `请把我提供的英语单词整理成可导入闪词的 JSON 数组。每项保留 term、syllables、respell、pos、meaning、meaningZh、wordOrigin、relatedWord 和 examples。meaning 使用简短易懂的英英释义；examples 提供 2–3 个自然的 B1–B2 例句，每项包含 sentence 与在句中原样出现的 focus。只输出 JSON 代码块，不要附加说明。`;
 
+const POINTER_FOCUS_SELECTOR =
+  'button, a[href], input[type="checkbox"], input[type="radio"], [role="button"]';
+
 const downloadText = (content, type, filename) => {
   const url = URL.createObjectURL(new Blob([content], { type }));
   const anchor = document.createElement("a");
@@ -55,7 +58,6 @@ export default function App() {
   const [manualCopy, setManualCopy] = useState("");
   const [undoToastVisible, setUndoToastVisible] = useState(false);
   const panelRef = useRef(null);
-  const panelTriggerRef = useRef(null);
   const spellInputRef = useRef(null);
   const queuedAfterFailureRef = useRef(false);
   const { isSupported: pronunciationSupported, queueSpeech, speak } = usePronunciation();
@@ -132,19 +134,19 @@ export default function App() {
   }, [panelOpen]);
 
   const closePanel = useCallback(() => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     setPanelOpen(false);
     setPanelConfirmRequest(null);
-    window.setTimeout(() => panelTriggerRef.current?.focus(), 0);
   }, []);
 
   const openPanel = useCallback(() => {
-    panelTriggerRef.current = document.activeElement;
     setPanelConfirmRequest(null);
     setPanelOpen(true);
   }, []);
 
   const openSampleConfirm = useCallback(() => {
-    panelTriggerRef.current = document.activeElement;
     setPanelConfirmRequest("sample");
     setPanelOpen(true);
   }, []);
@@ -235,6 +237,19 @@ export default function App() {
     setPanelMessage("已恢复 24 个示例词。");
   }, []);
 
+  const releasePointerFocus = useCallback((event) => {
+    if (event.detail === 0) return;
+    window.setTimeout(() => {
+      const activeElement = document.activeElement;
+      if (
+        activeElement instanceof HTMLElement &&
+        activeElement.matches(POINTER_FOCUS_SELECTOR)
+      ) {
+        activeElement.blur();
+      }
+    }, 0);
+  }, []);
+
   useAppKeyboard({
     mode: state.mode,
     revealed: state.revealed,
@@ -260,13 +275,16 @@ export default function App() {
         : null;
 
   return (
-    <div className={`app-shell${quiet ? " is-quiet" : ""}`}>
+    <div
+      className={`app-shell${quiet ? " is-quiet" : ""}`}
+      onClick={releasePointerFocus}
+    >
       <header className="app-header" onFocusCapture={showChrome}>
         <div className="brand">闪词 <span>3.0</span></div>
         <nav className="header-actions" aria-label="全局工具">
           {state.undo ? <button type="button" className="header-button undo-button" onClick={() => dispatch({ type: "UNDO" })}>{state.undo.label}</button> : null}
           <button type="button" className="header-button import-button" onClick={openPanel}>Import</button>
-          <button ref={panelTriggerRef} type="button" className="header-button" onClick={openPanel}>更多</button>
+          <button type="button" className="header-button" onClick={openPanel}>更多</button>
           <a className="github-link" href="https://github.com/Ganzhe2028/vocab2" target="_blank" rel="noreferrer" aria-label="在 GitHub 查看闪词">GH</a>
         </nav>
       </header>

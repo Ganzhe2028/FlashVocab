@@ -22,16 +22,18 @@ export const selectAmericanVoice = (voices = []) => {
 const browserSupportsPronunciation = () =>
   typeof window !== "undefined" &&
   Boolean(window.speechSynthesis) &&
-  typeof SpeechSynthesisUtterance === "function";
+  typeof window.SpeechSynthesisUtterance === "function";
 
 export function usePronunciation() {
   const [isSupported] = useState(browserSupportsPronunciation);
   const voicesRef = useRef([]);
+  const activeUtterancesRef = useRef(new Set());
 
   useEffect(() => {
     if (!isSupported) return undefined;
 
     const synthesis = window.speechSynthesis;
+    const activeUtterances = activeUtterancesRef.current;
     const refreshVoices = () => {
       try {
         voicesRef.current = synthesis.getVoices();
@@ -45,6 +47,8 @@ export function usePronunciation() {
 
     return () => {
       synthesis.removeEventListener?.("voiceschanged", refreshVoices);
+      synthesis.cancel();
+      activeUtterances.clear();
     };
   }, [isSupported]);
 
@@ -59,14 +63,19 @@ export function usePronunciation() {
           voicesRef.current = currentVoices;
         }
 
-        const utterance = new SpeechSynthesisUtterance(spokenText);
+        const utterance = new window.SpeechSynthesisUtterance(spokenText);
         const americanVoice = selectAmericanVoice(voicesRef.current);
         utterance.lang = AMERICAN_ENGLISH;
         utterance.rate = 0.9;
         utterance.pitch = 1;
+        utterance.volume = 1;
         if (americanVoice) {
           utterance.voice = americanVoice;
         }
+
+        const releaseUtterance = () => activeUtterancesRef.current.delete(utterance);
+        utterance.onend = releaseUtterance;
+        utterance.onerror = releaseUtterance;
         return utterance;
       } catch {
         return null;
@@ -82,10 +91,14 @@ export function usePronunciation() {
 
       try {
         const synthesis = window.speechSynthesis;
-        synthesis.cancel();
+        if (synthesis.speaking || synthesis.pending) synthesis.cancel();
+        synthesis.resume?.();
+        activeUtterancesRef.current.add(utterance);
         synthesis.speak(utterance);
+        synthesis.resume?.();
         return true;
       } catch {
+        activeUtterancesRef.current.delete(utterance);
         return false;
       }
     },
@@ -98,9 +111,14 @@ export function usePronunciation() {
       if (!utterance) return false;
 
       try {
-        window.speechSynthesis.speak(utterance);
+        const synthesis = window.speechSynthesis;
+        synthesis.resume?.();
+        activeUtterancesRef.current.add(utterance);
+        synthesis.speak(utterance);
+        synthesis.resume?.();
         return true;
       } catch {
+        activeUtterancesRef.current.delete(utterance);
         return false;
       }
     },
