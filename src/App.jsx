@@ -12,7 +12,9 @@ import {
   buildExportDeck,
   createCardIds,
   createInitialState,
+  findNextUnscoredCardIndex,
   learningReducer,
+  recordReview,
 } from "./learningAlgorithm.js";
 import { readDeckAssets, writeDeckAssets } from "./storage/learningStorage.js";
 import {
@@ -59,7 +61,6 @@ export default function App() {
   const [undoToastVisible, setUndoToastVisible] = useState(false);
   const panelRef = useRef(null);
   const spellInputRef = useRef(null);
-  const queuedAfterFailureRef = useRef(false);
   const { isSupported: pronunciationSupported, queueSpeech, speak } = usePronunciation();
   const { quiet, showChrome, hideForLearning } = useQuietChrome({ heldOpen: panelOpen });
 
@@ -102,27 +103,6 @@ export default function App() {
     const timer = window.setTimeout(() => setUndoToastVisible(false), 5000);
     return () => window.clearTimeout(timer);
   }, [state.undo]);
-
-  useEffect(() => {
-    if (state.mode !== "study") {
-      queuedAfterFailureRef.current = false;
-      return;
-    }
-    if (!state.autoPronounceEnabled || !currentStudyItem?.term) return;
-    if (queuedAfterFailureRef.current) {
-      queuedAfterFailureRef.current = false;
-      queueSpeech(currentStudyItem.term);
-    } else {
-      speak(currentStudyItem.term);
-    }
-  }, [
-    currentStudyId,
-    currentStudyItem?.term,
-    queueSpeech,
-    speak,
-    state.autoPronounceEnabled,
-    state.mode,
-  ]);
 
   useEffect(() => {
     if (state.mode === "spell") spellInputRef.current?.focus();
@@ -185,13 +165,45 @@ export default function App() {
   const answerStudy = useCallback(
     (correct) => {
       if (!state.revealed) return;
-      if (!correct && state.autoPronounceEnabled) {
-        speak(currentStudyItem?.term);
-        queuedAfterFailureRef.current = true;
+      const currentCardId = state.studyQueueIds[state.studyIndex];
+      const round = state.completedRounds.study + 1;
+      const nextLearningState = recordReview({
+        learningState: state.learningState,
+        cardId: currentCardId,
+        mode: "study",
+        round,
+        correct,
+      });
+      const nextIndex = findNextUnscoredCardIndex({
+        queueIds: state.studyQueueIds,
+        currentIndex: state.studyIndex,
+        learningState: nextLearningState,
+        mode: "study",
+        round,
+      });
+
+      if (state.autoPronounceEnabled) {
+        if (!correct) speak(currentStudyItem?.term);
+        if (nextIndex >= 0) {
+          const nextTerm = itemById.get(state.studyQueueIds[nextIndex])?.term;
+          if (correct) speak(nextTerm);
+          else queueSpeech(nextTerm);
+        }
       }
       dispatch({ type: "ANSWER_STUDY", correct });
     },
-    [currentStudyItem?.term, speak, state.autoPronounceEnabled, state.revealed],
+    [
+      currentStudyItem?.term,
+      itemById,
+      queueSpeech,
+      speak,
+      state.autoPronounceEnabled,
+      state.completedRounds.study,
+      state.learningState,
+      state.revealed,
+      state.studyIndex,
+      state.studyQueueIds,
+    ],
   );
 
   const submitSpell = useCallback(() => {

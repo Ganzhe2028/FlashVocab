@@ -223,9 +223,9 @@ describe("FlashVocab 3.0", () => {
     saveAssets([alpha, beta]);
     render(<App />);
     const firstTerm = currentWordButton().textContent;
-    const firstSpokenCount = window.speechSynthesis.speak.mock.calls.length;
+    expect(window.speechSynthesis.speak).not.toHaveBeenCalled();
     press("Enter", "Enter");
-    expect(window.speechSynthesis.speak.mock.calls.length).toBe(firstSpokenCount + 1);
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
     press("n", "KeyN");
     const speech = window.speechSynthesis.speak.mock.calls.map(([utterance]) => utterance.text);
     expect(speech.at(-2)).toBe(firstTerm.replaceAll("·", ""));
@@ -243,12 +243,9 @@ describe("FlashVocab 3.0", () => {
     window.speechSynthesis.speak.mockClear();
     press("Enter", "Enter");
     expect(window.speechSynthesis.speak).not.toHaveBeenCalled();
-    window.speechSynthesis.speaking = true;
     fireEvent.click(screen.getByRole("button", { name: "播放 Alpha 的美式发音" }));
     expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
     expect(window.speechSynthesis.cancel).toHaveBeenCalled();
-    expect(window.speechSynthesis.resume).toHaveBeenCalled();
-    expect(window.speechSynthesis.speak.mock.calls[0][0].volume).toBe(1);
   });
 
   test("pointer-clicked controls release focus so the next learning key keeps working", () => {

@@ -22,7 +22,7 @@ export const selectAmericanVoice = (voices = []) => {
 const browserSupportsPronunciation = () =>
   typeof window !== "undefined" &&
   Boolean(window.speechSynthesis) &&
-  typeof window.SpeechSynthesisUtterance === "function";
+  typeof SpeechSynthesisUtterance === "function";
 
 export function usePronunciation() {
   const [isSupported] = useState(browserSupportsPronunciation);
@@ -63,12 +63,11 @@ export function usePronunciation() {
           voicesRef.current = currentVoices;
         }
 
-        const utterance = new window.SpeechSynthesisUtterance(spokenText);
+        const utterance = new SpeechSynthesisUtterance(spokenText);
         const americanVoice = selectAmericanVoice(voicesRef.current);
         utterance.lang = AMERICAN_ENGLISH;
         utterance.rate = 0.9;
         utterance.pitch = 1;
-        utterance.volume = 1;
         if (americanVoice) {
           utterance.voice = americanVoice;
         }
@@ -91,11 +90,9 @@ export function usePronunciation() {
 
       try {
         const synthesis = window.speechSynthesis;
-        if (synthesis.speaking || synthesis.pending) synthesis.cancel();
-        synthesis.resume?.();
+        synthesis.cancel();
         activeUtterancesRef.current.add(utterance);
         synthesis.speak(utterance);
-        synthesis.resume?.();
         return true;
       } catch {
         activeUtterancesRef.current.delete(utterance);
@@ -111,11 +108,8 @@ export function usePronunciation() {
       if (!utterance) return false;
 
       try {
-        const synthesis = window.speechSynthesis;
-        synthesis.resume?.();
         activeUtterancesRef.current.add(utterance);
-        synthesis.speak(utterance);
-        synthesis.resume?.();
+        window.speechSynthesis.speak(utterance);
         return true;
       } catch {
         activeUtterancesRef.current.delete(utterance);
