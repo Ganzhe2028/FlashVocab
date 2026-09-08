@@ -8,6 +8,11 @@ const Meaning = ({ item }) => (
   </div>
 );
 
+const formatStudyHeading = (word) => {
+  if (!word || word === word.toLocaleUpperCase()) return word;
+  return word.replace(/^([A-Z])/, (initial) => initial.toLocaleLowerCase());
+};
+
 export default function StudyView({
   item,
   revealed,
@@ -35,7 +40,7 @@ export default function StudyView({
             onClick={onCopy}
             aria-describedby="copy-tip"
           >
-            {revealed ? (item?.syllables || item?.term) : item?.term}
+            {formatStudyHeading(revealed ? (item?.syllables || item?.term) : item?.term)}
           </button>
         </h1>
         <button

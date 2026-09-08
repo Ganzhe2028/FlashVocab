@@ -24,7 +24,7 @@ import {
   readImportFile,
 } from "./utils/deckImport.js";
 
-const COMPLETION_PROMPT = `请把我提供的英语单词整理成可导入闪词的 JSON 数组。每项保留 term、syllables、respell、pos、meaning、meaningZh、wordOrigin、relatedWord 和 examples。meaning 使用简短易懂的英英释义；examples 提供 2–3 个自然的 B1–B2 例句，每项包含 sentence 与在句中原样出现的 focus。只输出 JSON 代码块，不要附加说明。`;
+const COMPLETION_PROMPT = `请把我提供的英语单词整理成可导入闪词的 JSON 数组。每项保留 term、syllables、respell、pos、meaning、meaningZh、wordOrigin、relatedWord 和 examples。普通英语词的 term 与 syllables 使用全小写；只有原词本身就是全大写的缩写或特殊词时，才保留全大写。meaning 使用简短易懂的英英释义；examples 提供 2–3 个自然的 B1–B2 例句，每项包含 sentence 与在句中原样出现的 focus。只输出 JSON 代码块，不要附加说明。`;
 
 const POINTER_FOCUS_SELECTOR =
   'button, a[href], input[type="checkbox"], input[type="radio"], [role="button"]';

@@ -30,6 +30,12 @@ const beta = {
   examples: [{ sentence: "Beta comes second.", focus: "Beta" }],
 };
 
+const nasa = {
+  ...alpha,
+  term: "NASA",
+  syllables: "N·A·S·A",
+};
+
 const saveAssets = (sourceDeck = [alpha], removedCardIds = []) => {
   window.localStorage.setItem(
     DECK_STORAGE_KEY,
@@ -63,10 +69,10 @@ describe("FlashVocab 3.0", () => {
     saveAssets();
     render(<App />);
 
-    expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "alpha" })).toBeTruthy();
     expect(screen.queryByText(alpha.meaning)).toBeNull();
     press("q", "KeyQ");
-    expect(screen.getByRole("button", { name: "Al·pha" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "al·pha" })).toBeTruthy();
     expect(screen.getByText(alpha.meaning)).toBeTruthy();
     expect(screen.getByText(alpha.meaningZh)).toBeTruthy();
     expect(screen.getByText((_, element) => element.tagName === "LI" && element.textContent.includes("Alpha comes first."))).toBeTruthy();
@@ -95,7 +101,7 @@ describe("FlashVocab 3.0", () => {
     expect(screen.getByText(/已经改正/)).toBeTruthy();
     fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
     expect(screen.getByRole("progressbar", { name: /辨识进度/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "alpha" })).toBeTruthy();
   });
 
   test("empty Enter records an unknown spelling and reveals the same correction prompt", () => {
@@ -141,7 +147,7 @@ describe("FlashVocab 3.0", () => {
     fireEvent.click(screen.getByRole("button", { name: "使用粘贴内容" }));
     expect(screen.getByText(/原词表保持不变/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "关闭管理面板" }));
-    expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "alpha" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "更多" }));
     fireEvent.change(screen.getByRole("textbox", { name: "粘贴导入" }), {
@@ -149,9 +155,9 @@ describe("FlashVocab 3.0", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "使用粘贴内容" }));
     fireEvent.click(screen.getByRole("button", { name: "关闭管理面板" }));
-    expect(screen.getByRole("button", { name: "Beta" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "beta" })).toBeTruthy();
     fireEvent.click(screen.getAllByRole("button", { name: "撤销替换词表" })[0]);
-    expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "alpha" })).toBeTruthy();
 
     await waitFor(() => {
       const stored = JSON.parse(window.localStorage.getItem(DECK_STORAGE_KEY));
@@ -165,13 +171,13 @@ describe("FlashVocab 3.0", () => {
     press("Delete", "Delete");
     expect(screen.getByRole("heading", { name: "所有词都已移出。" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "撤销上次移出" }));
-    expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "alpha" })).toBeTruthy();
 
     press("Delete", "Delete");
     fireEvent.click(screen.getByRole("button", { name: "打开管理" }));
     fireEvent.click(screen.getByRole("button", { name: "找回" }));
     fireEvent.click(screen.getByRole("button", { name: "关闭管理面板" }));
-    expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "alpha" })).toBeTruthy();
   });
 
   test("a reload keeps deck assets and removals but resets the learning session", () => {
@@ -185,7 +191,7 @@ describe("FlashVocab 3.0", () => {
 
     render(<App />);
     expect(screen.getByRole("progressbar", { name: /辨识进度/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "alpha" })).toBeTruthy();
     expect(screen.queryByRole("textbox", { name: "输入英文拼写" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "更多" }));
     expect(screen.getByText("Beta")).toBeTruthy();
@@ -201,7 +207,7 @@ describe("FlashVocab 3.0", () => {
     fireEvent.click(screen.getByRole("button", { name: "重置学习进度" }));
     fireEvent.click(screen.getByRole("button", { name: "确认重置" }));
     fireEvent.click(screen.getByRole("button", { name: "关闭管理面板" }));
-    expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "alpha" })).toBeTruthy();
     fireEvent.click(screen.getAllByRole("button", { name: "撤销重置进度" })[0]);
     expect(screen.getByRole("textbox", { name: "输入英文拼写" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "更多" }));
@@ -211,7 +217,7 @@ describe("FlashVocab 3.0", () => {
   test("plain and Shift clicks copy the right content without revealing", async () => {
     saveAssets();
     render(<App />);
-    const word = screen.getByRole("button", { name: "Alpha" });
+    const word = screen.getByRole("button", { name: "alpha" });
     fireEvent.click(word);
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith("Alpha"));
     expect(document.activeElement).not.toBe(word);
@@ -230,10 +236,19 @@ describe("FlashVocab 3.0", () => {
     navigator.clipboard.writeText.mockRejectedValueOnce(new Error("denied"));
     saveAssets();
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Alpha" }), { shiftKey: true });
+    fireEvent.click(screen.getByRole("button", { name: "alpha" }), { shiftKey: true });
     expect(await screen.findByRole("textbox", { name: "" })).toBeTruthy();
     expect(screen.getByText("手动复制")).toBeTruthy();
     expect(document.querySelector(".manual-copy textarea").value).toContain("当前单词：Alpha");
+  });
+
+  test("recognition headings preserve fully uppercase source terms", () => {
+    saveAssets([nasa]);
+    render(<App />);
+
+    expect(screen.getByRole("button", { name: "NASA" })).toBeTruthy();
+    press("q", "KeyQ");
+    expect(screen.getByRole("button", { name: "N·A·S·A" })).toBeTruthy();
   });
 
   test.each([
@@ -243,9 +258,9 @@ describe("FlashVocab 3.0", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.999999);
     saveAssets([alpha, beta]);
     render(<App />);
-    const firstTerm = currentWordButton().textContent;
+    const firstTerm = window.speechSynthesis.speak.mock.calls.at(-1)[0].text;
     let speech = window.speechSynthesis.speak.mock.calls.map(([utterance]) => utterance.text);
-    expect(speech).toEqual([firstTerm.replaceAll("·", "")]);
+    expect(speech).toEqual([firstTerm]);
     press(key, code);
     expect(screen.getByTestId("study-answer")).toBeTruthy();
     if (key === "e") {
@@ -255,13 +270,13 @@ describe("FlashVocab 3.0", () => {
     }
     speech = window.speechSynthesis.speak.mock.calls.map(([utterance]) => utterance.text);
     expect(speech).toEqual([
-      firstTerm.replaceAll("·", ""),
-      firstTerm.replaceAll("·", ""),
+      firstTerm,
+      firstTerm,
     ]);
     press("n", "KeyN");
     speech = window.speechSynthesis.speak.mock.calls.map(([utterance]) => utterance.text);
     expect(speech).toHaveLength(3);
-    expect(speech[2]).not.toBe(firstTerm.replaceAll("·", ""));
+    expect(speech[2]).not.toBe(firstTerm);
     vi.restoreAllMocks();
   });
 
@@ -269,13 +284,13 @@ describe("FlashVocab 3.0", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.999999);
     saveAssets([alpha, beta]);
     render(<App />);
-    const firstTerm = currentWordButton().textContent.replaceAll("·", "");
+    const firstTerm = window.speechSynthesis.speak.mock.calls.at(-1)[0].text;
     press("e", "KeyE");
     press("m", "KeyM");
-    expect(currentWordButton().textContent.replaceAll("·", "")).toBe(firstTerm);
+    expect(currentWordButton().textContent.replaceAll("·", "").toLocaleLowerCase()).toBe(firstTerm.toLocaleLowerCase());
     expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(2);
     press("n", "KeyN");
-    expect(currentWordButton().textContent.replaceAll("·", "")).not.toBe(firstTerm);
+    expect(currentWordButton().textContent.replaceAll("·", "").toLocaleLowerCase()).not.toBe(firstTerm.toLocaleLowerCase());
     vi.restoreAllMocks();
   });
 
@@ -283,11 +298,11 @@ describe("FlashVocab 3.0", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.999999);
     saveAssets([alpha, beta]);
     render(<App />);
-    const firstTerm = currentWordButton().textContent.replaceAll("·", "");
+    const firstTerm = window.speechSynthesis.speak.mock.calls.at(-1)[0].text;
     press("q", "KeyQ");
     expect(screen.getByRole("button", { name: /记错了，下一词/ })).toBeTruthy();
     press("m", "KeyM");
-    const nextTerm = currentWordButton().textContent.replaceAll("·", "");
+    const nextTerm = window.speechSynthesis.speak.mock.calls.at(-1)[0].text;
     expect(nextTerm).not.toBe(firstTerm);
     const speech = window.speechSynthesis.speak.mock.calls.map(([utterance]) => utterance.text);
     expect(speech).toEqual([firstTerm, firstTerm, nextTerm]);
