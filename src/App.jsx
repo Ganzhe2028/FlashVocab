@@ -61,7 +61,8 @@ export default function App() {
   const [undoToastVisible, setUndoToastVisible] = useState(false);
   const panelRef = useRef(null);
   const spellInputRef = useRef(null);
-  const { isSupported: pronunciationSupported, queueSpeech, speak } = usePronunciation();
+  const autoPronouncedStudyPageRef = useRef(null);
+  const { isSupported: pronunciationSupported, speak } = usePronunciation();
   const { quiet, showChrome, hideForLearning } = useQuietChrome({ heldOpen: panelOpen });
 
   const cardIds = useMemo(() => createCardIds(state.sourceDeck), [state.sourceDeck]);
@@ -73,6 +74,9 @@ export default function App() {
   const currentSpellId = state.spellQueueIds[state.spellIndex] ?? null;
   const currentStudyItem = itemById.get(currentStudyId) ?? null;
   const currentSpellItem = itemById.get(currentSpellId) ?? null;
+  const currentStudyPageKey = currentStudyId
+    ? `${state.completedRounds.study + 1}:${state.studyIndex}:${currentStudyId}`
+    : null;
   const removedEntries = useMemo(
     () =>
       state.removedCardIds
@@ -107,6 +111,25 @@ export default function App() {
   useEffect(() => {
     if (state.mode === "spell") spellInputRef.current?.focus();
   }, [state.mode, state.spellIndex, state.spellResult]);
+
+  useEffect(() => {
+    if (
+      state.mode !== "study" ||
+      state.revealed ||
+      !state.autoPronounceEnabled ||
+      !currentStudyItem?.term ||
+      autoPronouncedStudyPageRef.current === currentStudyPageKey
+    ) return;
+    autoPronouncedStudyPageRef.current = currentStudyPageKey;
+    speak(currentStudyItem.term);
+  }, [
+    currentStudyItem?.term,
+    currentStudyPageKey,
+    speak,
+    state.autoPronounceEnabled,
+    state.mode,
+    state.revealed,
+  ]);
 
   useEffect(() => {
     if (!panelOpen) return;
@@ -157,14 +180,17 @@ export default function App() {
     [copyText, currentStudyItem?.term],
   );
 
-  const reveal = useCallback(() => {
+  const chooseStudy = useCallback((correct) => {
     if (state.autoPronounceEnabled) speak(currentStudyItem?.term);
-    dispatch({ type: "REVEAL" });
+    dispatch({ type: "CHOOSE_STUDY", correct });
   }, [currentStudyItem?.term, speak, state.autoPronounceEnabled]);
 
-  const answerStudy = useCallback(
-    (correct) => {
-      if (!state.revealed) return;
+  const advanceStudy = useCallback(
+    (correctOverride) => {
+      if (!state.revealed || state.studyResult === null) return;
+      const finalResult = typeof correctOverride === "boolean"
+        ? correctOverride
+        : state.studyResult;
       const currentCardId = state.studyQueueIds[state.studyIndex];
       const round = state.completedRounds.study + 1;
       const nextLearningState = recordReview({
@@ -172,7 +198,7 @@ export default function App() {
         cardId: currentCardId,
         mode: "study",
         round,
-        correct,
+        correct: finalResult,
       });
       const nextIndex = findNextUnscoredCardIndex({
         queueIds: state.studyQueueIds,
@@ -183,34 +209,39 @@ export default function App() {
       });
 
       if (state.autoPronounceEnabled) {
-        if (!correct) speak(currentStudyItem?.term);
         if (nextIndex >= 0) {
-          const nextTerm = itemById.get(state.studyQueueIds[nextIndex])?.term;
-          if (correct) speak(nextTerm);
-          else queueSpeech(nextTerm);
+          const nextCardId = state.studyQueueIds[nextIndex];
+          const nextTerm = itemById.get(nextCardId)?.term;
+          autoPronouncedStudyPageRef.current = `${round}:${nextIndex}:${nextCardId}`;
+          speak(nextTerm);
         }
       }
-      dispatch({ type: "ANSWER_STUDY", correct });
+      dispatch({ type: "ADVANCE_STUDY", correct: finalResult });
     },
     [
-      currentStudyItem?.term,
       itemById,
-      queueSpeech,
       speak,
       state.autoPronounceEnabled,
       state.completedRounds.study,
       state.learningState,
       state.revealed,
+      state.studyResult,
       state.studyIndex,
       state.studyQueueIds,
     ],
   );
 
   const submitSpell = useCallback(() => {
-    if (!state.spellInput.trim()) return;
+    if (!state.spellInput.trim() && state.spellResult !== null) return;
     if (state.autoPronounceEnabled) speak(currentSpellItem?.term);
     dispatch({ type: "SUBMIT_SPELL" });
-  }, [currentSpellItem?.term, speak, state.autoPronounceEnabled, state.spellInput]);
+  }, [
+    currentSpellItem?.term,
+    speak,
+    state.autoPronounceEnabled,
+    state.spellInput,
+    state.spellResult,
+  ]);
 
   const importDeck = useCallback((rawDeck) => {
     const normalized = normalizeDeck(rawDeck);
@@ -265,10 +296,10 @@ export default function App() {
   useAppKeyboard({
     mode: state.mode,
     revealed: state.revealed,
+    studyResult: state.studyResult,
     panelOpen,
-    onReveal: reveal,
-    onHide: () => dispatch({ type: "HIDE" }),
-    onAnswer: answerStudy,
+    onChooseStudy: chooseStudy,
+    onAdvanceStudy: advanceStudy,
     onPrevious: () => dispatch({ type: "PREVIOUS_STUDY" }),
     onRemove: () => dispatch({ type: "REMOVE_CURRENT" }),
     onResume: () => dispatch({ type: "RESUME_SPELL" }),
@@ -324,14 +355,14 @@ export default function App() {
           <StudyView
             item={currentStudyItem}
             revealed={state.revealed}
+            studyResult={state.studyResult}
             insightsExpanded={state.insightsExpanded}
             pronunciationSupported={pronunciationSupported}
             copyFeedback={copyFeedback}
             onCopy={copyCurrentWord}
             onPronounce={() => speak(currentStudyItem.term)}
-            onReveal={reveal}
-            onHide={() => dispatch({ type: "HIDE" })}
-            onAnswer={answerStudy}
+            onChoose={chooseStudy}
+            onAdvance={advanceStudy}
             onToggleInsights={() => dispatch({ type: "TOGGLE_INSIGHTS" })}
           />
         ) : null}

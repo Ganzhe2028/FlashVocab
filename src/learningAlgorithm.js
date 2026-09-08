@@ -152,6 +152,7 @@ const createLearningSession = ({
     studyQueueIds: queue,
     studyIndex: 0,
     revealed: false,
+    studyResult: null,
     spellQueueIds: [],
     spellIndex: 0,
     spellInput: "",
@@ -194,6 +195,7 @@ const moveToNextPlayableRound = (state, completedMode, random) => {
       studyQueueIds: [],
       spellQueueIds: [],
       revealed: false,
+      studyResult: null,
       spellInput: "",
       spellResult: null,
     };
@@ -211,6 +213,7 @@ const moveToNextPlayableRound = (state, completedMode, random) => {
       mode: "spell",
       pausedSpell: false,
       revealed: false,
+      studyResult: null,
       spellInput: "",
     };
   }
@@ -250,6 +253,7 @@ const moveToNextPlayableRound = (state, completedMode, random) => {
         studyQueueIds: targetMode === "study" ? queue : state.studyQueueIds,
         studyIndex: targetMode === "study" ? 0 : state.studyIndex,
         revealed: false,
+        studyResult: null,
         spellQueueIds: targetMode === "spell" ? queue : state.spellQueueIds,
         spellIndex: targetMode === "spell" ? 0 : state.spellIndex,
         spellInput: "",
@@ -276,6 +280,7 @@ const moveToNextPlayableRound = (state, completedMode, random) => {
     studyQueueIds: targetMode === "study" ? recoveryQueue : state.studyQueueIds,
     studyIndex: targetMode === "study" ? 0 : state.studyIndex,
     revealed: false,
+    studyResult: null,
     spellQueueIds: targetMode === "spell" ? recoveryQueue : state.spellQueueIds,
     spellIndex: targetMode === "spell" ? 0 : state.spellIndex,
     spellInput: "",
@@ -297,13 +302,15 @@ const replaceWithDeck = (state, sourceDeck, random, label) => {
 export const learningReducer = (state, action) => {
   const random = action.random ?? Math.random;
   switch (action.type) {
-    case "REVEAL":
-      return state.mode === "study" && state.studyQueueIds.length
-        ? { ...state, revealed: true, insightsExpanded: false, notice: null }
-        : state;
-    case "HIDE":
-      return state.mode === "study"
-        ? { ...state, revealed: false, insightsExpanded: false }
+    case "CHOOSE_STUDY":
+      return state.mode === "study" && !state.revealed && state.studyQueueIds.length
+        ? {
+            ...state,
+            revealed: true,
+            studyResult: Boolean(action.correct),
+            insightsExpanded: false,
+            notice: null,
+          }
         : state;
     case "TOGGLE_INSIGHTS":
       return { ...state, insightsExpanded: !state.insightsExpanded };
@@ -314,18 +321,20 @@ export const learningReducer = (state, action) => {
         studyIndex:
           (state.studyIndex - 1 + state.studyQueueIds.length) % state.studyQueueIds.length,
         revealed: false,
+        studyResult: null,
         insightsExpanded: false,
       };
-    case "ANSWER_STUDY": {
-      if (state.mode !== "study" || !state.revealed) return state;
+    case "ADVANCE_STUDY": {
+      if (state.mode !== "study" || !state.revealed || state.studyResult === null) return state;
       const cardId = state.studyQueueIds[state.studyIndex];
       const round = state.completedRounds.study + 1;
+      const correct = typeof action.correct === "boolean" ? action.correct : state.studyResult;
       const learningState = recordReview({
         learningState: state.learningState,
         cardId,
         mode: "study",
         round,
-        correct: action.correct,
+        correct,
       });
       const nextIndex = findNextUnscoredCardIndex({
         queueIds: state.studyQueueIds,
@@ -338,6 +347,7 @@ export const learningReducer = (state, action) => {
         ...state,
         learningState,
         revealed: false,
+        studyResult: null,
         insightsExpanded: false,
         studyIndex: nextIndex < 0 ? state.studyIndex : nextIndex,
         notice: null,
@@ -360,7 +370,7 @@ export const learningReducer = (state, action) => {
       const entryIndex = createCardIds(state.sourceDeck).indexOf(cardId);
       const answer = state.sourceDeck[entryIndex]?.term?.trim().toLocaleLowerCase();
       const submitted = state.spellInput.trim().toLocaleLowerCase();
-      if (!submitted) return state;
+      if (!submitted && state.spellResult !== null) return state;
       const isCorrect = submitted === answer;
       const round = state.completedRounds.spell + 1;
 
@@ -374,10 +384,15 @@ export const learningReducer = (state, action) => {
             round,
             correct: isCorrect,
           }),
+          spellInput: isCorrect ? state.spellInput : "",
           spellResult: isCorrect ? "correct" : "wrong",
         };
       }
-      return { ...state, spellResult: isCorrect ? "corrected" : "wrong" };
+      return {
+        ...state,
+        spellInput: isCorrect ? state.spellInput : "",
+        spellResult: isCorrect ? "corrected" : "wrong",
+      };
     }
     case "ADVANCE_SPELL":
       if (!["correct", "corrected"].includes(state.spellResult)) return state;
@@ -418,6 +433,7 @@ export const learningReducer = (state, action) => {
         studyQueueIds: queue,
         studyIndex: 0,
         revealed: false,
+        studyResult: null,
         pausedSpell: true,
         spellInput: "",
       };
@@ -461,6 +477,7 @@ export const learningReducer = (state, action) => {
         spellInput: "",
         spellResult: null,
         revealed: false,
+        studyResult: null,
         mode: remaining.length
           ? state.mode === "spell" && spellQueueIds.length
             ? "spell"
@@ -500,6 +517,7 @@ export const learningReducer = (state, action) => {
           studyQueueIds: [action.cardId],
           studyIndex: 0,
           revealed: false,
+          studyResult: null,
           undo: { label: "撤销找回单词", snapshot: previous },
           notice: "已找回，重新从辨识开始。",
         };

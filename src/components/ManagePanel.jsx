@@ -86,15 +86,15 @@ export default function ManagePanel({
           <p>只有单词也能练，缺失释义会明确标出。需要补全时，可复制现有格式提示词到任意 AI。</p>
           <button type="button" className="secondary-action" onClick={onCopyCompletionPrompt}>复制词表补全提示词</button>
           <dl className="shortcut-list">
-            <div><dt>辨识</dt><dd>Enter 翻开/记得；N 忘记；Space 遮住；← 回看；Delete 移出</dd></div>
-            <div><dt>拼写</dt><dd>在输入框正常输入；Enter 提交/前进；Esc 暂停</dd></div>
+            <div><dt>辨识</dt><dd>未作答时 Enter 认识、N 不认识；不认识的答案页只用 Enter 下一词，认识的答案页还可用 N 改判并前进；← 回看；Delete 移出</dd></div>
+            <div><dt>拼写</dt><dd>输入后 Enter 提交；不会时可空输入直接 Enter 看答案；拼错会清空并要求正确重拼；Esc 暂停</dd></div>
           </dl>
         </section>
 
         <section className="panel-section" aria-labelledby="settings-title">
           <h3 id="settings-title">学习设置</h3>
           <label className="switch-row">
-            <span><strong>自动美式发音</strong><small>{pronunciationSupported ? "新辨识词、翻面与拼写提交时播放" : "当前浏览器不可用，练习不受影响"}</small></span>
+            <span><strong>自动美式发音</strong><small>{pronunciationSupported ? "进入辨识词、展开答案与拼写提交时播放" : "当前浏览器不可用，练习不受影响"}</small></span>
             <input
               type="checkbox"
               role="switch"

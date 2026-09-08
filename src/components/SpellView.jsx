@@ -10,6 +10,12 @@ export default function SpellView({
 }) {
   const finished = result === "correct" || result === "corrected";
   const hasError = result === "wrong" || result === "retrying";
+  const canSubmit = finished || Boolean(value.trim()) || result === null;
+  const submitLabel = result === null && !value.trim()
+    ? "不会拼，查看答案"
+    : result === "wrong"
+      ? "重新拼写"
+      : "提交拼写";
 
   const handleKeyDown = (event) => {
     if (event.key === "Escape") {
@@ -68,9 +74,9 @@ export default function SpellView({
           type="button"
           className="primary-action"
           onClick={finished ? onAdvance : onSubmit}
-          disabled={!finished && !value.trim()}
+          disabled={!canSubmit}
         >
-          <span>{finished ? "下一题" : "提交拼写"}</span><kbd>Enter</kbd>
+          <span>{finished ? "下一题" : submitLabel}</span><kbd>Enter</kbd>
         </button>
         <button type="button" className="tertiary-action" onClick={onPause}>
           暂停 <kbd>Esc</kbd>

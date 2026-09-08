@@ -102,22 +102,5 @@ export function usePronunciation() {
     [createUtterance],
   );
 
-  const queueSpeech = useCallback(
-    (text) => {
-      const utterance = createUtterance(text);
-      if (!utterance) return false;
-
-      try {
-        activeUtterancesRef.current.add(utterance);
-        window.speechSynthesis.speak(utterance);
-        return true;
-      } catch {
-        activeUtterancesRef.current.delete(utterance);
-        return false;
-      }
-    },
-    [createUtterance],
-  );
-
-  return { isSupported, queueSpeech, speak };
+  return { isSupported, speak };
 }

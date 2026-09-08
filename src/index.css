@@ -207,7 +207,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .insight-content strong { display: block; margin-bottom: 4px; color: var(--ink); font-size: 0.82rem; }
 
 .study-actions, .spell-actions, .status-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 34px; }
-.primary-action, .secondary-action, .tertiary-action, .danger-action {
+.primary-action, .secondary-action, .tertiary-action, .danger-action, .choice-action {
   min-height: 46px;
   display: inline-flex;
   align-items: center;
@@ -220,13 +220,33 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .primary-action { border: 1px solid var(--teal); background: var(--teal); color: white; box-shadow: 0 7px 20px rgb(17 125 114 / 14%); }
 .primary-action:hover:not(:disabled) { background: var(--teal-dark); }
+.study-choice-actions {
+  width: min(100%, 520px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.choice-action {
+  width: 100%;
+  justify-content: space-between;
+  border: 1px solid #aeb9b5;
+  background: rgb(255 255 255 / 42%);
+  color: var(--ink);
+  box-shadow: none;
+  transition: border-color 180ms ease, background-color 180ms ease;
+}
+.choice-action:hover:not(:disabled) {
+  border-color: #6e8c85;
+  background: rgb(255 255 255 / 72%);
+}
+.choice-action kbd { border-color: #c8c5bd; }
 .secondary-action { border: 1px solid #b9c6c2; background: rgb(255 255 255 / 38%); color: var(--ink); }
 .secondary-action:hover:not(:disabled) { border-color: var(--teal); }
 .secondary-action.coral { border-color: #ddb1a8; color: #98483d; background: rgb(244 223 217 / 34%); }
 .tertiary-action { border: 1px solid transparent; background: transparent; color: var(--muted); }
 .tertiary-action:hover:not(:disabled) { background: rgb(25 57 54 / 6%); color: var(--ink); }
 .danger-action { border: 1px solid var(--coral); background: var(--coral); color: #fff; }
-.primary-action:disabled, .secondary-action:disabled, .tertiary-action:disabled { opacity: 0.42; cursor: not-allowed; }
+.primary-action:disabled, .secondary-action:disabled, .tertiary-action:disabled, .choice-action:disabled { opacity: 0.42; cursor: not-allowed; }
 kbd { padding: 2px 7px; border: 1px solid rgb(255 255 255 / 38%); border-bottom-width: 2px; border-radius: 6px; font-family: inherit; font-size: 0.7rem; }
 .secondary-action kbd, .tertiary-action kbd { border-color: var(--line); }
 
@@ -360,6 +380,7 @@ textarea {
 
 @media (max-width: 430px) {
   .brand span, .undo-button { display: none; }
+  .study-choice-actions { grid-template-columns: 1fr; }
   .study-actions .primary-action, .study-actions .secondary-action, .study-actions .tertiary-action,
   .spell-actions .primary-action, .spell-actions .tertiary-action,
   .status-actions > * { width: 100%; }

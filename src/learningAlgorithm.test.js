@@ -146,18 +146,33 @@ test("export keeps source order, unknown fields, resting cards, and every exampl
 
 test("study completion goes directly to spelling and wrong correction cannot overwrite first score", () => {
   let state = createInitialState({ assets: { sourceDeck: [deck[0]], removedCardIds: [] }, random: almostOne });
-  state = learningReducer(state, { type: "REVEAL" });
-  state = learningReducer(state, { type: "ANSWER_STUDY", correct: true, random: almostOne });
+  state = learningReducer(state, { type: "CHOOSE_STUDY", correct: true });
+  assert.equal(state.revealed, true);
+  assert.equal(state.studyResult, true);
+  assert.deepEqual(state.learningState, {});
+  state = learningReducer(state, { type: "ADVANCE_STUDY", correct: false, random: almostOne });
   assert.equal(state.mode, "spell");
+  assert.equal(getModeProgress(state.learningState, state.studyQueueIds[0], "study").streak, 0);
 
   state = learningReducer(state, { type: "SET_SPELL_INPUT", value: "wrong" });
   state = learningReducer(state, { type: "SUBMIT_SPELL" });
   assert.equal(state.spellResult, "wrong");
+  assert.equal(state.spellInput, "");
   assert.equal(getModeProgress(state.learningState, state.spellQueueIds[0], "spell").streak, 0);
 
   state = learningReducer(state, { type: "SET_SPELL_INPUT", value: "Alpha" });
   state = learningReducer(state, { type: "SUBMIT_SPELL" });
   assert.equal(state.spellResult, "corrected");
+  assert.equal(getModeProgress(state.learningState, state.spellQueueIds[0], "spell").streak, 0);
+});
+
+test("empty first spelling submission records a failure and reveals the retry state", () => {
+  let state = createInitialState({ assets: { sourceDeck: [deck[0]], removedCardIds: [] }, random: almostOne });
+  state = learningReducer(state, { type: "CHOOSE_STUDY", correct: true });
+  state = learningReducer(state, { type: "ADVANCE_STUDY", random: almostOne });
+  state = learningReducer(state, { type: "SUBMIT_SPELL" });
+  assert.equal(state.spellResult, "wrong");
+  assert.equal(state.spellInput, "");
   assert.equal(getModeProgress(state.learningState, state.spellQueueIds[0], "spell").streak, 0);
 });
 
@@ -183,11 +198,11 @@ test("pause preserves one spell queue, clears half input, and can resume after r
   const studying = learningReducer(state, { type: "PAUSE_TO_STUDY", random: almostOne });
   assert.equal(studying.mode, "study");
   assert.equal(studying.pausedSpell, true);
-  const afterFirst = learningReducer(learningReducer(studying, { type: "REVEAL" }), {
-    type: "ANSWER_STUDY", correct: true, random: almostOne,
+  const afterFirst = learningReducer(learningReducer(studying, { type: "CHOOSE_STUDY", correct: true }), {
+    type: "ADVANCE_STUDY", random: almostOne,
   });
-  const afterSecond = learningReducer(learningReducer(afterFirst, { type: "REVEAL" }), {
-    type: "ANSWER_STUDY", correct: true, random: almostOne,
+  const afterSecond = learningReducer(learningReducer(afterFirst, { type: "CHOOSE_STUDY", correct: true }), {
+    type: "ADVANCE_STUDY", random: almostOne,
   });
   assert.equal(afterSecond.mode, "spell");
   assert.deepEqual(afterSecond.spellQueueIds, ids);
@@ -247,8 +262,8 @@ test("ordinary answers do not overwrite the one management undo slot", () => {
   let state = createInitialState({ assets: { sourceDeck: deck, removedCardIds: [] }, random: almostOne });
   state = learningReducer(state, { type: "REMOVE_CURRENT", random: almostOne });
   const undo = state.undo;
-  state = learningReducer(state, { type: "REVEAL" });
-  state = learningReducer(state, { type: "ANSWER_STUDY", correct: true, random: almostOne });
+  state = learningReducer(state, { type: "CHOOSE_STUDY", correct: true });
+  state = learningReducer(state, { type: "ADVANCE_STUDY", random: almostOne });
   assert.equal(state.undo, undo);
   state = learningReducer(state, { type: "UNDO" });
   assert.equal(state.removedCardIds.length, 0);

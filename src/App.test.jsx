@@ -84,6 +84,7 @@ describe("FlashVocab 3.0", () => {
 
     fireEvent.change(input, { target: { value: "Alfa" } });
     fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+    expect(input.value).toBe("");
     expect(window.speechSynthesis.speak.mock.calls.at(-1)[0].text).toBe("Alpha");
     expect(screen.getByText(/第一次没拼对/)).toBeTruthy();
     expect(screen.getByText("Alpha", { selector: "strong" })).toBeTruthy();
@@ -94,6 +95,22 @@ describe("FlashVocab 3.0", () => {
     fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
     expect(screen.getByRole("progressbar", { name: /辨识进度/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Al·pha" })).toBeTruthy();
+  });
+
+  test("empty Enter records an unknown spelling and reveals the same correction prompt", () => {
+    saveAssets();
+    render(<App />);
+    const input = enterSingleCardSpelling();
+    expect(input.value).toBe("");
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+    expect(input.value).toBe("");
+    expect(screen.getByText(/第一次没拼对/)).toBeTruthy();
+    expect(screen.getByText("Alpha", { selector: "strong" })).toBeTruthy();
+    expect(window.speechSynthesis.speak.mock.calls.at(-1)[0].text).toBe("Alpha");
+
+    fireEvent.change(input, { target: { value: "Alpha" } });
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+    expect(screen.getByText(/已经改正/)).toBeTruthy();
   });
 
   test("spelling uses a native input and pause preserves the single queue", () => {
@@ -218,18 +235,61 @@ describe("FlashVocab 3.0", () => {
     expect(document.querySelector(".manual-copy textarea").value).toContain("当前单词：Alpha");
   });
 
-  test("pronunciation follows reveal, recognition failure order, and spelling submission", () => {
+  test.each([
+    ["known", "Enter", "Enter"],
+    ["unknown", "n", "KeyN"],
+  ])("a %s recognition choice replays the current word, then advancing speaks the next", (_, key, code) => {
     vi.spyOn(Math, "random").mockReturnValue(0.999999);
     saveAssets([alpha, beta]);
     render(<App />);
     const firstTerm = currentWordButton().textContent;
-    expect(window.speechSynthesis.speak).not.toHaveBeenCalled();
+    let speech = window.speechSynthesis.speak.mock.calls.map(([utterance]) => utterance.text);
+    expect(speech).toEqual([firstTerm.replaceAll("·", "")]);
+    press(key, code);
+    expect(screen.getByTestId("study-answer")).toBeTruthy();
+    if (key === "n") {
+      expect(screen.queryByRole("button", { name: /N/ })).toBeNull();
+    } else {
+      expect(screen.getByRole("button", { name: /记错了，下一词/ })).toBeTruthy();
+    }
+    speech = window.speechSynthesis.speak.mock.calls.map(([utterance]) => utterance.text);
+    expect(speech).toEqual([
+      firstTerm.replaceAll("·", ""),
+      firstTerm.replaceAll("·", ""),
+    ]);
     press("Enter", "Enter");
-    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
+    speech = window.speechSynthesis.speak.mock.calls.map(([utterance]) => utterance.text);
+    expect(speech).toHaveLength(3);
+    expect(speech[2]).not.toBe(firstTerm.replaceAll("·", ""));
+    vi.restoreAllMocks();
+  });
+
+  test("N is inactive on an answer reached by choosing unknown", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.999999);
+    saveAssets([alpha, beta]);
+    render(<App />);
+    const firstTerm = currentWordButton().textContent.replaceAll("·", "");
     press("n", "KeyN");
+    press("n", "KeyN");
+    expect(currentWordButton().textContent.replaceAll("·", "")).toBe(firstTerm);
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(2);
+    press("Enter", "Enter");
+    expect(currentWordButton().textContent.replaceAll("·", "")).not.toBe(firstTerm);
+    vi.restoreAllMocks();
+  });
+
+  test("N on a revealed recognized word corrects the result and advances immediately", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.999999);
+    saveAssets([alpha, beta]);
+    render(<App />);
+    const firstTerm = currentWordButton().textContent.replaceAll("·", "");
+    press("Enter", "Enter");
+    expect(screen.getByRole("button", { name: /记错了，下一词/ })).toBeTruthy();
+    press("n", "KeyN");
+    const nextTerm = currentWordButton().textContent.replaceAll("·", "");
+    expect(nextTerm).not.toBe(firstTerm);
     const speech = window.speechSynthesis.speak.mock.calls.map(([utterance]) => utterance.text);
-    expect(speech.at(-2)).toBe(firstTerm.replaceAll("·", ""));
-    expect(speech.at(-1)).not.toBe(speech.at(-2));
+    expect(speech).toEqual([firstTerm, firstTerm, nextTerm]);
     vi.restoreAllMocks();
   });
 

@@ -6,10 +6,10 @@ const INTERACTIVE_SELECTOR =
 export function useAppKeyboard({
   mode,
   revealed,
+  studyResult,
   panelOpen,
-  onReveal,
-  onHide,
-  onAnswer,
+  onChooseStudy,
+  onAdvanceStudy,
   onPrevious,
   onRemove,
   onResume,
@@ -65,17 +65,13 @@ export function useAppKeyboard({
       if (event.key === "Enter") {
         event.preventDefault();
         onLearningKey();
-        if (revealed) onAnswer(true);
-        else onReveal();
-      } else if (event.code === "Space") {
+        if (revealed) onAdvanceStudy();
+        else onChooseStudy(true);
+      } else if (event.code === "KeyN") {
         event.preventDefault();
         onLearningKey();
-        if (revealed) onHide();
-        else onReveal();
-      } else if (event.code === "KeyN" && revealed) {
-        event.preventDefault();
-        onLearningKey();
-        onAnswer(false);
+        if (!revealed) onChooseStudy(false);
+        else if (studyResult === true) onAdvanceStudy(false);
       } else if (event.key === "ArrowLeft") {
         event.preventDefault();
         onLearningKey();
@@ -91,18 +87,18 @@ export function useAppKeyboard({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [
     mode,
-    onAnswer,
+    onAdvanceStudy,
+    onChooseStudy,
     onClosePanel,
-    onHide,
     onLearningKey,
     onPauseSpell,
     onPauseToStudy,
     onPrevious,
     onRemove,
     onResume,
-    onReveal,
     onShowChrome,
     panelOpen,
     revealed,
+    studyResult,
   ]);
 }

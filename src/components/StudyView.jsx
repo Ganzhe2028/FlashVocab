@@ -11,14 +11,14 @@ const Meaning = ({ item }) => (
 export default function StudyView({
   item,
   revealed,
+  studyResult,
   insightsExpanded,
   pronunciationSupported,
   copyFeedback,
   onCopy,
   onPronounce,
-  onReveal,
-  onHide,
-  onAnswer,
+  onChoose,
+  onAdvance,
   onToggleInsights,
 }) {
   const examples = selectExamples(item?.examples);
@@ -102,23 +102,27 @@ export default function StudyView({
           ) : null}
 
           <div className="study-actions" aria-label="辨识结果">
-            <button type="button" className="primary-action" onClick={() => onAnswer(true)}>
-              <span>认出来了</span><kbd>Enter</kbd>
+            <button type="button" className="primary-action" onClick={() => onAdvance()}>
+              <span>下一个</span><kbd>Enter</kbd>
             </button>
-            <button type="button" className="secondary-action coral" onClick={() => onAnswer(false)}>
-              <span>没认出来</span><kbd>N</kbd>
-            </button>
-            <button type="button" className="tertiary-action" onClick={onHide}>
-              遮住 <kbd>Space</kbd>
-            </button>
+            {studyResult === true ? (
+              <button type="button" className="secondary-action coral" onClick={() => onAdvance(false)}>
+                <span>记错了，下一词</span><kbd>N</kbd>
+              </button>
+            ) : null}
           </div>
         </div>
       ) : (
         <div className="study-prompt">
-          <p>先在脑中说出它的意思。</p>
-          <button type="button" className="primary-action" onClick={onReveal}>
-            <span>查看答案</span><kbd>Enter</kbd>
-          </button>
+          <p>先判断自己是否认识，再查看答案。</p>
+          <div className="study-actions study-choice-actions" aria-label="辨识选择">
+            <button type="button" className="choice-action" onClick={() => onChoose(true)}>
+              <span>认识</span><kbd>Enter</kbd>
+            </button>
+            <button type="button" className="choice-action" onClick={() => onChoose(false)}>
+              <span>不认识</span><kbd>N</kbd>
+            </button>
+          </div>
         </div>
       )}
     </section>
