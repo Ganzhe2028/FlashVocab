@@ -158,7 +158,7 @@ const createLearningSession = ({
     spellInput: "",
     spellResult: null,
     pausedSpell: false,
-    autoPronounceEnabled: true,
+    autoPronounceEnabled: false,
     insightsExpanded: false,
     undo: null,
     notice: null,

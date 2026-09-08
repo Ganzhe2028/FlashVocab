@@ -49,6 +49,11 @@ const saveAssets = (sourceDeck = [alpha], removedCardIds = []) => {
 
 const press = (key, code = key) => fireEvent.keyDown(document, { key, code });
 const currentWordButton = () => document.querySelector(".word-copy");
+const enableAutomaticPronunciation = () => {
+  fireEvent.click(screen.getByRole("button", { name: "更多" }));
+  fireEvent.click(screen.getByRole("switch", { name: /自动美式发音/ }));
+  fireEvent.click(screen.getByRole("button", { name: "关闭管理面板" }));
+};
 
 const startSingleCardSpelling = () => {
   press("q", "KeyQ");
@@ -86,6 +91,7 @@ describe("FlashVocab 3.0", () => {
   test("Q then N runs recognition to spelling, and a first spelling error must be corrected", () => {
     saveAssets();
     render(<App />);
+    enableAutomaticPronunciation();
     const input = startSingleCardSpelling();
     expect(screen.queryByText("Alpha")).toBeNull();
 
@@ -107,6 +113,7 @@ describe("FlashVocab 3.0", () => {
   test("empty Enter records an unknown spelling and reveals the same correction prompt", () => {
     saveAssets();
     render(<App />);
+    enableAutomaticPronunciation();
     const input = startSingleCardSpelling();
     expect(input.value).toBe("");
     fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
@@ -258,6 +265,7 @@ describe("FlashVocab 3.0", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.999999);
     saveAssets([alpha, beta]);
     render(<App />);
+    enableAutomaticPronunciation();
     const firstTerm = window.speechSynthesis.speak.mock.calls.at(-1)[0].text;
     let speech = window.speechSynthesis.speak.mock.calls.map(([utterance]) => utterance.text);
     expect(speech).toEqual([firstTerm]);
@@ -284,6 +292,7 @@ describe("FlashVocab 3.0", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.999999);
     saveAssets([alpha, beta]);
     render(<App />);
+    enableAutomaticPronunciation();
     const firstTerm = window.speechSynthesis.speak.mock.calls.at(-1)[0].text;
     press("e", "KeyE");
     press("m", "KeyM");
@@ -298,6 +307,7 @@ describe("FlashVocab 3.0", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.999999);
     saveAssets([alpha, beta]);
     render(<App />);
+    enableAutomaticPronunciation();
     const firstTerm = window.speechSynthesis.speak.mock.calls.at(-1)[0].text;
     press("q", "KeyQ");
     expect(screen.getByRole("button", { name: /记错了，下一词/ })).toBeTruthy();
@@ -309,16 +319,22 @@ describe("FlashVocab 3.0", () => {
     vi.restoreAllMocks();
   });
 
-  test("automatic pronunciation can be turned off while manual replay remains", () => {
+  test("automatic pronunciation defaults off, can be enabled, and manual replay remains", () => {
     saveAssets();
     render(<App />);
+    expect(window.speechSynthesis.speak).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "更多" }));
     const toggle = screen.getByRole("switch", { name: /自动美式发音/ });
+    expect(toggle.checked).toBe(false);
     fireEvent.click(toggle);
     fireEvent.click(screen.getByRole("button", { name: "关闭管理面板" }));
     window.speechSynthesis.speak.mockClear();
     press("q", "KeyQ");
-    expect(window.speechSynthesis.speak).not.toHaveBeenCalled();
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "更多" }));
+    fireEvent.click(screen.getByRole("switch", { name: /自动美式发音/ }));
+    fireEvent.click(screen.getByRole("button", { name: "关闭管理面板" }));
+    window.speechSynthesis.speak.mockClear();
     fireEvent.click(screen.getByRole("button", { name: "播放 Alpha 的美式发音" }));
     expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
     expect(window.speechSynthesis.cancel).toHaveBeenCalled();
