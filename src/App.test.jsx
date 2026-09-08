@@ -44,10 +44,10 @@ const saveAssets = (sourceDeck = [alpha], removedCardIds = []) => {
 const press = (key, code = key) => fireEvent.keyDown(document, { key, code });
 const currentWordButton = () => document.querySelector(".word-copy");
 
-const enterSingleCardSpelling = () => {
-  press("Enter", "Enter");
+const startSingleCardSpelling = () => {
+  press("q", "KeyQ");
   expect(screen.getByText(alpha.meaning)).toBeTruthy();
-  press("Enter", "Enter");
+  press("n", "KeyN");
   return screen.getByRole("textbox", { name: "输入英文拼写" });
 };
 
@@ -65,7 +65,7 @@ describe("FlashVocab 3.0", () => {
 
     expect(screen.getByRole("button", { name: "Al·pha" })).toBeTruthy();
     expect(screen.queryByText(alpha.meaning)).toBeNull();
-    press("Enter", "Enter");
+    press("q", "KeyQ");
     expect(screen.getByText(alpha.meaning)).toBeTruthy();
     expect(screen.getByText(alpha.meaningZh)).toBeTruthy();
     expect(screen.getByText((_, element) => element.tagName === "LI" && element.textContent.includes("Alpha comes first."))).toBeTruthy();
@@ -76,10 +76,10 @@ describe("FlashVocab 3.0", () => {
     expect(screen.getByText(alpha.wordOrigin)).toBeTruthy();
   });
 
-  test("Enter runs recognition to spelling, and a first spelling error must be corrected", () => {
+  test("Q then N runs recognition to spelling, and a first spelling error must be corrected", () => {
     saveAssets();
     render(<App />);
-    const input = enterSingleCardSpelling();
+    const input = startSingleCardSpelling();
     expect(screen.queryByText("Alpha")).toBeNull();
 
     fireEvent.change(input, { target: { value: "Alfa" } });
@@ -100,7 +100,7 @@ describe("FlashVocab 3.0", () => {
   test("empty Enter records an unknown spelling and reveals the same correction prompt", () => {
     saveAssets();
     render(<App />);
-    const input = enterSingleCardSpelling();
+    const input = startSingleCardSpelling();
     expect(input.value).toBe("");
     fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
     expect(input.value).toBe("");
@@ -116,7 +116,7 @@ describe("FlashVocab 3.0", () => {
   test("spelling uses a native input and pause preserves the single queue", () => {
     saveAssets();
     render(<App />);
-    let input = enterSingleCardSpelling();
+    let input = startSingleCardSpelling();
     fireEvent.change(input, { target: { value: "Al" } });
     fireEvent.keyDown(input, { key: "Escape", code: "Escape" });
 
@@ -177,8 +177,8 @@ describe("FlashVocab 3.0", () => {
     const ids = createCardIds([alpha, beta]);
     saveAssets([alpha, beta], [ids[1]]);
     const first = render(<App />);
-    press("Enter", "Enter");
-    press("Enter", "Enter");
+    press("q", "KeyQ");
+    press("n", "KeyN");
     expect(screen.getByRole("textbox", { name: "输入英文拼写" })).toBeTruthy();
     first.unmount();
 
@@ -194,7 +194,7 @@ describe("FlashVocab 3.0", () => {
     const ids = createCardIds([alpha, beta]);
     saveAssets([alpha, beta], [ids[1]]);
     render(<App />);
-    enterSingleCardSpelling();
+    startSingleCardSpelling();
 
     fireEvent.click(screen.getByRole("button", { name: "更多" }));
     fireEvent.click(screen.getByRole("button", { name: "重置学习进度" }));
@@ -236,8 +236,8 @@ describe("FlashVocab 3.0", () => {
   });
 
   test.each([
-    ["known", "Enter", "Enter"],
-    ["unknown", "n", "KeyN"],
+    ["known", "q", "KeyQ"],
+    ["unknown", "e", "KeyE"],
   ])("a %s recognition choice replays the current word, then advancing speaks the next", (_, key, code) => {
     vi.spyOn(Math, "random").mockReturnValue(0.999999);
     saveAssets([alpha, beta]);
@@ -247,8 +247,8 @@ describe("FlashVocab 3.0", () => {
     expect(speech).toEqual([firstTerm.replaceAll("·", "")]);
     press(key, code);
     expect(screen.getByTestId("study-answer")).toBeTruthy();
-    if (key === "n") {
-      expect(screen.queryByRole("button", { name: /N/ })).toBeNull();
+    if (key === "e") {
+      expect(screen.queryByRole("button", { name: /M/ })).toBeNull();
     } else {
       expect(screen.getByRole("button", { name: /记错了，下一词/ })).toBeTruthy();
     }
@@ -257,35 +257,35 @@ describe("FlashVocab 3.0", () => {
       firstTerm.replaceAll("·", ""),
       firstTerm.replaceAll("·", ""),
     ]);
-    press("Enter", "Enter");
+    press("n", "KeyN");
     speech = window.speechSynthesis.speak.mock.calls.map(([utterance]) => utterance.text);
     expect(speech).toHaveLength(3);
     expect(speech[2]).not.toBe(firstTerm.replaceAll("·", ""));
     vi.restoreAllMocks();
   });
 
-  test("N is inactive on an answer reached by choosing unknown", () => {
+  test("M is inactive on an answer reached by choosing unknown", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.999999);
     saveAssets([alpha, beta]);
     render(<App />);
     const firstTerm = currentWordButton().textContent.replaceAll("·", "");
-    press("n", "KeyN");
-    press("n", "KeyN");
+    press("e", "KeyE");
+    press("m", "KeyM");
     expect(currentWordButton().textContent.replaceAll("·", "")).toBe(firstTerm);
     expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(2);
-    press("Enter", "Enter");
+    press("n", "KeyN");
     expect(currentWordButton().textContent.replaceAll("·", "")).not.toBe(firstTerm);
     vi.restoreAllMocks();
   });
 
-  test("N on a revealed recognized word corrects the result and advances immediately", () => {
+  test("M on a revealed recognized word corrects the result and advances immediately", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.999999);
     saveAssets([alpha, beta]);
     render(<App />);
     const firstTerm = currentWordButton().textContent.replaceAll("·", "");
-    press("Enter", "Enter");
+    press("q", "KeyQ");
     expect(screen.getByRole("button", { name: /记错了，下一词/ })).toBeTruthy();
-    press("n", "KeyN");
+    press("m", "KeyM");
     const nextTerm = currentWordButton().textContent.replaceAll("·", "");
     expect(nextTerm).not.toBe(firstTerm);
     const speech = window.speechSynthesis.speak.mock.calls.map(([utterance]) => utterance.text);
@@ -301,7 +301,7 @@ describe("FlashVocab 3.0", () => {
     fireEvent.click(toggle);
     fireEvent.click(screen.getByRole("button", { name: "关闭管理面板" }));
     window.speechSynthesis.speak.mockClear();
-    press("Enter", "Enter");
+    press("q", "KeyQ");
     expect(window.speechSynthesis.speak).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "播放 Alpha 的美式发音" }));
     expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
@@ -319,7 +319,7 @@ describe("FlashVocab 3.0", () => {
     act(() => vi.runOnlyPendingTimers());
     expect(document.activeElement).not.toBe(speaker);
 
-    press("Enter", "Enter");
+    press("q", "KeyQ");
     expect(screen.getByText(alpha.meaning)).toBeTruthy();
     const insightButton = screen.getByRole("button", { name: "查看词源与对应概念" });
     insightButton.focus();
@@ -327,7 +327,7 @@ describe("FlashVocab 3.0", () => {
     act(() => vi.runOnlyPendingTimers());
     expect(document.activeElement).not.toBe(insightButton);
 
-    press("Enter", "Enter");
+    press("n", "KeyN");
     expect(screen.getByRole("textbox", { name: "输入英文拼写" })).toBeTruthy();
   });
 
@@ -340,7 +340,7 @@ describe("FlashVocab 3.0", () => {
     expect(shell.classList.contains("is-quiet")).toBe(true);
     fireEvent.pointerMove(window);
     expect(shell.classList.contains("is-quiet")).toBe(false);
-    press("Enter", "Enter");
+    press("q", "KeyQ");
     expect(shell.classList.contains("is-quiet")).toBe(true);
     press("Tab", "Tab");
     expect(shell.classList.contains("is-quiet")).toBe(false);
@@ -353,23 +353,24 @@ describe("FlashVocab 3.0", () => {
     render(<App />);
     press("Delete", "Delete");
     expect(document.querySelector(".undo-toast")).toBeTruthy();
-    press("Enter", "Enter");
+    press("q", "KeyQ");
     expect(document.querySelector(".undo-toast")).toBeTruthy();
     act(() => vi.advanceTimersByTime(5000));
     expect(document.querySelector(".undo-toast")).toBeNull();
     expect(screen.getByRole("button", { name: "撤销移出单词" })).toBeTruthy();
   });
 
-  test("modified and repeated study shortcuts do not change learning state", () => {
+  test("Enter plus modified and repeated Q shortcuts do not change recognition state", () => {
     saveAssets();
     render(<App />);
-    fireEvent.keyDown(document, { key: "Enter", code: "Enter", metaKey: true });
-    fireEvent.keyDown(document, { key: "Enter", code: "Enter", repeat: true });
+    fireEvent.keyDown(document, { key: "Enter", code: "Enter" });
+    fireEvent.keyDown(document, { key: "q", code: "KeyQ", metaKey: true });
+    fireEvent.keyDown(document, { key: "q", code: "KeyQ", repeat: true });
     expect(screen.queryByText(alpha.meaning)).toBeNull();
   });
 
   test.each(["Import", "更多"])(
-    "%s panel trigger releases focus after Esc so Enter keeps learning",
+    "%s panel trigger releases focus after Esc so Q keeps learning",
     async (triggerName) => {
       saveAssets();
       const { unmount } = render(<App />);
@@ -379,7 +380,7 @@ describe("FlashVocab 3.0", () => {
       expect(screen.getByRole("dialog", { name: "管理这份词表" })).toBeTruthy();
       press("Escape", "Escape");
       await waitFor(() => expect(document.activeElement).not.toBe(trigger));
-      press("Enter", "Enter");
+      press("q", "KeyQ");
       expect(screen.getByText(alpha.meaning)).toBeTruthy();
       unmount();
     },

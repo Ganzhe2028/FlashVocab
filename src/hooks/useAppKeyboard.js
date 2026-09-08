@@ -62,16 +62,22 @@ export function useAppKeyboard({
       }
 
       if (mode !== "study") return;
-      if (event.key === "Enter") {
+      if (!revealed && event.code === "KeyQ") {
         event.preventDefault();
         onLearningKey();
-        if (revealed) onAdvanceStudy();
-        else onChooseStudy(true);
-      } else if (event.code === "KeyN") {
+        onChooseStudy(true);
+      } else if (!revealed && event.code === "KeyE") {
         event.preventDefault();
         onLearningKey();
-        if (!revealed) onChooseStudy(false);
-        else if (studyResult === true) onAdvanceStudy(false);
+        onChooseStudy(false);
+      } else if (revealed && event.code === "KeyN") {
+        event.preventDefault();
+        onLearningKey();
+        onAdvanceStudy();
+      } else if (revealed && event.code === "KeyM" && studyResult === true) {
+        event.preventDefault();
+        onLearningKey();
+        onAdvanceStudy(false);
       } else if (event.key === "ArrowLeft") {
         event.preventDefault();
         onLearningKey();

@@ -103,11 +103,11 @@ export default function StudyView({
 
           <div className="study-actions" aria-label="辨识结果">
             <button type="button" className="primary-action" onClick={() => onAdvance()}>
-              <span>下一个</span><kbd>Enter</kbd>
+              <span>下一个</span><kbd>N</kbd>
             </button>
             {studyResult === true ? (
               <button type="button" className="secondary-action coral" onClick={() => onAdvance(false)}>
-                <span>记错了，下一词</span><kbd>N</kbd>
+                <span>记错了，下一词</span><kbd>M</kbd>
               </button>
             ) : null}
           </div>
@@ -117,10 +117,10 @@ export default function StudyView({
           <p>先判断自己是否认识，再查看答案。</p>
           <div className="study-actions study-choice-actions" aria-label="辨识选择">
             <button type="button" className="choice-action" onClick={() => onChoose(true)}>
-              <span>认识</span><kbd>Enter</kbd>
+              <span>认识</span><kbd>Q</kbd>
             </button>
             <button type="button" className="choice-action" onClick={() => onChoose(false)}>
-              <span>不认识</span><kbd>N</kbd>
+              <span>不认识</span><kbd>E</kbd>
             </button>
           </div>
         </div>

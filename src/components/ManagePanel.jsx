@@ -86,7 +86,7 @@ export default function ManagePanel({
           <p>只有单词也能练，缺失释义会明确标出。需要补全时，可复制现有格式提示词到任意 AI。</p>
           <button type="button" className="secondary-action" onClick={onCopyCompletionPrompt}>复制词表补全提示词</button>
           <dl className="shortcut-list">
-            <div><dt>辨识</dt><dd>未作答时 Enter 认识、N 不认识；不认识的答案页只用 Enter 下一词，认识的答案页还可用 N 改判并前进；← 回看；Delete 移出</dd></div>
+            <div><dt>辨识</dt><dd>未作答时 Q 认识、E 不认识；答案页用 N 下一词，认识的答案页还可用 M 改判并前进；← 回看；Delete 移出</dd></div>
             <div><dt>拼写</dt><dd>输入后 Enter 提交；不会时可空输入直接 Enter 看答案；拼错会清空并要求正确重拼；Esc 暂停</dd></div>
           </dl>
         </section>
