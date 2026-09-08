@@ -35,7 +35,7 @@ export default function StudyView({
             onClick={onCopy}
             aria-describedby="copy-tip"
           >
-            {item?.syllables || item?.term}
+            {revealed ? (item?.syllables || item?.term) : item?.term}
           </button>
         </h1>
         <button

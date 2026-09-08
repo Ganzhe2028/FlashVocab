@@ -63,9 +63,10 @@ describe("FlashVocab 3.0", () => {
     saveAssets();
     render(<App />);
 
-    expect(screen.getByRole("button", { name: "Al·pha" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
     expect(screen.queryByText(alpha.meaning)).toBeNull();
     press("q", "KeyQ");
+    expect(screen.getByRole("button", { name: "Al·pha" })).toBeTruthy();
     expect(screen.getByText(alpha.meaning)).toBeTruthy();
     expect(screen.getByText(alpha.meaningZh)).toBeTruthy();
     expect(screen.getByText((_, element) => element.tagName === "LI" && element.textContent.includes("Alpha comes first."))).toBeTruthy();
@@ -94,7 +95,7 @@ describe("FlashVocab 3.0", () => {
     expect(screen.getByText(/已经改正/)).toBeTruthy();
     fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
     expect(screen.getByRole("progressbar", { name: /辨识进度/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Al·pha" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
   });
 
   test("empty Enter records an unknown spelling and reveals the same correction prompt", () => {
@@ -140,7 +141,7 @@ describe("FlashVocab 3.0", () => {
     fireEvent.click(screen.getByRole("button", { name: "使用粘贴内容" }));
     expect(screen.getByText(/原词表保持不变/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "关闭管理面板" }));
-    expect(screen.getByRole("button", { name: "Al·pha" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "更多" }));
     fireEvent.change(screen.getByRole("textbox", { name: "粘贴导入" }), {
@@ -148,9 +149,9 @@ describe("FlashVocab 3.0", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "使用粘贴内容" }));
     fireEvent.click(screen.getByRole("button", { name: "关闭管理面板" }));
-    expect(screen.getByRole("button", { name: "Be·ta" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Beta" })).toBeTruthy();
     fireEvent.click(screen.getAllByRole("button", { name: "撤销替换词表" })[0]);
-    expect(screen.getByRole("button", { name: "Al·pha" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
 
     await waitFor(() => {
       const stored = JSON.parse(window.localStorage.getItem(DECK_STORAGE_KEY));
@@ -164,13 +165,13 @@ describe("FlashVocab 3.0", () => {
     press("Delete", "Delete");
     expect(screen.getByRole("heading", { name: "所有词都已移出。" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "撤销上次移出" }));
-    expect(screen.getByRole("button", { name: "Al·pha" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
 
     press("Delete", "Delete");
     fireEvent.click(screen.getByRole("button", { name: "打开管理" }));
     fireEvent.click(screen.getByRole("button", { name: "找回" }));
     fireEvent.click(screen.getByRole("button", { name: "关闭管理面板" }));
-    expect(screen.getByRole("button", { name: "Al·pha" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
   });
 
   test("a reload keeps deck assets and removals but resets the learning session", () => {
@@ -184,7 +185,7 @@ describe("FlashVocab 3.0", () => {
 
     render(<App />);
     expect(screen.getByRole("progressbar", { name: /辨识进度/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Al·pha" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
     expect(screen.queryByRole("textbox", { name: "输入英文拼写" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "更多" }));
     expect(screen.getByText("Beta")).toBeTruthy();
@@ -200,7 +201,7 @@ describe("FlashVocab 3.0", () => {
     fireEvent.click(screen.getByRole("button", { name: "重置学习进度" }));
     fireEvent.click(screen.getByRole("button", { name: "确认重置" }));
     fireEvent.click(screen.getByRole("button", { name: "关闭管理面板" }));
-    expect(screen.getByRole("button", { name: "Al·pha" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
     fireEvent.click(screen.getAllByRole("button", { name: "撤销重置进度" })[0]);
     expect(screen.getByRole("textbox", { name: "输入英文拼写" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "更多" }));
@@ -210,7 +211,7 @@ describe("FlashVocab 3.0", () => {
   test("plain and Shift clicks copy the right content without revealing", async () => {
     saveAssets();
     render(<App />);
-    const word = screen.getByRole("button", { name: "Al·pha" });
+    const word = screen.getByRole("button", { name: "Alpha" });
     fireEvent.click(word);
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith("Alpha"));
     expect(document.activeElement).not.toBe(word);
@@ -229,7 +230,7 @@ describe("FlashVocab 3.0", () => {
     navigator.clipboard.writeText.mockRejectedValueOnce(new Error("denied"));
     saveAssets();
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Al·pha" }), { shiftKey: true });
+    fireEvent.click(screen.getByRole("button", { name: "Alpha" }), { shiftKey: true });
     expect(await screen.findByRole("textbox", { name: "" })).toBeTruthy();
     expect(screen.getByText("手动复制")).toBeTruthy();
     expect(document.querySelector(".manual-copy textarea").value).toContain("当前单词：Alpha");
