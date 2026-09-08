@@ -6,6 +6,7 @@ export default function ManagePanel({
   sourceDeck,
   removedEntries,
   autoPronounceEnabled,
+  themePreference,
   pronunciationSupported,
   pasteText,
   message,
@@ -18,6 +19,7 @@ export default function ManagePanel({
   onExportMarkdown,
   onCopyCompletionPrompt,
   onSetAutoPronounce,
+  onSetThemePreference,
   onRestoreRemoved,
   onReset,
   onSample,
@@ -104,6 +106,28 @@ export default function ManagePanel({
             />
           </label>
           <p className="setting-note">词源与对应概念默认折叠，需要时在答案下展开。</p>
+          <fieldset className="theme-setting">
+            <legend>外观</legend>
+            <span className="setting-note">默认跟随设备，也可以固定界面的亮暗模式。</span>
+            <div className="theme-options">
+              {[
+                ["system", "跟随系统"],
+                ["light", "亮色"],
+                ["dark", "暗色"],
+              ].map(([value, label]) => (
+                <label key={value}>
+                  <input
+                    type="radio"
+                    name="theme-preference"
+                    value={value}
+                    checked={themePreference === value}
+                    onChange={(event) => onSetThemePreference(event.target.value)}
+                  />
+                  <span>{label}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
         </section>
 
         {removedEntries.length ? (

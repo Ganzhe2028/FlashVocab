@@ -7,6 +7,7 @@ import { cloneDeck } from "./data/baseDeck.js";
 import { useAppKeyboard } from "./hooks/useAppKeyboard.js";
 import { usePronunciation } from "./hooks/usePronunciation.js";
 import { useQuietChrome } from "./hooks/useQuietChrome.js";
+import { useThemePreference } from "./hooks/useThemePreference.js";
 import deepUnderstandingPrompt from "./prompts/deep-understanding.md?raw";
 import {
   buildExportDeck,
@@ -63,6 +64,7 @@ export default function App() {
   const spellInputRef = useRef(null);
   const autoPronouncedStudyPageRef = useRef(null);
   const { isSupported: pronunciationSupported, speak } = usePronunciation();
+  const { themePreference, setThemePreference } = useThemePreference();
   const { quiet, showChrome, hideForLearning } = useQuietChrome({ heldOpen: panelOpen });
 
   const cardIds = useMemo(() => createCardIds(state.sourceDeck), [state.sourceDeck]);
@@ -417,6 +419,7 @@ export default function App() {
         sourceDeck={state.sourceDeck}
         removedEntries={removedEntries}
         autoPronounceEnabled={state.autoPronounceEnabled}
+        themePreference={themePreference}
         pronunciationSupported={pronunciationSupported}
         pasteText={pasteText}
         message={panelMessage}
@@ -429,6 +432,7 @@ export default function App() {
         onExportMarkdown={() => downloadText(buildMarkdownExport(exportDeck), "text/markdown", "flashvocab-deck.md")}
         onCopyCompletionPrompt={() => copyText(COMPLETION_PROMPT, "词表补全提示词已复制。")}
         onSetAutoPronounce={(value) => dispatch({ type: "SET_AUTO_PRONOUNCE", value })}
+        onSetThemePreference={setThemePreference}
         onRestoreRemoved={(cardId) => dispatch({ type: "RESTORE_REMOVED", cardId })}
         onReset={() => dispatch({ type: "RESET_PROGRESS" })}
         onSample={useSample}

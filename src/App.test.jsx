@@ -3,6 +3,7 @@ import { describe, expect, test, vi } from "vitest";
 import App from "./App.jsx";
 import { createCardIds } from "./learningAlgorithm.js";
 import { DECK_STORAGE_KEY, DECK_STORAGE_VERSION } from "./storage/learningStorage.js";
+import { THEME_STORAGE_KEY } from "./hooks/useThemePreference.js";
 
 const alpha = {
   term: "Alpha",
@@ -338,6 +339,40 @@ describe("FlashVocab 3.0", () => {
     fireEvent.click(screen.getByRole("button", { name: "播放 Alpha 的美式发音" }));
     expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
     expect(window.speechSynthesis.cancel).toHaveBeenCalled();
+  });
+
+  test("appearance follows live system changes and persists manual choices", () => {
+    let onSystemThemeChange;
+    const systemAppearance = {
+      matches: true,
+      media: "(prefers-color-scheme: dark)",
+      addEventListener: vi.fn((_, listener) => { onSystemThemeChange = listener; }),
+      removeEventListener: vi.fn(),
+    };
+    window.matchMedia.mockReturnValue(systemAppearance);
+    saveAssets();
+    const first = render(<App />);
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(document.documentElement.dataset.themePreference).toBe("system");
+
+    systemAppearance.matches = false;
+    act(() => onSystemThemeChange());
+    expect(document.documentElement.dataset.theme).toBe("light");
+
+    fireEvent.click(screen.getByRole("button", { name: "更多" }));
+    expect(screen.getByRole("radio", { name: "跟随系统" }).checked).toBe(true);
+    fireEvent.click(screen.getByRole("radio", { name: "亮色" }));
+    expect(document.documentElement.dataset.theme).toBe("light");
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");
+    first.unmount();
+
+    render(<App />);
+    expect(document.documentElement.dataset.theme).toBe("light");
+    fireEvent.click(screen.getByRole("button", { name: "更多" }));
+    expect(screen.getByRole("radio", { name: "亮色" }).checked).toBe(true);
+    fireEvent.click(screen.getByRole("radio", { name: "暗色" }));
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
   });
 
   test("pointer-clicked controls release focus so the next learning key keeps working", () => {

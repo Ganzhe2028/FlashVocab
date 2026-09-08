@@ -16,6 +16,16 @@ const speechSynthesisGetVoices = vi.fn(() => [americanVoice]);
 const speechSynthesisAddEventListener = vi.fn();
 const speechSynthesisRemoveEventListener = vi.fn();
 const speechSynthesisResume = vi.fn();
+const matchMedia = vi.fn((query) => ({
+  matches: false,
+  media: query,
+  onchange: null,
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  addListener: vi.fn(),
+  removeListener: vi.fn(),
+  dispatchEvent: vi.fn(),
+}));
 
 class MockSpeechSynthesisUtterance {
   constructor(text) {
@@ -61,6 +71,7 @@ Object.defineProperty(window, "speechSynthesis", {
 });
 
 vi.stubGlobal("SpeechSynthesisUtterance", MockSpeechSynthesisUtterance);
+vi.stubGlobal("matchMedia", matchMedia);
 
 vi.stubGlobal(
   "requestAnimationFrame",
@@ -82,9 +93,22 @@ beforeEach(() => {
   speechSynthesisAddEventListener.mockClear();
   speechSynthesisRemoveEventListener.mockClear();
   speechSynthesisResume.mockClear();
+  matchMedia.mockReset();
+  matchMedia.mockImplementation((query) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
   window.speechSynthesis.speaking = false;
   window.speechSynthesis.pending = false;
   window.speechSynthesis.paused = false;
+  document.documentElement.dataset.theme = "light";
+  document.documentElement.dataset.themePreference = "system";
 });
 
 afterEach(() => {

@@ -411,7 +411,7 @@ flowchart LR
     study(["当前学习状态"]) --> open["用户主动打开工具层"]
     open --> choice{"需要什么？"}
     choice -->|"词表"| deck["导入、保存副本、导出、更换"]
-    choice -->|"偏好"| settings["发音、洗牌、理解内容显示"]
+    choice -->|"偏好"| settings["发音、洗牌、理解内容显示、亮暗外观"]
     choice -->|"学习状态"| progress["查看熟悉词和整体状态"]
     choice -->|"说明"| guide["简短 Guidebook"]
     deck --> close["关闭工具层"]

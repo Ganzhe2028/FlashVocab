@@ -31,6 +31,7 @@ npm run preview
 - 英英释义优先，中文独立下一行；缺失释义明确显示“未提供释义”。
 - 阅读时按已有 `usage` 标签每种显示一句；JSON 与 Markdown 导出仍保留全部例句。
 - 词源与对应概念默认折叠；自动美式发音默认关闭，可在右侧管理面板开启，手动发音始终保留。
+- 外观默认跟随系统亮暗模式；“更多 → 学习设置 → 外观”可固定为亮色或暗色，选择会在刷新后保留。
 - 单击单词复制原始 `term`；Shift＋单击复制完整的 `src/prompts/deep-understanding.md` 加当前词。复制失败时显示可手动复制的全文。
 - Import 支持 JSON、Markdown、txt、CSV 与 DOCX；旧 `.doc` 会提示另存为 `.docx`。JSON 与 Markdown 可导出。
 - 替换、移出、找回、重置均使用一个最近操作 Undo 槽。重置只清学习现场并恢复默认偏好，保留词表和已移出集合。
@@ -43,7 +44,7 @@ npm run preview
 
 ## 安静的阅读桌面
 
-页面使用暖白背景和窄阅读列。外围品牌、Import、更多、Undo 与 GitHub 在 2.5 秒无指针活动或学习按键后淡出；鼠标、Tab 或打开管理面板会恢复。核心内容和单一进度条不移动。管理内容集中在一个右侧覆盖面板，小屏与 200% 放大可纵向滚动阅读。
+页面使用暖白背景和窄阅读列，系统进入暗色时切换为同一视觉语言的暖炭黑纸面、柔和青绿强调和降饱和珊瑚反馈；正文、次级文字、输入、按钮、浮层与进度条会一起换色。外围品牌、Import、更多、Undo 与 GitHub 在 2.5 秒无指针活动或学习按键后淡出；鼠标、Tab 或打开管理面板会恢复。核心内容和单一进度条不移动。管理内容集中在一个右侧覆盖面板，小屏与 200% 放大可纵向滚动阅读。
 
 ## 代码结构
 
@@ -56,6 +57,7 @@ npm run preview
 - `src/hooks/useAppKeyboard.js`：全局学习快捷键
 - `src/hooks/useQuietChrome.js`：外围静默规则
 - `src/hooks/usePronunciation.js`：Web Speech API 和美式 voice 选择
+- `src/hooks/useThemePreference.js`：跟随系统及手动亮暗选择，并独立保存外观偏好
 - `src/storage/learningStorage.js`：3.0 资产保存与旧 key 兼容读取
 - `src/utils/deckImport.js`：所有导入、归一化与 Markdown 导出
 - `src/data/baseDeck.js`：内置 24 词唯一来源

@@ -3,9 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      (() => {
+        try {
+          const saved = localStorage.getItem("flashvocab-theme-v1");
+          const preference = ["system", "light", "dark"].includes(saved) ? saved : "system";
+          const resolved = preference === "system"
+            ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+            : preference;
+          document.documentElement.dataset.theme = resolved;
+          document.documentElement.dataset.themePreference = preference;
+        } catch {
+          document.documentElement.dataset.theme = "light";
+          document.documentElement.dataset.themePreference = "system";
+        }
+      })();
+    </script>
     <title>闪词 3.0</title>
-    <script type="module" crossorigin src="/assets/index-aiqz-3_E.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CS_lsNtN.css">
+    <script type="module" crossorigin src="/assets/index-BX6lMA0W.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BpP5UW8k.css">
   </head>
   <body>
     <div id="root"></div>
