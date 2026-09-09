@@ -2,6 +2,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const AMERICAN_ENGLISH = "en-US";
 
+const PREFERRED_AMERICAN_VOICE_NAMES = [
+  /^google us english$/i,
+  /^microsoft .*\bnatural\b.*english.*united states/i,
+  /^(samantha|alex|ava(?: \(.*\))?|allison|susan|zoe|nicky|joelle)$/i,
+  /^(eddy|flo|reed|rocko|sandy|shelley) \(english \((?:united states|us)\)\)$/i,
+  /^microsoft (?:aria|jenny|guy|zira|david|mark).*english.*united states/i,
+];
+
+const NOVELTY_AMERICAN_VOICE_NAME =
+  /^(albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox)$/i;
+
 const normalizeLanguage = (language = "") =>
   language.trim().replaceAll("_", "-").toLowerCase();
 
@@ -10,11 +21,22 @@ export const selectAmericanVoice = (voices = []) => {
     (voice) => normalizeLanguage(voice?.lang) === "en-us",
   );
 
+  for (const preferredName of PREFERRED_AMERICAN_VOICE_NAMES) {
+    const preferredVoice = americanVoices.find((voice) =>
+      preferredName.test(voice?.name?.trim() ?? ""),
+    );
+    if (preferredVoice) return preferredVoice;
+  }
+
+  const naturalVoices = americanVoices.filter(
+    (voice) => !NOVELTY_AMERICAN_VOICE_NAME.test(voice?.name?.trim() ?? ""),
+  );
+
   return (
-    americanVoices.find((voice) => voice.localService && voice.default) ??
-    americanVoices.find((voice) => voice.localService) ??
-    americanVoices.find((voice) => voice.default) ??
-    americanVoices[0] ??
+    naturalVoices.find((voice) => voice.localService && voice.default) ??
+    naturalVoices.find((voice) => voice.default) ??
+    naturalVoices.find((voice) => voice.localService) ??
+    naturalVoices[0] ??
     null
   );
 };
@@ -90,7 +112,9 @@ export function usePronunciation() {
 
       try {
         const synthesis = window.speechSynthesis;
-        synthesis.cancel();
+        if (synthesis.speaking || synthesis.pending) {
+          synthesis.cancel();
+        }
         activeUtterancesRef.current.add(utterance);
         synthesis.speak(utterance);
         return true;

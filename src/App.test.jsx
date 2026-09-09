@@ -336,8 +336,13 @@ describe("FlashVocab 3.0", () => {
     fireEvent.click(screen.getByRole("switch", { name: /自动美式发音/ }));
     fireEvent.click(screen.getByRole("button", { name: "关闭管理面板" }));
     window.speechSynthesis.speak.mockClear();
+    window.speechSynthesis.cancel.mockClear();
     fireEvent.click(screen.getByRole("button", { name: "播放 Alpha 的美式发音" }));
     expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
+    expect(window.speechSynthesis.cancel).not.toHaveBeenCalled();
+
+    window.speechSynthesis.speaking = true;
+    fireEvent.click(screen.getByRole("button", { name: "播放 Alpha 的美式发音" }));
     expect(window.speechSynthesis.cancel).toHaveBeenCalled();
   });
 
