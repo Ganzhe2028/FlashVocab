@@ -69,7 +69,6 @@ export function usePronunciation() {
 
     return () => {
       synthesis.removeEventListener?.("voiceschanged", refreshVoices);
-      synthesis.cancel();
       activeUtterances.clear();
     };
   }, [isSupported]);

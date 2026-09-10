@@ -5,7 +5,8 @@
 - 真实 Chrome 诊断确认：本地 Samantha 路径曾在点击后长期停留于 `speaking=true`，没有 `start` / `end` 事件；同一操作改用 `Google US English` 后约 186ms 开始并正常结束。选声因此改为优先清晰且已知稳定的美式人声，Chrome 有 Google US 时优先使用，其他浏览器回退到 Samantha、Microsoft Natural 等正常人声。
 - macOS 的 en-US 列表包含 Albert、Bad News、Whisper、Zarvox 等特效音；旧逻辑在系统默认语言不是 en-US 时可能选择列表首项 Albert。新逻辑明确排除这些特效音，避免同学设备出现低沉、沙哑或机器人音色。
 - 发音前不再无条件调用 `cancel()`；仅在当前页面确有语音正在播放或排队时才中断，降低 Chromium 浏览器进程内共享 TTS 后端被反复停止后卡死，以及多个页面互相打断的概率。
-- 新增选声与空闲队列回归测试；保留同步用户操作内调用和 utterance 生命周期引用。
+- 定位到 9 月 7 日新增的 hook 清理会调用浏览器全局 `cancel()`。开发环境的 React Strict Mode 会在启动时主动执行一次清理，导致 Arc 的 macOS 本地 TTS 路径可能在首次播放前就被停止。现在卸载、Strict Mode 重挂载和热更只移除监听与页面内引用，不再操作共享语音引擎。
+- 新增选声、空闲队列与 Strict Mode 清理回归测试；保留同步用户操作内调用和 utterance 生命周期引用。
 
 ## 2026-09-08 — 跟随系统的暗色模式
 

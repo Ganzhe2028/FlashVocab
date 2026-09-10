@@ -89,6 +89,16 @@ describe("FlashVocab 3.0", () => {
     expect(screen.getByText(alpha.wordOrigin)).toBeTruthy();
   });
 
+  test("Strict Mode cleanup does not cancel the browser-global speech engine", () => {
+    saveAssets();
+    const { unmount } = render(<App />);
+    window.speechSynthesis.cancel.mockClear();
+
+    unmount();
+
+    expect(window.speechSynthesis.cancel).not.toHaveBeenCalled();
+  });
+
   test("Q then N runs recognition to spelling, and a first spelling error must be corrected", () => {
     saveAssets();
     render(<App />);
