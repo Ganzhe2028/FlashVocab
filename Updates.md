@@ -1,5 +1,11 @@
 # Updates
 
+## 2026-09-10 — 仓库内置 UI/UX Pro Max
+
+- 从官方 `nextlevelbuilder/ui-ux-pro-max-skill` 的 `main` 分支拉取最新版 Skill（提交 `4aad0584d92131626b16d4ff4d77f0455385013c`），完整保存在 `.agents/skills/ui-ux-pro-max/`。
+- UI/UX 设计、实现和审查现在直接读取仓库内的 `SKILL.md`，搜索命令也直接调用 `.agents/skills/ui-ux-pro-max/scripts/search.py`；不再依赖用户目录中的全局副本或 Hermes 镜像。
+- 当前内置数据覆盖 79 种可搜索样式、192 类产品与配色推理、74 组字体、119 条 UX 指南、105 条图标规则、25 种图表和 22 个技术栈。
+
 ## 2026-09-10 — 修复 Chromium 发音卡死与沙哑声线
 
 - 真实 Chrome 诊断确认：本地 Samantha 路径曾在点击后长期停留于 `speaking=true`，没有 `start` / `end` 事件；同一操作改用 `Google US English` 后约 186ms 开始并正常结束。选声因此改为优先清晰且已知稳定的美式人声，Chrome 有 Google US 时优先使用，其他浏览器回退到 Samantha、Microsoft Natural 等正常人声。
