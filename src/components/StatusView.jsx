@@ -16,23 +16,28 @@ export function PauseView({ onResume, onStudy }) {
   );
 }
 
-export function PrepareView({ pasteText, message, onPasteChange, onPasteImport, onFile, onSample }) {
+export function PrepareView({ pasteText, message, onPasteChange, onPasteImport, onFile, onSample, onHelp }) {
   return (
     <section className="prepare-view" aria-labelledby="prepare-title">
       <p className="eyebrow">准备词表</p>
       <h1 id="prepare-title">把这次要考的词放进来。</h1>
-      <p className="status-lead">支持 JSON、Markdown、txt、CSV 与 DOCX。识别成功后会直接开始第一轮辨识。</p>
-      <label className="file-button primary-action">
-        <span>Import 文件</span>
-        <input type="file" accept=".json,.md,.markdown,.txt,.csv,.docx" onChange={onFile} />
-      </label>
+      <p className="status-lead">用辨识和拼写快速过一遍临时词表。最简单只要一行一个单词，识别成功后会直接开始。</p>
+      <div className="prepare-actions">
+        <label className="file-button primary-action">
+          <span>Import 文件</span>
+          <input type="file" accept=".json,.md,.markdown,.txt,.csv,.docx" onChange={onFile} />
+        </label>
+        <button type="button" className="secondary-action" onClick={onSample}>用示例词体验 1 分钟</button>
+      </div>
+      <p className="prepare-note">无需账户。词表保存在当前浏览器；刷新会从新一轮开始。</p>
       <div className="paste-box">
-        <label htmlFor="prepare-paste">或者粘贴词表内容</label>
+        <label htmlFor="prepare-paste">或者直接粘贴</label>
+        <span className="field-help">支持 JSON、Markdown、txt、CSV 与 DOCX 文本内容。</span>
         <textarea id="prepare-paste" value={pasteText} onChange={(event) => onPasteChange(event.target.value)} rows="7" />
         <button type="button" className="secondary-action" onClick={onPasteImport}>使用粘贴内容</button>
       </div>
       {message ? <p className="panel-message" role="status">{message}</p> : null}
-      <button type="button" className="text-button sample-link" onClick={onSample}>先用 24 个示例词体验</button>
+      <button type="button" className="text-button sample-link" onClick={onHelp}>先看看怎么用</button>
     </section>
   );
 }

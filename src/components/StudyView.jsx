@@ -25,6 +25,8 @@ export default function StudyView({
   onChoose,
   onAdvance,
   onToggleInsights,
+  guideActive,
+  onDismissGuide,
 }) {
   const examples = selectExamples(item?.examples);
   const hasInsights = Boolean(item?.wordOrigin || item?.relatedWord);
@@ -61,6 +63,18 @@ export default function StudyView({
         {item?.respell ? <span>{item.respell}</span> : null}
       </p>
       {copyFeedback ? <p className="copy-feedback" role="status">{copyFeedback}</p> : null}
+
+      {guideActive ? (
+        <aside className="learning-guide" aria-label="首次辨识提示">
+          <div>
+            <strong>{revealed ? "答案页只做一件事" : "第一次先凭记忆判断"}</strong>
+            <p>{revealed
+              ? "按 N 确认并去下一词；如果刚才其实没认出，按 M 改判后继续。"
+              : "认识按 Q，不认识按 E。两种选择都会展开答案，不需要先猜拼写。"}</p>
+          </div>
+          <button type="button" className="text-button" onClick={onDismissGuide}>不再提示</button>
+        </aside>
+      ) : null}
 
       {revealed ? (
         <div className="answer" data-testid="study-answer">

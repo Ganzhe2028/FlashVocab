@@ -54,12 +54,18 @@ export default function App() {
       }),
   );
   const [panelOpen, setPanelOpen] = useState(false);
+  const [panelSection, setPanelSection] = useState("help");
   const [panelConfirmRequest, setPanelConfirmRequest] = useState(null);
   const [pasteText, setPasteText] = useState("");
   const [panelMessage, setPanelMessage] = useState(loaded.warning ?? "");
   const [copyFeedback, setCopyFeedback] = useState("");
   const [manualCopy, setManualCopy] = useState("");
   const [undoToastVisible, setUndoToastVisible] = useState(false);
+  const [newUserGuide, setNewUserGuide] = useState(() => ({
+    enabled: !loaded.assets,
+    studyComplete: false,
+    spellComplete: false,
+  }));
   const panelRef = useRef(null);
   const spellInputRef = useRef(null);
   const autoPronouncedStudyPageRef = useRef(null);
@@ -146,15 +152,22 @@ export default function App() {
     setPanelConfirmRequest(null);
   }, []);
 
-  const openPanel = useCallback(() => {
+  const openPanel = useCallback((section = "help") => {
     setPanelConfirmRequest(null);
+    setPanelSection(section);
     setPanelOpen(true);
   }, []);
 
   const openSampleConfirm = useCallback(() => {
     setPanelConfirmRequest("sample");
+    setPanelSection("deck");
     setPanelOpen(true);
   }, []);
+
+  const restartGuide = useCallback(() => {
+    setNewUserGuide({ enabled: true, studyComplete: false, spellComplete: false });
+    closePanel();
+  }, [closePanel]);
 
   const copyText = useCallback(async (text, successMessage) => {
     try {
@@ -219,6 +232,7 @@ export default function App() {
         }
       }
       dispatch({ type: "ADVANCE_STUDY", correct: finalResult });
+      setNewUserGuide((previous) => ({ ...previous, studyComplete: true }));
     },
     [
       itemById,
@@ -237,6 +251,7 @@ export default function App() {
     if (!state.spellInput.trim() && state.spellResult !== null) return;
     if (state.autoPronounceEnabled) speak(currentSpellItem?.term);
     dispatch({ type: "SUBMIT_SPELL" });
+    setNewUserGuide((previous) => ({ ...previous, spellComplete: true }));
   }, [
     currentSpellItem?.term,
     speak,
@@ -328,9 +343,13 @@ export default function App() {
         <div className="brand">闪词 <span>3.0</span></div>
         <nav className="header-actions" aria-label="全局工具">
           {state.undo ? <button type="button" className="header-button undo-button" onClick={() => dispatch({ type: "UNDO" })}>{state.undo.label}</button> : null}
-          <button type="button" className="header-button import-button" onClick={openPanel}>Import</button>
-          <button type="button" className="header-button" onClick={openPanel}>更多</button>
-          <a className="github-link" href="https://github.com/Ganzhe2028/vocab2" target="_blank" rel="noreferrer" aria-label="在 GitHub 查看闪词">GH</a>
+          {state.mode !== "prepare" ? <button type="button" className="header-button import-button" onClick={() => openPanel("deck")}>Import</button> : null}
+          <button type="button" className="header-button" onClick={() => openPanel("help")}>更多</button>
+          <a className="github-link" href="https://github.com/Ganzhe2028/vocab2" target="_blank" rel="noreferrer" aria-label="在 GitHub 查看闪词">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path fillRule="evenodd" d="M12 .297a12 12 0 0 0-3.793 23.388c.6.113.82-.26.82-.577v-2.234c-3.338.726-4.042-1.416-4.042-1.416-.546-1.386-1.332-1.755-1.332-1.755-1.089-.745.083-.73.083-.73 1.205.084 1.839 1.237 1.839 1.237 1.07 1.835 2.809 1.305 3.495.998.108-.776.418-1.305.762-1.605-2.665-.303-5.466-1.332-5.466-5.931 0-1.31.468-2.381 1.235-3.221-.124-.303-.535-1.523.117-3.176 0 0 1.008-.322 3.301 1.23A11.5 11.5 0 0 1 12 6.099c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.873.118 3.176.769.84 1.233 1.911 1.233 3.221 0 4.61-2.805 5.625-5.475 5.921.43.371.823 1.102.823 2.222v3.295c0 .32.216.694.825.576A12 12 0 0 0 12 .297Z" clipRule="evenodd" />
+            </svg>
+          </a>
         </nav>
       </header>
 
@@ -351,6 +370,7 @@ export default function App() {
             onPasteImport={handlePasteImport}
             onFile={handleFile}
             onSample={useSample}
+            onHelp={() => openPanel("help")}
           />
         ) : null}
         {state.mode === "study" && currentStudyItem ? (
@@ -366,6 +386,8 @@ export default function App() {
             onChoose={chooseStudy}
             onAdvance={advanceStudy}
             onToggleInsights={() => dispatch({ type: "TOGGLE_INSIGHTS" })}
+            guideActive={newUserGuide.enabled && !newUserGuide.studyComplete}
+            onDismissGuide={() => setNewUserGuide((previous) => ({ ...previous, enabled: false }))}
           />
         ) : null}
         {state.mode === "spell" && currentSpellItem ? (
@@ -378,6 +400,8 @@ export default function App() {
             onSubmit={submitSpell}
             onAdvance={() => dispatch({ type: "ADVANCE_SPELL" })}
             onPause={() => dispatch({ type: "PAUSE_SPELL" })}
+            guideActive={newUserGuide.enabled && !newUserGuide.spellComplete}
+            onDismissGuide={() => setNewUserGuide((previous) => ({ ...previous, enabled: false }))}
           />
         ) : null}
         {state.mode === "pause" ? (
@@ -390,7 +414,7 @@ export default function App() {
           <EmptyView
             canUndo={Boolean(state.undo)}
             onUndo={() => dispatch({ type: "UNDO" })}
-            onManage={openPanel}
+            onManage={() => openPanel("deck")}
             onSample={openSampleConfirm}
           />
         ) : null}
@@ -416,6 +440,8 @@ export default function App() {
       <ManagePanel
         open={panelOpen}
         panelRef={panelRef}
+        section={panelSection}
+        mode={state.mode}
         sourceDeck={state.sourceDeck}
         removedEntries={removedEntries}
         autoPronounceEnabled={state.autoPronounceEnabled}
@@ -425,6 +451,7 @@ export default function App() {
         message={panelMessage}
         initialConfirmAction={panelConfirmRequest}
         onClose={closePanel}
+        onSectionChange={setPanelSection}
         onFile={handleFile}
         onPasteChange={setPasteText}
         onPasteImport={handlePasteImport}
@@ -436,6 +463,7 @@ export default function App() {
         onRestoreRemoved={(cardId) => dispatch({ type: "RESTORE_REMOVED", cardId })}
         onReset={() => dispatch({ type: "RESET_PROGRESS" })}
         onSample={useSample}
+        onRestartGuide={restartGuide}
         onConfirmConsumed={() => setPanelConfirmRequest(null)}
       />
     </div>

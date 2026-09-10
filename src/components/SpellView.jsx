@@ -7,6 +7,8 @@ export default function SpellView({
   onSubmit,
   onAdvance,
   onPause,
+  guideActive,
+  onDismissGuide,
 }) {
   const finished = result === "correct" || result === "corrected";
   const hasError = result === "wrong" || result === "retrying";
@@ -37,6 +39,16 @@ export default function SpellView({
       </h1>
       <p className="meaning-zh spell-zh">{item?.meaningZh || "未提供中文释义"}</p>
       <p className="word-meta">{item?.pos || "词性未提供"}</p>
+
+      {guideActive ? (
+        <aside className="learning-guide" aria-label="首次拼写提示">
+          <div>
+            <strong>现在用释义回想拼写</strong>
+            <p>输入后按 Enter；完全不会可以空按 Enter 看答案。第一次写错会被记录，并要求正确重拼一次。</p>
+          </div>
+          <button type="button" className="text-button" onClick={onDismissGuide}>不再提示</button>
+        </aside>
+      ) : null}
 
       <label className={`spell-field${hasError ? " has-error" : ""}${finished ? " is-correct" : ""}`}>
         <span className="sr-only">输入英文拼写</span>

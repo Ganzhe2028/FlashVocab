@@ -92,6 +92,8 @@ flowchart LR
 
 ### 4.1 首次使用或没有词表
 
+> **3.0 当前实现（2026-09-10）：** 已选择“准备词表为主、内置示例为次”。准备页明确一行一个单词即可开始，示例入口定位为一分钟体验；首次辨识与拼写在真实操作处给出可跳过提示，“更多”中的一分钟上手可长期查看并重新开启提示，不恢复 2.x 的独立 Guidebook 页面。
+
 ```mermaid
 flowchart LR
     noDeck(["没有可用词表"]) --> prepare["进入准备词表"]
@@ -413,11 +415,12 @@ flowchart LR
     choice -->|"词表"| deck["导入、保存副本、导出、更换"]
     choice -->|"偏好"| settings["发音、洗牌、理解内容显示、亮暗外观"]
     choice -->|"学习状态"| progress["查看熟悉词和整体状态"]
-    choice -->|"说明"| guide["简短 Guidebook"]
+    choice -->|"说明"| guide["一分钟上手 + 当前屏说明"]
     deck --> close["关闭工具层"]
     settings --> close
     progress --> close
-    guide --> close
+    guide --> restart["可重新开启学习页上下文提示"]
+    restart --> close
     close --> study
 ```
 
