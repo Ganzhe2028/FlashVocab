@@ -2,113 +2,40 @@
 
 > MUST DO：Things that must be done: Every time there is a modification or update, the corresponding document content must also be updated. Every time a task begins, one needs to re-read the document.
 
-## FlashVocab 3.0 Current Implementation (2026-09-07)
+## FlashVocab 3.0 Current Implementation (2026-09-10)
 
-The current implementation is the completed rewrite defined by `docs/flashvocab-3-rewrite-plan.md`. This section supersedes the older product-behavior descriptions below; the remaining content stays as historical detail and still governs content format, testing, documentation, git, and repository hygiene.
+The completed rewrite is defined by `docs/flashvocab-3-rewrite-plan.md`. The design brief and user-flow document preserve historical design context; do not restore removed 2.x behavior such as the `rest` choice screen, familiar-mode switch, return cap, shuffle switch, route system, or persistent learning snapshot.
 
-- `src/App.jsx` composes a one-page reducer application and owns storage, clipboard, speech and download side effects. `src/learningAlgorithm.js` owns stable IDs, independent study/spell scoring, shuffled queues, bounded empty-round advancement and the single Undo slot.
-- Current views are `StudyView`, `SpellView`, `StatusView` (prepare/pause/empty) and one right-side `ManagePanel`. `useAppKeyboard`, `useQuietChrome`, `usePronunciation` and `useThemePreference` isolate shortcuts, 2.5-second peripheral hiding, Web Speech and persisted system/light/dark appearance selection.
-- The mode set is `prepare | study | spell | pause | empty`; there is no `rest` choice screen, familiar-mode switch, familiar pool, return cap, shuffle switch, route system, or persistent learning snapshot.
-- The fixed loop is recognition → spelling → recognition. In each mode, two correct results in distinct rounds hide a word for exactly the next complete round (`dueRound = scoredRound + 2`); return success rests it again and failure releases only that mode. Every due word returns and all-empty scheduling is bounded.
-- Recognition is a two-step choice. Entering a word-only page auto-pronounces once; Q means known and E means unknown, and these first-page choices have equal visual weight. Either choice reveals the answer and pronounces the current word a second time. An answer reached through unknown offers only N to commit and advance; M is inactive there. An answer reached through known also offers M to correct the result to unknown and advance. Entering the next word page pronounces that word. ← reviews and Delete/Backspace moves a word out. Pointer-activated buttons and links release focus after their action so the next learning key returns to the global shortcut; deliberate Tab navigation remains native and visibly focused. Spelling uses a real input; an empty first Enter records unknown and reveals the answer, while any first wrong submission immediately clears the input. Either failure must then be retyped correctly, and Esc pauses the one retained spelling queue.
-- Reading shows easy English first and Chinese separately. It selects one example per supplied `usage` for display, while JSON/Markdown normalization and export preserve all examples and JSON unknown fields. Word origin/counterpart content is folded by default.
-- Only source deck and removed IDs persist under `flashvocab-3-assets-v1`; the appearance choice persists separately under `flashvocab-theme-v1`. A fresh page resets learning, queue, learning preferences and Undo, while appearance remains system-following or keeps the user's explicit light/dark override. If the new deck key is absent, only those two assets are read from legacy `vocab2-learning-v1`; the old key is not changed.
-- Replace, remove, find-back and reset share one labelled in-memory Undo slot. Reset keeps source deck and removed IDs and restores default preferences. Import failure never changes the active deck or learning scene.
-- The quiet header contains brand, Import, More, Undo and GitHub; it fades on learning keys or 2.5 seconds of pointer inactivity, returns on pointer/Tab, and stays active while the overlay panel is open. More includes a three-way appearance control that follows the system by default and can be fixed to light or dark; the coordinated warm-charcoal dark palette covers content, highlights, controls, overlays and feedback states. Closing the management panel with Esc releases its control focus instead of returning focus to Import/More, so the next learning key reaches the page shortcut. Web Speech auto-plays on recognition-page entry, replays on the first Q/E choice, and runs synchronously inside the initiating event when an answer-page N/M action advances to a recognition word or spelling is submitted; active utterances stay referenced until completion for Arc. Voice selection prefers clear US voices (Google US in Chrome, then known natural local voices) and excludes macOS novelty voices; idle playback and hook cleanup do not call the browser-global `cancel()`, while an active or pending page queue may still be interrupted. Unsupported browsers still fall back safely. Reduced motion, narrow layouts and 200% zoom must remain usable.
-- `docs/validation-2026-09-07/` contains the bounded real-Chrome visual evidence. `npm run check` plus the execution plan's acceptance matrix remain the delivery gate.
+### Architecture and source ownership
 
-## Project Structure & Module Organization
+- `src/App.jsx` composes the one-page reducer application and owns storage, clipboard, speech, and download side effects. `src/learningAlgorithm.js` owns stable IDs, independent study/spell scoring, shuffled queues, bounded empty-round advancement, and the single Undo slot.
+- The mode set is `prepare | study | spell | pause | empty`. Current views are `StudyView`, `SpellView`, `StatusView`, and one right-side `ManagePanel`.
+- `useAppKeyboard`, `useQuietChrome`, `usePronunciation`, and `useThemePreference` isolate shortcuts, peripheral hiding, Web Speech, and appearance selection.
+- `src/data/baseDeck.js` is the built-in deck source, `src/utils/deckImport.js` is the import/export normalization layer, and `src/storage/learningStorage.js` owns validated asset persistence.
+- Tests live beside their modules. `src/App.test.jsx` covers UI behavior, `.test.js` files cover pure logic and hooks, and `src/test/setup.js` configures the UI test environment.
+- `dist/` is tracked and regenerated by `npm run build`; `node_modules/` is generated and must not be edited. Document any new top-level tooling or source directory here.
 
-This repository is a Vite + React flashcard app with a separate vocabulary list.
+### Current learning behavior
 
-- Root: `index.html`, `package.json`/`package-lock.json`, `vite.config.js`, `vitest.config.js`, `eslint.config.js`, `run.sh`, `README.md`, `Updates.md` (changelog), and `vocab.md`.
-- `.github/workflows/ci.yml` runs the full repository check on pushes and pull requests.
-- `dist/` holds the production build (tracked in git, regenerated by `npm run build`).
-- `src/App.jsx` coordinates the three-mode state machine and composes the UI. `src/components/` contains the study, rest, spelling, pronunciation, controls, guide, and familiar-pool views; `src/hooks/useAppKeyboard.js` owns global shortcut routing, `src/hooks/usePronunciation.js` owns Web Speech API detection, American voice selection, and playback, and `src/hooks/useThemePreference.js` owns the persisted system/light/dark appearance choice.
-- `src/data/baseDeck.js` is the single built-in deck source. `src/utils/deckImport.js` is the single import/export normalization layer. `src/storage/learningStorage.js` owns versioned, validated local-storage reads and writes. `src/learningAlgorithm.js` contains only pure card-ID, scoring, round-queue, and return-cap helpers.
-- Tests live next to their modules. `src/App.test.jsx` provides jsdom UI characterization coverage, while the `.test.js` files use Node’s test runner for pure logic. `src/test/setup.js` configures the UI test environment.
-- `src/index.css` sets global styles, theme variables, and animations. `src/prompts/deep-understanding.md` contains the raw-imported word-depth prompt used by both copy buttons.
-- `node_modules/` is generated; do not edit it.
-  Document any new top-level tooling or source directory here.
+- The fixed loop is recognition → spelling → recognition. In each mode, two correct results in distinct rounds hide a word for exactly the next complete round (`dueRound = scoredRound + 2`). A successful return rests it again; a failed return releases only that mode. Every due word returns, and all-empty scheduling is bounded.
+- Recognition is a two-step choice. Q means known and E means unknown; either reveals the answer. An unknown answer offers N to commit and advance. A known answer also offers M to correct the result to unknown and advance. ← reviews, and Delete/Backspace moves a word out.
+- Spelling uses a real input. An empty or wrong first submission records unknown and clears the input; the word must then be retyped correctly. Esc pauses the retained spelling queue.
+- Automatic pronunciation defaults off. When enabled, recognition entry, Q/E reveal, N/M advance, and spelling submission speak through Web Speech. Manual replay remains available. Pointer actions release focus so global learning keys keep working; deliberate Tab navigation stays native and visibly focused.
+- Reading shows easy English first and Chinese separately. It selects one example per supplied `usage` for display, while JSON/Markdown normalization and export preserve all examples and unknown JSON fields. Word-origin and counterpart content is folded by default.
 
-## App Architecture & Mode System
+### Pronunciation contract and diagnosis
 
-`App.jsx` manages a three-mode state machine via the `mode` state (`study` | `rest` | `spell`):
+- Speech triggered by a learning action must be called synchronously inside that initiating event. Active utterances stay referenced until completion.
+- Voice choice prefers `Google US English`, then natural Microsoft/macOS American voices, and excludes novelty voices such as Albert, Whisper, and Zarvox.
+- Do not call browser-global `speechSynthesis.cancel()` while idle or from React cleanup. Strict Mode and Vite HMR run cleanup during normal development, and canceling there can wedge a Chromium process-wide TTS backend. Interrupt only when speech is actively speaking or pending.
+- `speechSynthesis.speaking === true` is not proof that audio started. Validate `start` plus `end`/`error` events and perform an audible check. On 2026-09-10 Chrome completed Google-voice events normally; a long-running Arc process stalled both app playback and a direct local-voice probe with no events, requiring a full Arc restart rather than a tab refresh.
 
-### `study` mode (default)
+### Persistence, management, and presentation
 
-Standard flashcard loop. Shows one card at a time; Space/Enter reveal the answer. When revealed, the card shows part of speech, EN/ZH meaning, and a light-weight list of 2-3 B1-B2-friendly example sentences with bolded focus phrases. In default simple mode, Enter advances without a recognition rating. When `两轮熟悉返场` is enabled, the explicit rating buttons appear: Enter / `想起来了` records correct and advances; N / `没想起来` records wrong and advances. Revealing alone does not score the card.
-
-When `自动美式发音` is enabled, revealing a hidden answer and advancing to the next recognition card each speak the raw `term` through the browser's Web Speech API. A recognition failure (`N` / `没想起来`) speaks the current term once more, then queues the next card's term so neither playback is lost. The pronunciation pill contains an accessible speaker button for manual replay whether automatic playback is enabled or not. Playback requests use `en-US`, prefer a local American voice, cancel queued speech before a new immediate playback, and safely do nothing when speech synthesis is unavailable.
-
-Bottom progress bar and count follow the study card position in this mode.
-
-**Keyboard shortcuts:**
-
-- `Space` — toggle reveal/hide meaning
-- `Enter` — reveal if hidden; advance if revealed; when familiarity is enabled, the advance records recognition success
-- `N` — only when familiarity is enabled and the card is revealed, record recognition failure, replay the current pronunciation and queue the next card when enabled, then advance
-- `Tab` / `←` — previous card
-- `Delete` / `Backspace` — remove current card from deck
-- `ArrowLeft` — previous card
-- Click the displayed word — copy the raw `term` without revealing or hiding the card; focus is released immediately after copying so global study shortcuts continue working
-
-The top-level `Export JSON` button exports every non-removed source card in its original import order, including temporarily familiar cards and independent of loop shuffles. Imported JSON properties outside the normalized schema are retained and exported unchanged. If the last source card is manually removed, the card shows a completion message while Undo and Reset remain available.
-
-Global study shortcuts ignore interactive controls such as buttons, inputs, textareas, and elements with `role="button"`. Clicking the bottom Remove control from `rest` or `spell` mode returns to `study` before removal so empty-deck completion and indices remain valid.
-
-**Feature preferences:** `自动美式发音` defaults on; `词源与对应概念` and `两轮熟悉返场` default off. All three persist locally. `词源与对应概念` controls whether revealed cards render `wordOrigin` and `relatedWord`; it never removes those fields. `两轮熟悉返场` controls the two recognition-rating buttons, the `N` shortcut, familiarity scoring, hiding, status labels, the pool, and return scheduling. While it is off, Enter simply advances, every non-removed card remains in ordinary circulation, and answers update only round-completion bookkeeping; existing familiarity progress is preserved. Turning it off immediately restores hidden cards to the current queue.
-
-**Loop shuffle:** before a new study or spelling round begins, simple mode includes every non-removed card. When familiarity is enabled, the scheduler first filters independently hidden cards and selects eligible return cards, then optionally shuffles the ordinary cards. The new first card is kept away from the card that was just on screen. The `Shuffle Loop: On / Off` button toggles this behavior and is persisted locally. `Reset Deck` restores the built-in deck and clears learning history while retaining feature preferences, including automatic pronunciation. Study and spell each build their own round queue.
-
-### Temporarily familiar pool (optional)
-
-When `两轮熟悉返场` is enabled, each stable card ID owns `study` and `spell` progress: consecutive-correct streak, hidden flag, due round, selected 1-2 round gap, last-scored round, return count, lapse count, and recognition-sync metadata. The status labels and familiar-pool panel are absent while the option is off.
-
-- A mode reaches temporary familiarity after 2 correct results in distinct rounds.
-- If recognition is already hidden, the first correct spelling result hides spelling too and binds its return schedule to recognition. The same binding occurs when spelling already has one success and recognition then becomes hidden.
-- Promotion in round `R` sets `dueRound = R + 1 + skipRounds`, where `skipRounds` is randomly 1 or 2. The card is absent for one or two complete mode rounds.
-- Each new round contains all ordinary non-hidden cards plus a return batch. With ordinary cards present, the batch is capped at `max(1, floor(ordinary / 3))`, approximately 25% of the final queue; the one-card minimum is the small-deck liveness exception. A due-only round returns at most 25% of eligible pool cards, also with a minimum of one.
-- Older due rounds have priority; ties are random. Eligible cards not selected stay overdue for the next round.
-- A bound card returns to spelling only after it actually returned in recognition; bound candidates take priority within the existing return cap. A successful recognition return updates both schedules. A recognition lapse releases both sides, while a spelling lapse releases only spelling.
-- Each card can score at most once per mode and round. In spell mode, the first submission is the scored result; corrections after feedback do not overwrite it.
-- If a newly requested round has no ordinary or due cards, it is explicitly skipped from the `rest` screen so round-only scheduling cannot deadlock.
-- Learning data, source deck, removed IDs, the latest Undo record, mode queues, indices, shuffle preference, pronunciation preference, both optional-complexity preferences, and completed round counts persist under the versioned `vocab2-learning-v1` localStorage key.
-
-### `rest` mode (贫血模式)
-
-Triggered after completing a full round (last card, revealed, Enter pressed). Clears all word details and shows a minimal screen:
-
-- Title: 「随手拼？」
-- Subtitle: 「enter 继续刷词 / space 开始随手拼」
-
-**Keyboard shortcuts:**
-
-- `Enter` — return to `study` mode at card 1
-- `Space` — enter `spell` mode
-
-### `spell` mode (随手拼)
-
-Spelling practice over its independently scheduled round queue. Shows only pos + meaning; the word is hidden.
-
-Bottom progress bar and count switch to `spellIndex`, so both the bar and the numeric counter reflect current spelling progress instead of the study-card position.
-
-**State variables used:** `spellQueueIds` (stable card IDs for the current spell round), `spellIndex` (current word index), `spellInput` (typed string), `spellResult` (`null` | `correct` | `wrong`), `shakeKey` (incremented to replay shake animation), plus the shared learning-state and completed-round records. Both mode queues store IDs rather than object references and resolve cards through the current source deck.
-
-**Keyboard behaviour:**
-
-- Letter keys / `Space` — append to `spellInput` (space supported for multi-word phrases); if `spellResult === 'wrong'`, clears input and starts fresh from that character
-- `Backspace` — delete last character (only when not correct)
-- `Enter` — submit; both correct and wrong first submissions play the American pronunciation when enabled; correct → green + show syllabified answer; wrong → shake animation + red text + show correct answer
-- `Enter` again when wrong (without retyping) → replay shake
-- `Esc` — exit to `study` mode at current index
-- After spelling all words → automatically return to `study` mode at card 1
-
-**Shake animation:** implemented by incrementing `shakeKey`, which is set as the React `key` prop on the input display element, forcing a re-mount and replaying the CSS `shake` keyframe animation.
-
-## GitHub Button
-
-A fixed, circular GitHub logo button sits in the top-right corner of the viewport (`position: fixed; top: 16px; right: 16px`). It links to `https://github.com/Ganzhe2028/vocab2` and uses a liquid-glass visual style (frosted backdrop filter, semi-transparent background, inner highlight ring).
+- Only the source deck and removed IDs persist under `flashvocab-3-assets-v1`; appearance persists separately under `flashvocab-theme-v1`. A fresh page resets learning, queues, learning preferences, and Undo. If the new deck key is absent, only those two assets are read from legacy `vocab2-learning-v1`; the old key is unchanged.
+- Replace, remove, find-back, and reset share one labelled in-memory Undo slot. Reset keeps source deck and removed IDs and restores default preferences. Import failure never changes the active deck or learning scene.
+- The quiet header contains brand, Import, More, Undo, and GitHub. It fades on learning keys or 2.5 seconds of pointer inactivity, returns on pointer/Tab, and remains active while the overlay is open. More includes system/light/dark appearance. Reduced motion, narrow layouts, and 200% zoom must remain usable.
+- `docs/validation-2026-09-07/` contains bounded real-Chrome visual evidence. `npm run check` plus the execution plan acceptance matrix remain the delivery gate.
 
 ## Content Format & Naming Conventions
 
@@ -172,9 +99,9 @@ Append new words to the end of both `vocab.md` and `baseDeck` unless you are del
 
 ## Testing Guidelines
 
-Run `npm run check` before delivery. It runs ESLint, the Node logic tests, the Vitest/jsdom UI characterization suite, and the production build. The tests cover stable duplicate IDs, mode isolation, two-correct promotion, recognition-led cross-mode synchronization, exact 1-2 skipped rounds, one-score-per-round, skipped-card round completion, lapse behavior, return caps, overdue priority, safe persistence, import/export formats, and the main study/rest/spell/remove/undo flows.
+Run `npm run check` before delivery. It runs ESLint, the Node logic tests, the Vitest/jsdom UI characterization suite, and the production build. Coverage includes stable duplicate IDs, independent study/spell scoring, exact one-round rest and return, bounded empty-round advancement, safe asset persistence, import/export, recognition/spelling/pause/remove/undo flows, natural voice selection, active-queue interruption, and Strict Mode cleanup that does not cancel speech.
 
-For deeper behaviour checks: `npm run build`, serve with `npm run preview`, then drive the UI with a headless-Chrome script through the Playwright module at `/Users/mac/.npm-global/lib/node_modules/@playwright/test/node_modules/playwright` (system Chrome at `/Applications/Chrome.app/Contents/MacOS/Google Chrome`). This pipeline was used to verify the loop-shuffle behaviour end to end.
+For deeper behavior checks, build and serve the production app, then drive the UI in a real browser. Pronunciation checks must record `start` and `end`/`error` events and include an audible check; the `speaking` flag alone is insufficient.
 
 ## Commit & Pull Request Guidelines
 

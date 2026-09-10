@@ -419,16 +419,16 @@
 
 用户标注：
 
-- [翻开后的阅读动线问题](design-audit-2026-08-30/user-01-reading-path.png)
-- [学习过程中常驻信息过多](design-audit-2026-08-30/user-02-visual-noise.png)
-- [无返场词时提示过小、流程割裂](design-audit-2026-08-30/user-03-empty-return.png)
-- [深度提示词入口与复制反馈缺少上下文](design-audit-2026-08-30/user-04-deep-prompt.jpg)
-- [系统默认决策与手动改选设想](design-audit-2026-08-30/user-05-transition-choice.jpg)
+- [翻开后的阅读动线问题](imgs/design-audit-2026-08-30/user-01-reading-path.png)
+- [学习过程中常驻信息过多](imgs/design-audit-2026-08-30/user-02-visual-noise.png)
+- [无返场词时提示过小、流程割裂](imgs/design-audit-2026-08-30/user-03-empty-return.png)
+- [深度提示词入口与复制反馈缺少上下文](imgs/design-audit-2026-08-30/user-04-deep-prompt.jpg)
+- [系统默认决策与手动改选设想](imgs/design-audit-2026-08-30/user-05-transition-choice.jpg)
 
 本次真实流程审视：
 
-- [辨识未翻](design-audit-2026-08-30/01-study-front.jpg)
-- [辨识已翻](design-audit-2026-08-30/02-study-revealed.jpg)
-- [轮末分支](design-audit-2026-08-30/03-round-transition.jpg)
-- [拼写输入](design-audit-2026-08-30/04-spelling.jpg)
-- [熟悉返场开启后的信息密度](design-audit-2026-08-30/05-familiar-rating.jpg)
+- [辨识未翻](imgs/design-audit-2026-08-30/01-study-front.jpg)
+- [辨识已翻](imgs/design-audit-2026-08-30/02-study-revealed.jpg)
+- [轮末分支](imgs/design-audit-2026-08-30/03-round-transition.jpg)
+- [拼写输入](imgs/design-audit-2026-08-30/04-spelling.jpg)
+- [熟悉返场开启后的信息密度](imgs/design-audit-2026-08-30/05-familiar-rating.jpg)
