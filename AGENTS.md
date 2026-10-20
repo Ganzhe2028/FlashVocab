@@ -2,6 +2,10 @@
 
 > MUST DO：Things that must be done: Every time there is a modification or update, the corresponding document content must also be updated. Every time a task begins, one needs to re-read the document.
 
+### Active redesign spec (2026-10-19)
+
+`docs/flashvocab-redesign-2026-10-19.md` defines the next-stage direction (wave lifecycle, judgment-driven exposure, question-type matrix, mastery model). Implementation work follows that spec; when behavior ships, update both that document and this file per the MUST DO rule. Until those features land, the 3.0 contract below remains authoritative.
+
 ## FlashVocab 3.0 Current Implementation (2026-09-10)
 
 The completed rewrite is defined by `docs/flashvocab-3-rewrite-plan.md`. The design brief and user-flow document preserve historical design context; do not restore removed 2.x behavior such as the `rest` choice screen, familiar-mode switch, return cap, shuffle switch, route system, or persistent learning snapshot.
