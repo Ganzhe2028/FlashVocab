@@ -18,7 +18,7 @@ export function SummaryView({ summary, onContinue, onPrepare, onQuiz }) {
       <p className="eyebrow">轮次结算</p>
       <h1 id="summary-title">这一轮练完了。</h1>
       <dl className="shortcut-list">
-        <div><dt>辨识</dt><dd>{summary.study.total} 个词，认识 {summary.study.correct}，模糊 {summary.study.fuzzy}，不认识 {summary.study.unknown}</dd></div>
+        <div><dt>辨识</dt><dd>{summary.study.total} 个词，认识 {summary.study.correct}，不认识 {summary.study.unknown}</dd></div>
         {summary.spell.total ? <div><dt>拼写</dt><dd>{summary.spell.total} 个词，首次写对 {summary.spell.correct}，需重拼 {summary.spell.unknown}</dd></div> : null}
         {summary.mastery ? <div><dt>掌握度</dt><dd>待巩固 {summary.mastery.weak}，未见 {summary.mastery.unseen}，渐稳 {summary.mastery.steady}，毕业 {summary.mastery.graduated}</dd></div> : null}
       </dl>

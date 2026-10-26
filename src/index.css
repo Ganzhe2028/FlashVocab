@@ -154,13 +154,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .ai-preparation-details { margin-block: 20px; }
 .ai-preparation-details > summary { cursor: pointer; color: var(--teal-dark); padding-block: 12px; }
 .file-button:has(input:disabled) { opacity: 0.5; pointer-events: none; }
-.micro-scene { margin-block: 22px; padding: 16px 18px; border-left: 2px solid var(--teal); background: var(--teal-soft); border-radius: 12px; color: var(--ink); }
-.micro-scene p { margin: 6px 0 0; line-height: 1.65; white-space: pre-line; }
-.memory-picture { margin: 8px 0 0; }
-.memory-picture svg { width: 100%; max-height: 180px; padding-block: 8px; box-sizing: content-box; display: block; color: var(--teal-dark); }
-.memory-labels { font-size: 14px; }
-.memory-picture figcaption { font-size: 1.0625rem; font-weight: 550; line-height: 1.65; white-space: pre-line; }
-.usage-tags { color: var(--muted); font-size: 0.88rem; }
 .header-button, .github-link, .icon-button {
   border: 0;
   background: transparent;
@@ -293,7 +286,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .study-prompt > p { color: var(--muted); font-size: 1.04rem; margin-bottom: 22px; }
 .answer { margin-top: 42px; animation: reveal 230ms ease-out both; }
 .meaning-block { border-left: 3px solid var(--teal); padding-left: 22px; }
-.meaning-en, .spell-heading {
+.meaning-zh, .spell-heading {
   margin: 0;
   max-width: 26ch;
   color: var(--ink);
@@ -302,7 +295,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   line-height: 1.45;
   letter-spacing: -0.018em;
 }
-.meaning-zh { margin: 10px 0 0; color: var(--ink-soft); font-size: 1.05rem; line-height: 1.65; }
+.meaning-en { margin: 10px 0 0; color: var(--ink-soft); font-size: 1.05rem; line-height: 1.65; }
 .examples { list-style: none; display: grid; gap: 12px; margin: 30px 0 0; padding: 0; }
 .examples li { color: var(--ink-secondary); line-height: 1.65; }
 .examples strong { color: var(--ink); font-weight: 720; }
@@ -369,7 +362,7 @@ kbd { padding: 2px 7px; border: 1px solid var(--kbd-border); border-bottom-width
 
 .spell-view { padding-top: 4px; }
 .spell-heading { max-width: 30ch; font-size: clamp(1.7rem, 3.4vw, 2.15rem); }
-.spell-zh { margin-top: 12px; }
+.spell-en { margin-top: 12px; }
 .spell-field { display: block; margin-top: 48px; }
 .spell-field input {
   width: 100%;

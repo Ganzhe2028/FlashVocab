@@ -36,9 +36,9 @@ export default function SpellView({
     <section className="spell-view" aria-labelledby="spell-heading">
       <p className="eyebrow">拼写</p>
       <h1 id="spell-heading" className="spell-heading">
-        {item?.meaning || "未提供释义"}
+        {item?.meaningZh || "未提供中文释义"}
       </h1>
-      <p className="meaning-zh spell-zh">{item?.meaningZh || "未提供中文释义"}</p>
+      <p className="meaning-en spell-en">{item?.meaning || "未提供释义"}</p>
       <p className="word-meta">{item?.pos || "词性未提供"}</p>
 
       {guideActive ? (

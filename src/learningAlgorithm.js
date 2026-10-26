@@ -187,7 +187,6 @@ export const advanceStudyExposure = (state, result = state.studyResult, now = Da
       studyIndex: nextIndex < 0 ? state.studyIndex : nextIndex,
       revealed: false,
       studyResult: null,
-      answerExpanded: false,
       insightsExpanded: false,
       notice: null,
     },
@@ -229,7 +228,6 @@ const createLearningSession = ({
     studyPracticeId: null,
     studyRoundResults: {},
     revealed: false,
-    answerExpanded: false,
     studyResult: null,
     spellQueueIds: [],
     spellIndex: 0,
@@ -527,24 +525,19 @@ export const learningReducer = (state, action) => {
         ? { ...state, mode: state.resumeMode, resumeMode: null }
         : state;
     case "CHOOSE_STUDY": {
-      if (state.mode !== "study" || state.revealed || !state.studyQueueIds.length) return state;
+      if (state.mode !== "study" || state.revealed || !state.studyQueueIds.length || typeof action.correct !== "boolean") return state;
       const chosen = {
             ...state,
             revealed: true,
-            studyResult: action.correct === "fuzzy" ? "fuzzy" : Boolean(action.correct),
+            studyResult: action.correct,
             learningHint: null,
-            answerExpanded: action.correct !== true,
-            insightsExpanded: action.correct === false && !state.sourceDeck[createCardIds(state.sourceDeck).indexOf(getCurrentStudyCardId(state))]?.microScene,
+            insightsExpanded: false,
             notice: null,
           };
       return state.quickKnownEnabled && action.correct === true
         ? learningReducer(chosen, { type: "ADVANCE_STUDY", random, now: action.now })
         : chosen;
     }
-    case "SHOW_STUDY_ANSWER":
-      return state.mode === "study" && state.revealed
-        ? { ...state, answerExpanded: true }
-        : state;
     case "TOGGLE_INSIGHTS":
       return { ...state, insightsExpanded: !state.insightsExpanded };
     case "PREVIOUS_STUDY":

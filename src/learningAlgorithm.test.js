@@ -30,12 +30,15 @@ test("quick-known is opt-in and commits once through normal scoring, rest, and s
   assert.notEqual(getCurrentStudyCardId(state), first);
   assert.equal(state.mastery[first].streak, 1);
   assert.equal(state.learningState[first].study.lastScoredRound, 1);
-  state = learningReducer(state, { type: "CHOOSE_STUDY", correct: "fuzzy" });
+  state = learningReducer(state, { type: "CHOOSE_STUDY", correct: false });
   assert.equal(state.revealed, true);
   state = learningReducer(state, { type: "ADVANCE_STUDY", random: almostOne });
+  for (let repeat = 0; repeat < 2; repeat += 1) {
+    state = learningReducer(state, { type: "CHOOSE_STUDY", correct: true, random: almostOne });
+  }
   assert.equal(state.mode, "summary");
   assert.equal(state.roundSummary.study.correct, 1);
-  assert.equal(state.roundSummary.study.fuzzy, 1);
+  assert.equal(state.roundSummary.study.unknown, 1);
   assert.equal(learningReducer(state, { type: "RESET_PROGRESS", random: almostOne }).quickKnownEnabled, false);
 });
 
@@ -50,12 +53,12 @@ test("spelling defaults off and recognition ends at a summary before another stu
   assert.equal(state.roundSummary.spell.total, 0);
 });
 
-test("mistakes-only spelling includes unknown and fuzzy words while excluding known words", () => {
+test("mistakes-only spelling includes unknown words while excluding known words", () => {
   const sourceDeck = [...deck, { term: "Gamma" }];
   let state = createInitialState({ assets: { sourceDeck }, random: almostOne });
   state = learningReducer(state, { type: "SET_SPELLING_MODE", value: "mistakes" });
   const ids = createCardIds(sourceDeck);
-  const results = new Map([[ids[0], true], [ids[1], "fuzzy"], [ids[2], false]]);
+  const results = new Map([[ids[0], true], [ids[1], false], [ids[2], false]]);
   for (let attempt = 0; attempt < 10 && state.mode === "study"; attempt += 1) {
     const correct = state.studyPracticeId ? true : results.get(getCurrentStudyCardId(state));
     state = learningReducer(state, { type: "CHOOSE_STUDY", correct });
@@ -120,15 +123,17 @@ test("applying material remaps identity-derived mastery and preserves removed wo
   assert.deepEqual(undone.mastery, state.mastery);
 });
 
-test("fuzzy judgment reveals compact content and never earns a correct streak", () => {
-  let state = createSpellingState({ assets: { sourceDeck: deck }, random: almostOne });
-  const cardId = state.studyQueueIds[0];
-  state = learningReducer(state, { type: "CHOOSE_STUDY", correct: "fuzzy" });
-  assert.equal(state.studyResult, "fuzzy");
-  assert.equal(state.answerExpanded, true);
-  assert.equal(state.insightsExpanded, false);
-  state = learningReducer(state, { type: "ADVANCE_STUDY" });
-  assert.equal(getModeProgress(state.learningState, cardId, "study").streak, 0);
+test("recognition accepts only known or unknown and keeps insights folded for both", () => {
+  for (const correct of [true, false]) {
+    const initial = createSpellingState({ assets: { sourceDeck: deck }, random: almostOne });
+    assert.equal(learningReducer(initial, { type: "CHOOSE_STUDY", correct: "fuzzy" }), initial);
+    let state = learningReducer(initial, { type: "CHOOSE_STUDY", correct });
+    assert.equal(state.studyResult, correct);
+    assert.equal(state.revealed, true);
+    assert.equal(state.insightsExpanded, false);
+    state = learningReducer(state, { type: "ADVANCE_STUDY" });
+    assert.equal(getModeProgress(state.learningState, initial.studyQueueIds[0], "study").streak, correct ? 1 : 0);
+  }
 });
 
 test("unknown cards return twice in the same round without extra scoring or endless scheduling", () => {
@@ -408,18 +413,19 @@ test("ordinary answers do not overwrite the one management undo slot", () => {
   assert.equal(state.removedCardIds.length, 0);
 });
 
-test("reviewing a scored word preserves the first fuzzy judgment in round statistics", () => {
+test("reviewing a scored word preserves the first unknown judgment in round statistics", () => {
   let state = createInitialState({ assets: { sourceDeck: deck }, random: almostOne });
   const choose = (correct) => {
     state = learningReducer(state, { type: "CHOOSE_STUDY", correct });
     state = learningReducer(state, { type: "ADVANCE_STUDY", random: almostOne });
   };
-  choose("fuzzy");
+  choose(false);
   state = learningReducer(state, { type: "PREVIOUS_STUDY" });
   choose(true);
   choose(true);
+  for (let repeat = 0; repeat < 2 && state.mode === "study"; repeat += 1) choose(true);
   assert.equal(state.mode, "summary");
-  assert.deepEqual(state.roundSummary.study, { total: 2, correct: 1, fuzzy: 1, unknown: 0 });
+  assert.deepEqual(state.roundSummary.study, { total: 2, correct: 1, fuzzy: 0, unknown: 1 });
 });
 
 test("removing the last practice ends the recognition round and Undo restores that practice", () => {

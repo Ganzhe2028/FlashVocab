@@ -22,7 +22,7 @@ const currentModeHelp = (mode, quickKnownEnabled) => {
   if (mode === "summary") return "这一轮已完成：查看辨识和拼写结果，按 Enter 继续下一轮，或回准备页换词表。";
   if (mode === "quiz") return "按选项前的数字选答案（前九项），其余可用 Tab 或点击。看完反馈按 N 下一题，可随时回到刚才的学习。";
   if (mode === "mastered") return "词表里的词已毕业；可找回毕业词，继续做选择题，或导入新词表。";
-  return quickKnownEnabled ? "当前是辨识：Q 认识后直接前进；W 模糊、E 不认识，看完答案后按 N 下一词。" : "当前是辨识：Q 认识、W 模糊、E 不认识，选择后按 N 下一词。认识的词可略过答案；只有选 Q 后才可按 M 改判为不认识并前进。";
+  return quickKnownEnabled ? "当前是辨识：Q 认识后直接前进；E 不认识，看完答案后按 N 下一词。" : "当前是辨识：Q 认识、E 不认识，两种选择都会展开释义与例句，按 N 下一词。只有选 Q 后才可按 M 改判为不认识并前进。";
 };
 
 export default function ManagePanel({
@@ -167,7 +167,7 @@ export default function ManagePanel({
               <h3 id="quickstart-title">完整学习循环</h3>
               <ol className="quickstart-list">
                 <li><span className="quickstart-number" aria-hidden="true">1</span><strong>准备词表</strong><span>文件、粘贴或一行一个单词都可以。</span></li>
-                <li><span className="quickstart-number" aria-hidden="true">2</span><strong>先做辨识</strong><span>{quickKnownEnabled ? "Q 认识直接前进；W 模糊看释义与辨析；E 不认识再加记忆画面。" : "Q 认识略过答案；W 模糊看释义与辨析；E 不认识再加词源画面。"}</span></li>
+                <li><span className="quickstart-number" aria-hidden="true">2</span><strong>先做辨识</strong><span>{quickKnownEnabled ? "Q 认识直接前进；E 不认识展开释义与例句，按 N 下一词。" : "Q 认识、E 不认识，查看释义与例句后按 N 下一词。"}</span></li>
                 <li><span className="quickstart-number" aria-hidden="true">3</span><strong>按需做拼写</strong><span>默认关闭，可在设置中选只拼错词或全部词；首次写错仍需正确重拼。</span></li>
                 <li><span className="quickstart-number" aria-hidden="true">4</span><strong>自动休息与返场</strong><span>同一模式两轮答对后休息一整轮，随后自动回来。</span></li>
               </ol>
@@ -177,7 +177,7 @@ export default function ManagePanel({
             <section className="panel-section" aria-labelledby="shortcuts-title">
               <h3 id="shortcuts-title">快捷键</h3>
               <dl className="shortcut-list">
-                <div><dt>辨识</dt><dd>{quickKnownEnabled ? "Q 认识直接前进；W 模糊；E 不认识；N 下一词；← 回看；Delete 移出" : "Q 认识；W 模糊；E 不认识；N 下一词；Q 后可用 M 改判不认识；← 回看；Delete 移出"}</dd></div>
+                <div><dt>辨识</dt><dd>{quickKnownEnabled ? "Q 认识直接前进；E 不认识；N 下一词；← 回看；Delete 移出" : "Q 认识；E 不认识；N 下一词；Q 后可用 M 改判不认识；← 回看；Delete 移出"}</dd></div>
                 <div><dt>拼写</dt><dd>Enter 提交或前进；空 Enter 看答案；Esc 暂停</dd></div>
               </dl>
             </section>
@@ -198,7 +198,7 @@ export default function ManagePanel({
                   onChange={(event) => onSetAutoPronounce(event.target.checked)}
                 />
               </label>
-              <p className="setting-note">内容跟随判断：认识可略过答案，模糊看释义和对应概念，不认识加记忆图，有资料时可看词源。例句用于考题。</p>
+              <p className="setting-note">Q/E 展开中文释义、英英释义与例句；词源和对应概念默认折叠，可手动查看。</p>
               <label className="switch-row quick-known-setting">
                 <span><strong>认识的词直接前进</strong><small>默认关闭。开启后 Q 立即记为认识并前进，不再停留供 M 改判；刷新或重置后关闭。</small></span>
                 <input type="checkbox" role="switch" checked={quickKnownEnabled} onChange={(event) => onSetQuickKnown(event.target.checked)} />
@@ -207,7 +207,7 @@ export default function ManagePanel({
                 <legend>拼写练习</legend>
                 <span className="setting-note">默认关闭。当前已开始的拼写队列保留，后续轮次按此设置。</span>
                 <div className="theme-options">
-                  {[["off", "关闭"], ["mistakes", "只拼错词和模糊词"], ["all", "所有词"]].map(([value, label]) => (
+                  {[["off", "关闭"], ["mistakes", "只拼不认识的词"], ["all", "所有词"]].map(([value, label]) => (
                     <label key={value}>
                       <input type="radio" name="spelling-mode" checked={spellingMode === value} onChange={() => onSetSpellingMode(value)} />
                       <span>{label}</span>

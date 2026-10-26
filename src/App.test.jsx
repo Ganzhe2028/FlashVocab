@@ -68,8 +68,10 @@ const enableSpelling = () => {
 const startSingleCardSpelling = () => {
   enableSpelling();
   press("q", "KeyQ");
-  expect(screen.queryByText(alpha.meaning)).toBeNull();
+  expect(screen.getByText(alpha.meaning)).toBeTruthy();
   press("n", "KeyN");
+  expect(screen.getByRole("heading", { name: alpha.meaningZh })).toBeTruthy();
+  expect(document.querySelector(".meaning-en").textContent).toBe(alpha.meaning);
   return screen.getByRole("textbox", { name: "输入英文拼写" });
 };
 
@@ -138,10 +140,12 @@ describe("FlashVocab 3.0", () => {
     expect(after).not.toBe(before);
     expect(window.speechSynthesis.speak.mock.calls[0][0].text.toLowerCase()).toBe(after);
     expect(screen.queryByTestId("study-answer")).toBeNull();
-    press("w", "KeyW");
+    press("e", "KeyE");
     expect(currentWordButton().textContent).not.toBe("");
     expect(screen.getByTestId("study-answer")).toBeTruthy();
     press("n", "KeyN");
+    press("q", "KeyQ");
+    press("q", "KeyQ");
     expect(screen.getByRole("heading", { name: "这一轮练完了。" })).toBeTruthy();
   });
   test("intro fallback remains a neutral learning hint alongside import success, then dismisses on judgment", () => {
@@ -230,8 +234,9 @@ describe("FlashVocab 3.0", () => {
     expect(stored.sourceDeck[0].microScene).toBe("把散乱纸条排成一步步计划。");
     fireEvent.click(screen.getByRole("button", { name: "关闭管理面板" }));
     press("e", "KeyE");
-    expect(screen.getByText("把散乱纸条排成一步步计划。")).toBeTruthy();
-    expect(screen.getByRole("img", { name: /Alpha 的记忆图：散乱纸条，事先排好，执行步骤/ })).toBeTruthy();
+    expect(screen.queryByText("把散乱纸条排成一步步计划。")).toBeNull();
+    expect(screen.queryByRole("img", { name: /Alpha 的记忆图/ })).toBeNull();
+    expect(screen.getByLabelText("例句")).toBeTruthy();
     expect(screen.queryByText(alpha.wordOrigin)).toBeNull();
     fireEvent.click(document.querySelector(".undo-toast button"));
     expect(screen.queryByText("把散乱纸条排成一步步计划。")).toBeNull();
@@ -313,17 +318,22 @@ describe("FlashVocab 3.0", () => {
     fireEvent.click(screen.getByRole("button", { name: "全部复活，期末总复习" }));
     expect(screen.getByRole("progressbar").getAttribute("aria-valuemax")).toBe("2");
   });
-  test("round summary separates fuzzy from unknown and agrees with persisted mastery", () => {
+  test("round summary counts the first unknown once and agrees with persisted mastery", () => {
     saveAssets();
     render(<App />);
-    press("w", "KeyW");
+    press("e", "KeyE");
     press("n", "KeyN");
-    expect(screen.getByText("1 个词，认识 0，模糊 1，不认识 0")).toBeTruthy();
+    for (let repeat = 0; repeat < 2; repeat += 1) {
+      press("q", "KeyQ");
+      press("n", "KeyN");
+    }
+    expect(screen.getByText("1 个词，认识 0，不认识 1")).toBeTruthy();
+    expect(screen.queryByText(/模糊/)).toBeNull();
     expect(screen.getByText("待巩固 1，未见 0，渐稳 0，毕业 0")).toBeTruthy();
     const [cardId] = createCardIds([alpha]);
     const stored = JSON.parse(window.localStorage.getItem(MASTERY_STORAGE_KEY));
-    expect(stored.mastery[cardId].fuzzy).toBe(1);
-    expect(stored.mastery[cardId].mistakes).toBe(0);
+    expect(stored.mastery[cardId].fuzzy).toBe(0);
+    expect(stored.mastery[cardId].mistakes).toBe(1);
   });
   test("saved mastery orders weak words first and graduated words can be found back with Undo", () => {
     saveAssets([alpha, beta]);
@@ -369,22 +379,26 @@ describe("FlashVocab 3.0", () => {
     fireEvent.click(screen.getByRole("button", { name: /继续下一轮/ }));
     expect(screen.getByRole("button", { name: "alpha" })).toBeTruthy();
   });
-  test.each([
-    ["q", "KeyQ", false, false],
-    ["w", "KeyW", true, false],
-    ["e", "KeyE", true, true],
-  ])("%s controls definition and origin exposure without showing full examples", (key, code, definition, origin) => {
-    saveAssets();
+  test.each([["q", "KeyQ"], ["e", "KeyE"]])("%s reveals definitions and examples with optional insights and no memory picture", (key, code) => {
+    saveAssets([{ ...alpha, microScene: "已有的记忆短句。", memorySketch: {
+      left: { icon: "notes", label: "纸条" }, right: { icon: "plan", label: "计划" }, link: "排好",
+    } }]);
     render(<App />);
+    const choices = screen.getByLabelText("辨识选择");
+    expect(within(choices).getAllByRole("button")).toHaveLength(2);
+    press("w", "KeyW");
+    expect(screen.queryByTestId("study-answer")).toBeNull();
     press(key, code);
-    expect(Boolean(screen.queryByText(alpha.meaning))).toBe(definition);
-    expect(Boolean(screen.queryByText(alpha.wordOrigin))).toBe(origin);
-    expect(Boolean(screen.queryByRole("img", { name: /Alpha 的记忆图/ }))).toBe(key === "e");
-    expect(screen.queryByLabelText("例句")).toBeNull();
-    if (key === "q") {
-      fireEvent.click(screen.getByRole("button", { name: "查看答案" }));
-      expect(screen.getByText(alpha.meaning)).toBeTruthy();
-    }
+    const meaning = document.querySelector(".meaning-block");
+    expect([...meaning.children].map((line) => line.textContent)).toEqual([alpha.meaningZh, alpha.meaning]);
+    expect(screen.queryByText(alpha.wordOrigin)).toBeNull();
+    expect(screen.queryByText(alpha.relatedWord)).toBeNull();
+    expect(screen.queryByRole("img")).toBeNull();
+    expect(screen.queryByText("已有的记忆短句。")).toBeNull();
+    expect(screen.getByLabelText("例句")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "查看词源与对应概念" }));
+    expect(screen.getByText(alpha.wordOrigin)).toBeTruthy();
+    expect(screen.getByText(alpha.relatedWord)).toBeTruthy();
   });
   test("learning can return to preparation and resume the same revealed card", () => {
     saveAssets();
@@ -446,15 +460,15 @@ describe("FlashVocab 3.0", () => {
 
     expect(screen.getByRole("button", { name: "alpha" })).toBeTruthy();
     expect(screen.queryByText(alpha.meaning)).toBeNull();
-    press("w", "KeyW");
+    press("e", "KeyE");
     expect(screen.getByRole("button", { name: "al·pha" })).toBeTruthy();
     expect(screen.getByText(alpha.meaning)).toBeTruthy();
     expect(screen.getByText(alpha.meaningZh)).toBeTruthy();
-    expect(screen.queryByLabelText("例句")).toBeNull();
+    expect(within(screen.getByLabelText("例句")).getAllByRole("listitem")).toHaveLength(2);
     expect(screen.queryByText("Alpha is here.")).toBeNull();
-    expect(screen.getByText(alpha.relatedWord, { exact: false })).toBeTruthy();
+    expect(screen.queryByText(alpha.relatedWord)).toBeNull();
     expect(screen.queryByText(alpha.wordOrigin)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "查看词源" }));
+    fireEvent.click(screen.getByRole("button", { name: "查看词源与对应概念" }));
     expect(screen.getByText(alpha.wordOrigin)).toBeTruthy();
   });
 
@@ -837,9 +851,9 @@ describe("FlashVocab 3.0", () => {
     act(() => vi.runOnlyPendingTimers());
     expect(document.activeElement).not.toBe(speaker);
 
-    press("w", "KeyW");
+    press("q", "KeyQ");
     expect(screen.getByText(alpha.meaning)).toBeTruthy();
-    const insightButton = screen.getByRole("button", { name: "查看词源" });
+    const insightButton = screen.getByRole("button", { name: "查看词源与对应概念" });
     insightButton.focus();
     fireEvent.click(insightButton, { detail: 1 });
     act(() => vi.runOnlyPendingTimers());
@@ -951,7 +965,7 @@ describe("FlashVocab 3.0", () => {
       expect(screen.getByRole("dialog", { name: dialogName })).toBeTruthy();
       press("Escape", "Escape");
       await waitFor(() => expect(document.activeElement).not.toBe(trigger));
-      press("w", "KeyW");
+      press("q", "KeyQ");
       expect(screen.getByText(alpha.meaning)).toBeTruthy();
       unmount();
     },

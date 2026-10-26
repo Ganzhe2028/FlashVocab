@@ -1,6 +1,8 @@
 # 闪词 UIUX 评审（2026-10-20）
 
-> 评审对象：P0–P2 交付后的本地生产构建，暗色与亮色、桌面与 390px 移动视口都过了一遍。本文是后续视觉与交互改造的底稿，改造人：Hermes。已按仓库规则跑过 ui-ux-pro-max 搜索，命中为通用条目，以下结论以其实证截图和优先级表（Accessibility > Touch > Feedback > Layout > Typography）为据。
+> 历史记录。2026-10-26 用户要求移除已过时的 `ui-ux-pro-max`，本文不再作为后续开发指引；当前规则见 [AGENTS.md](../AGENTS.md#interface-development)。
+
+> 评审对象：P0–P2 交付后的本地生产构建，暗色与亮色、桌面与 390px 移动视口都过了一遍。本文曾用于当时的视觉与交互改造，改造人：Hermes。已按仓库规则跑过 ui-ux-pro-max 搜索，命中为通用条目，以下结论以其实证截图和优先级表（Accessibility > Touch > Feedback > Layout > Typography）为据。
 
 ## 总体判断
 

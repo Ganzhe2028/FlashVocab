@@ -446,7 +446,6 @@ export default function App() {
             item={currentStudyItem}
             isPractice={Boolean(state.studyPracticeId)}
             revealed={state.revealed}
-            answerExpanded={state.answerExpanded}
             studyResult={state.studyResult}
             quickKnownEnabled={state.quickKnownEnabled}
             insightsExpanded={state.insightsExpanded}
@@ -458,7 +457,6 @@ export default function App() {
             onChoose={chooseStudy}
             onAdvance={advanceStudy}
             onToggleInsights={() => dispatch({ type: "TOGGLE_INSIGHTS" })}
-            onShowAnswer={() => dispatch({ type: "SHOW_STUDY_ANSWER" })}
             guideActive={newUserGuide.enabled && !newUserGuide.studyComplete}
             onDismissGuide={() => setNewUserGuide((previous) => ({ ...previous, enabled: false }))}
           />

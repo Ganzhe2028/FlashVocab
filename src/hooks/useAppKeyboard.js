@@ -93,10 +93,6 @@ export function useAppKeyboard({
         event.preventDefault();
         onLearningKey();
         onChooseStudy(false);
-      } else if (!revealed && event.code === "KeyW") {
-        event.preventDefault();
-        onLearningKey();
-        onChooseStudy("fuzzy");
       } else if (revealed && event.code === "KeyN") {
         event.preventDefault();
         onLearningKey();

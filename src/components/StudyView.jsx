@@ -1,9 +1,10 @@
-import MemoryPicture from "./MemoryPicture.jsx";
+import { getHighlightedSentence } from "./highlightSentence.js";
+import { selectExamples } from "../learningAlgorithm.js";
 
 const Meaning = ({ item }) => (
   <div className="meaning-block">
-    <p className="meaning-en">{item?.meaning || "未提供释义"}</p>
     <p className="meaning-zh">{item?.meaningZh || "未提供中文释义"}</p>
+    <p className="meaning-en">{item?.meaning || "未提供释义"}</p>
   </div>
 );
 
@@ -16,7 +17,6 @@ export default function StudyView({
   item,
   isPractice,
   revealed,
-  answerExpanded,
   studyResult,
   quickKnownEnabled,
   insightsExpanded,
@@ -28,10 +28,12 @@ export default function StudyView({
   onChoose,
   onAdvance,
   onToggleInsights,
-  onShowAnswer,
   guideActive,
   onDismissGuide,
 }) {
+  const examples = selectExamples(item?.examples);
+  const hasInsights = Boolean(item?.wordOrigin || item?.relatedWord);
+
   return (
     <section className="study-view" aria-labelledby="study-term">
       <p className="eyebrow">{isPractice ? "辨识 · 本轮再遇见" : "辨识"}</p>
@@ -64,6 +66,7 @@ export default function StudyView({
         {item?.respell ? <span>{item.respell}</span> : null}
       </p> : null}
       {copyFeedback ? <p className="copy-feedback" role="status">{copyFeedback}</p> : null}
+
       {pronunciationMessage ? <p className="page-notice" role="status">{pronunciationMessage}</p> : null}
 
       {guideActive ? (
@@ -73,10 +76,10 @@ export default function StudyView({
             <p>{revealed
               ? studyResult === true
                 ? "按 N 确认并去下一词；如果刚才其实没认出，按 M 改判后继续。"
-                : studyResult === "fuzzy"
-                  ? "看完释义和对应概念，按 N 确认模糊并去下一词。"
-                  : "看完答案，按 N 确认不认识并去下一词。"
-              : quickKnownEnabled ? "认识按 Q 直接前进；模糊按 W、不认识按 E，看完答案再按 N。" : "认识按 Q，模糊按 W，不认识按 E。选择后按 N 前进；认识的词无需展开答案。"}</p>
+                : "看完答案，按 N 确认不认识并去下一词。"
+              : quickKnownEnabled
+                ? "认识按 Q 直接前进；不认识按 E，看完答案再按 N。"
+                : "认识按 Q，不认识按 E。两种选择都会展开答案，不需要先猜拼写。"}</p>
           </div>
           <button type="button" className="text-button" onClick={onDismissGuide}>不再提示</button>
         </aside>
@@ -84,13 +87,30 @@ export default function StudyView({
 
       {revealed ? (
         <div className="answer" data-testid="study-answer">
-          {answerExpanded ? <>
           <Meaning item={item} />
-          {item.usageTags?.length ? <p className="usage-tags">{item.usageTags.join(" · ")}</p> : null}
-          {studyResult === false ? <div className="micro-scene"><strong>记忆画面</strong><MemoryPicture item={item} /></div> : null}
-          {item.relatedWord ? <p className="insight-content"><strong>对应概念</strong>{item.relatedWord}</p> : null}
+          {examples.length ? (
+            <ul className="examples" aria-label="例句">
+              {examples.map((example, index) => {
+                const parts = getHighlightedSentence(
+                  example?.sentence,
+                  example?.focus,
+                  item?.term,
+                );
+                return (
+                  <li key={`${example?.sentence}-${index}`}>
+                    {example?.usage ? <span className="usage-tag">{example.usage}</span> : null}
+                    {parts ? (
+                      <span>{parts.before}<strong>{parts.highlight}</strong>{parts.after}</span>
+                    ) : (
+                      <span>{example?.sentence}</span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
 
-          {item.wordOrigin ? (
+          {hasInsights ? (
             <div className="insights">
               <button
                 type="button"
@@ -98,16 +118,16 @@ export default function StudyView({
                 aria-expanded={insightsExpanded}
                 onClick={onToggleInsights}
               >
-                {insightsExpanded ? "收起词源" : "查看词源"}
+                {insightsExpanded ? "收起词源与对应概念" : "查看词源与对应概念"}
               </button>
               {insightsExpanded ? (
                 <div className="insight-content">
                   {item.wordOrigin ? <p><strong>词源</strong>{item.wordOrigin}</p> : null}
+                  {item.relatedWord ? <p><strong>对应概念</strong>{item.relatedWord}</p> : null}
                 </div>
               ) : null}
             </div>
           ) : null}
-          </> : <p>认识，直接继续。<button type="button" className="text-button" onClick={onShowAnswer}>查看答案</button></p>}
 
           <div className="study-actions" aria-label="辨识结果">
             <button type="button" className="primary-action" onClick={() => onAdvance()}>
@@ -122,13 +142,10 @@ export default function StudyView({
         </div>
       ) : (
         <div className="study-prompt">
-          <p>{quickKnownEnabled ? "认识按 Q 直接前进；模糊或不认识仍会展开答案。" : "先判断自己是否认识，再查看答案。"}</p>
+          <p>{quickKnownEnabled ? "认识按 Q 直接前进；不认识按 E 展开答案。" : "先判断自己是否认识，再查看答案。"}</p>
           <div className="study-actions study-choice-actions" aria-label="辨识选择">
             <button type="button" className="choice-action" onClick={() => onChoose(true)}>
               <span>认识</span><kbd>Q</kbd>
-            </button>
-            <button type="button" className="choice-action" onClick={() => onChoose("fuzzy")}>
-              <span>模糊</span><kbd>W</kbd>
             </button>
             <button type="button" className="choice-action" onClick={() => onChoose(false)}>
               <span>不认识</span><kbd>E</kbd>
