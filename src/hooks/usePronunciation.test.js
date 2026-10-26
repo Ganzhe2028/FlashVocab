@@ -65,7 +65,7 @@ test("American voice selection skips macOS novelty voices", () => {
   );
 });
 
-test("American voice selection leaves fallback choice to the browser", () => {
+test("American voice selection falls back to another English voice", () => {
   const britishVoice = {
     default: true,
     lang: "en-GB",
@@ -73,5 +73,10 @@ test("American voice selection leaves fallback choice to the browser", () => {
     name: "British English",
   };
 
-  assert.equal(selectAmericanVoice([britishVoice]), null);
+  assert.equal(selectAmericanVoice([britishVoice]), britishVoice);
+});
+
+test("voice selection rejects non-English and novelty-only voices", () => {
+  assert.equal(selectAmericanVoice([{ lang: "zh-CN", name: "Chinese" }]), null);
+  assert.equal(selectAmericanVoice([{ lang: "en-GB", name: "Whisper" }]), null);
 });

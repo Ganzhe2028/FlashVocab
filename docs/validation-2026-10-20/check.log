@@ -1,0 +1,128 @@
+
+> vocab2@0.0.0 check
+> npm run lint && npm test && npm run build
+
+
+> vocab2@0.0.0 lint
+> eslint .
+
+
+> vocab2@0.0.0 test
+> npm run test:unit && npm run test:ui
+
+
+> vocab2@0.0.0 test:unit
+> node --test src/*.test.js src/**/*.test.js
+
+✔ DeepSeek preparation batches six words, preserves source fields, and keeps credentials out of results (3.106833ms)
+✔ preparation rejects missing keys, incomplete responses, wrong terms, and leaked answer words (2.229208ms)
+✔ HTTP and later-batch failures are atomic and never include response bodies or keys (0.750958ms)
+✔ preparation adds exact-target examples to inflected originals and rejects unusable generated examples (0.587125ms)
+✔ findTextRange matches case-insensitively and trims the query (2.512833ms)
+✔ getHighlightedSentence preserves the sentence's original casing (0.199458ms)
+✔ getHighlightedSentence falls back to the card term (0.122542ms)
+✔ getHighlightedSentence returns null when neither focus nor term matches (0.239125ms)
+✔ American voice selection prefers a local default voice (1.497625ms)
+✔ American voice selection prefers Chrome's clear US voice over a local default (0.08425ms)
+✔ American voice selection skips macOS novelty voices (0.066958ms)
+✔ American voice selection falls back to another English voice (0.052708ms)
+✔ voice selection rejects non-English and novelty-only voices (0.10575ms)
+✔ spelling defaults off and recognition ends at a summary before another study round (5.626041ms)
+✔ mistakes-only spelling includes unknown and fuzzy words while excluding known words (1.924083ms)
+✔ preparation navigation retains the spelling queue, input, score, and Undo slot (0.681333ms)
+✔ live quiz scores one selection per question and returns to the retained learning scene (1.818917ms)
+✔ stable IDs distinguish identical duplicate entries (0.112958ms)
+✔ applying material remaps identity-derived mastery and preserves removed words with Undo (1.299417ms)
+✔ fuzzy judgment reveals compact content and never earns a correct streak (0.156125ms)
+✔ unknown cards return twice in the same round without extra scoring or endless scheduling (0.291708ms)
+✔ a one-word unknown deck drains its two practices in bounded steps (0.289083ms)
+✔ two correct results in distinct rounds rest exactly one full round (1.173459ms)
+✔ a successful return rests again and a failure releases only that mode (0.147916ms)
+✔ every due card returns without a proportional cap (0.094416ms)
+✔ new queues avoid the last card when an alternative exists (0.112333ms)
+✔ review navigation returns only unscored cards (0.045459ms)
+✔ usage examples keep one sentence per supplied usage (0.110917ms)
+✔ export keeps source order, unknown fields, resting cards, and every example (0.052375ms)
+✔ study completes its two practices before spelling and correction cannot overwrite first score (0.140916ms)
+✔ empty first spelling submission records a failure and reveals the retry state (0.078125ms)
+✔ pause preserves one spell queue, clears half input, and can resume after recognition (0.091958ms)
+✔ one-card and two-card all-resting states advance empty rounds with a bounded transition (0.907833ms)
+✔ removing and restoring the last card enters and leaves the explicit empty state (0.305208ms)
+✔ ordinary answers do not overwrite the one management undo slot (0.274167ms)
+✔ reviewing a scored word preserves the first fuzzy judgment in round statistics (0.870916ms)
+✔ removing the last practice ends the recognition round and Undo restores that practice (0.161166ms)
+✔ removing another recognition word retains the paused spelling card and first result (0.06575ms)
+✔ removing the last pending spelling card settles without asking a scored word again (0.082958ms)
+✔ graduation never discards an opted-in or paused spelling queue (0.074208ms)
+✔ mastery tracks first-answer streak, failures, fuzzy judgments, and measured time independently (1.626583ms)
+✔ study sorts weak, unseen, and steady words without overriding one-round rest (0.687458ms)
+✔ three independent recognition rounds graduate a word and restoration can be undone (2.522667ms)
+✔ MCQ draws three unique current-deck distractors, prioritizing the counterpart (2.28625ms)
+✔ MCQ rebuilds combinations and answer positions at each encounter (0.775417ms)
+✔ small decks use available distinct options and cannot fabricate a one-word quiz (0.404417ms)
+✔ scenario hides every complete target occurrence and leaves inflected or unrelated substrings alone (0.3555ms)
+✔ word bank blanks the exact focus phrase and includes every current word plus old-wave extras (0.269083ms)
+✔ word bank can use counterpart extras, reports available count, and skips invalid focus (0.093458ms)
+✔ contrast uses a boundary scenario and a shuffled pair, including counterpart answers (0.245167ms)
+✔ contrast skips missing counterparts, absent scenarios, and invalid answer keys (0.065ms)
+✔ current assets keep source fields and normalize removed IDs (1.022083ms)
+✔ v1 assets migrate to an undated legacy wave without changing removed IDs (0.151375ms)
+✔ current storage is preferred and does not restore learning queues (0.191083ms)
+✔ legacy storage contributes only the deck and removed IDs (0.182375ms)
+✔ damaged current storage reports a warning and does not fall through to legacy (0.101209ms)
+✔ a rejected write is returned without throwing (0.131541ms)
+✔ valid assets write only the new versioned key (0.120208ms)
+✔ missing storage has safe read and write results (0.060166ms)
+✔ mastery storage retains only four validated numbers and round-trips independently of queues (1.664958ms)
+✔ damaged or denied mastery storage remains usable and reports persistence failures (0.358334ms)
+✔ JSON import accepts supported wrappers and preserves modern and custom fields (1.511ms)
+✔ compact JSON arrays are not mistaken for Markdown terms (0.155166ms)
+✔ Markdown import reads metadata and three ordered Sentence/Focus pairs (0.346791ms)
+✔ CSV import supports aliases, quoted newlines, numbered examples, and custom columns (0.156333ms)
+✔ normalization supports legacy sentence aliases and safely ignores invalid cards (0.134709ms)
+✔ normalization accepts string examples and preserves every imported example (0.062375ms)
+✔ invalid and empty input fails with controlled errors (0.294667ms)
+✔ readImportFile keeps plain-text handling and rejects legacy .doc files (0.127541ms)
+✔ Markdown export emits all modern examples and can be parsed again (0.518833ms)
+✔ plain one-word-per-line imports and AI material survives JSON and Markdown normalization (0.530458ms)
+✔ adding a named wave retains old assets and gives duplicate terms independent stable IDs (2.516042ms)
+✔ cold storage preserves words and semester revival restores graduates while respecting removals (0.32575ms)
+✔ recognition and MCQ pools exclude cold waves (0.44875ms)
+✔ legacy wave dates remain unknown and first-day classification uses recorded creation time (0.331625ms)
+✔ new waves begin with scenario learning when usable examples exist, then review sorts by results (0.511917ms)
+ℹ tests 76
+ℹ suites 0
+ℹ pass 76
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 132.761333
+
+> vocab2@0.0.0 test:ui
+> vitest run
+
+
+ RUN  v3.2.7 /Users/mac/dev/vocab2
+
+ ✓ src/App.test.jsx (48 tests) 1357ms
+
+ Test Files  1 passed (1)
+      Tests  48 passed (48)
+   Start at  20:29:38
+   Duration  2.15s (transform 143ms, setup 97ms, collect 160ms, tests 1.36s, environment 284ms, prepare 67ms)
+
+
+> vocab2@0.0.0 build
+> vite build
+
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 37 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   1.13 kB │ gzip:  0.52 kB
+dist/assets/index-bgINvJG1.css   20.79 kB │ gzip:  5.44 kB
+dist/assets/index-Dg3JZKGz.js   259.86 kB │ gzip: 89.31 kB
+
+✓ built in 83ms

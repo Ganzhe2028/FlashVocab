@@ -54,6 +54,12 @@ test("JSON import accepts supported wrappers and preserves modern and custom fie
     meaningZh: "保留",
     wordOrigin: "Latin praeservare",
     relatedWord: "discard — throw away",
+    microScene: "",
+    memorySketch: null,
+    distractors: [],
+    usageTags: [],
+    miniScenario: "",
+    contrastScenarios: [],
   });
 });
 
@@ -223,4 +229,15 @@ test("Markdown export emits all modern examples and can be parsed again", () => 
   assert.equal(deck[0].meaningZh, "空的");
   assert.equal(deck[0].wordOrigin, "From Latin vacare.");
   assert.equal(deck[0].relatedWord, "occupied");
+});
+test("plain one-word-per-line imports and AI material survives JSON and Markdown normalization", () => {
+  assert.deepEqual(parseDeckFromText("devise\nimprovise"), [{ term: "devise" }, { term: "improvise" }]);
+  const source = normalizeDeck([{ term: "devise", microScene: "把纸条排成计划。", memorySketch: { left: { icon: "notes", label: "纸条" }, right: { icon: "plan", label: "计划" }, link: "排好" }, distractors: ["invent"],
+    usageTags: ["动作"], miniScenario: "She plans each step.", contrastScenarios: [{ scenario: "A scene.", answer: "devise" }],
+    examples: [{ sentence: "We devise a plan.", focus: "devise a plan" }], custom: { kept: true },
+  }]);
+  const json = normalizeDeck(parseDeckFromText(JSON.stringify(source)));
+  assert.deepEqual(json[0].custom, { kept: true });
+  const markdown = normalizeDeck(parseDeckFromText(buildMarkdownExport(source)));
+  for (const field of ["microScene", "memorySketch", "distractors", "usageTags", "miniScenario", "contrastScenarios", "examples"]) assert.deepEqual(markdown[0][field], source[0][field]);
 });

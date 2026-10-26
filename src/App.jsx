@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import ManagePanel from "./components/ManagePanel.jsx";
+import AIPreparationControls from "./components/AIPreparationControls.jsx";
+import { DEFAULT_PREPARATION_MODEL, prepareDeckWithAI } from "./aiPreparation.js";
+import QuestionView from "./components/QuestionView.jsx";
 import SpellView from "./components/SpellView.jsx";
 import StudyView from "./components/StudyView.jsx";
-import { EmptyView, PauseView, PrepareView } from "./components/StatusView.jsx";
+import { EmptyView, MasteredView, PauseView, PrepareView, SummaryView } from "./components/StatusView.jsx";
+import { isGraduated } from "./mastery.js";
+import { getEntryWaveId, getSessionKind } from "./waveModel.js";
 import { cloneDeck } from "./data/baseDeck.js";
 import { useAppKeyboard } from "./hooks/useAppKeyboard.js";
 import { usePronunciation } from "./hooks/usePronunciation.js";
@@ -13,11 +18,12 @@ import {
   buildExportDeck,
   createCardIds,
   createInitialState,
-  findNextUnscoredCardIndex,
+  getActiveCardIds,
+  getCurrentStudyCardId,
   learningReducer,
-  recordReview,
 } from "./learningAlgorithm.js";
 import { readDeckAssets, writeDeckAssets } from "./storage/learningStorage.js";
+import { readMastery, writeMastery } from "./storage/masteryStorage.js";
 import {
   buildMarkdownExport,
   normalizeDeck,
@@ -41,13 +47,20 @@ const downloadText = (content, type, filename) => {
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
 };
 
+const commitLearningTransition = (_previous, next) => next;
+
 export default function App() {
-  const [loaded] = useState(() => readDeckAssets());
-  const [state, dispatch] = useReducer(
-    learningReducer,
+  const [loaded] = useState(() => {
+    const assets = readDeckAssets();
+    const mastery = readMastery();
+    return { ...assets, mastery: mastery.mastery, warning: [assets.warning, mastery.warning].filter(Boolean).join(" ") };
+  });
+  const [state, commitTransition] = useReducer(
+    commitLearningTransition,
     loaded.assets,
     (assets) =>
       createInitialState({
+        mastery: loaded.mastery,
         assets: assets
           ? { ...assets, sourceDeck: normalizeDeck(assets.sourceDeck) }
           : null,
@@ -57,6 +70,13 @@ export default function App() {
   const [panelSection, setPanelSection] = useState("help");
   const [panelConfirmRequest, setPanelConfirmRequest] = useState(null);
   const [pasteText, setPasteText] = useState("");
+  const [waveName, setWaveName] = useState("");
+  const [aiSettings, setAiSettings] = useState({ enabled: false, apiKey: "", model: DEFAULT_PREPARATION_MODEL });
+  const [preparing, setPreparing] = useState(false);
+  const [preparationProgress, setPreparationProgress] = useState({ current: 0, total: 0 });
+  const preparationRequestRef = useRef(null);
+  const latestStateRef = useRef(state);
+  latestStateRef.current = state;
   const [panelMessage, setPanelMessage] = useState(loaded.warning ?? "");
   const [copyFeedback, setCopyFeedback] = useState("");
   const [manualCopy, setManualCopy] = useState("");
@@ -68,23 +88,44 @@ export default function App() {
   }));
   const panelRef = useRef(null);
   const spellInputRef = useRef(null);
-  const autoPronouncedStudyPageRef = useRef(null);
-  const { isSupported: pronunciationSupported, speak } = usePronunciation();
+  const headerUndoRef = useRef(null);
+  const focusUndoAfterToastRef = useRef(false);
+  const { isSupported: pronunciationSupported, speak, message: pronunciationMessage } = usePronunciation();
   const { themePreference, setThemePreference } = useThemePreference();
   const { quiet, showChrome, hideForLearning } = useQuietChrome({ heldOpen: panelOpen });
+
+  const dispatch = useCallback((action) => {
+    const previous = latestStateRef.current;
+    const next = learningReducer(previous, action);
+    if (next === previous) return;
+    latestStateRef.current = next;
+    if (action.type === "UNDO") setPanelMessage("");
+    if (next.autoPronounceEnabled && !["ADD_WAVE", "APPLY_PREPARATION"].includes(action.type)) {
+      const quickAdvance = action.type === "CHOOSE_STUDY" && previous.quickKnownEnabled && action.correct === true;
+      let cardId = null;
+      let deck = next.sourceDeck;
+      if (action.type === "CHOOSE_STUDY" && !quickAdvance) cardId = getCurrentStudyCardId(previous);
+      else if (action.type === "SUBMIT_SPELL") cardId = previous.spellQueueIds[previous.spellIndex];
+      else if (next.mode === "study" && (previous.mode !== "study" ||
+        getCurrentStudyCardId(previous) !== getCurrentStudyCardId(next) || previous.studyIndex !== next.studyIndex ||
+        previous.studySteps !== next.studySteps || (!previous.autoPronounceEnabled && !next.revealed))) {
+        cardId = getCurrentStudyCardId(next);
+      }
+      if (["CHOOSE_STUDY", "SUBMIT_SPELL"].includes(action.type) && !quickAdvance) deck = previous.sourceDeck;
+      if (cardId) speak(deck[createCardIds(deck).indexOf(cardId)]?.term);
+    }
+    commitTransition(next);
+  }, [speak]);
 
   const cardIds = useMemo(() => createCardIds(state.sourceDeck), [state.sourceDeck]);
   const itemById = useMemo(
     () => new Map(cardIds.map((cardId, index) => [cardId, state.sourceDeck[index]])),
     [cardIds, state.sourceDeck],
   );
-  const currentStudyId = state.studyQueueIds[state.studyIndex] ?? null;
+  const currentStudyId = getCurrentStudyCardId(state);
   const currentSpellId = state.spellQueueIds[state.spellIndex] ?? null;
   const currentStudyItem = itemById.get(currentStudyId) ?? null;
   const currentSpellItem = itemById.get(currentSpellId) ?? null;
-  const currentStudyPageKey = currentStudyId
-    ? `${state.completedRounds.study + 1}:${state.studyIndex}:${currentStudyId}`
-    : null;
   const removedEntries = useMemo(
     () =>
       state.removedCardIds
@@ -100,44 +141,48 @@ export default function App() {
     const result = writeDeckAssets({
       sourceDeck: state.sourceDeck,
       removedCardIds: state.removedCardIds,
+      waves: state.waves,
     });
     if (!result.success) {
       setPanelMessage("本次可继续，下次可能不保留。浏览器没有允许保存这份词表。");
     }
-  }, [state.removedCardIds, state.sourceDeck]);
+  }, [state.removedCardIds, state.sourceDeck, state.waves]);
+
+  useEffect(() => {
+    if (!writeMastery(state.mastery).success) setPanelMessage("掌握度本次可用，但浏览器未允许保存；下次可能不保留。");
+  }, [state.mastery]);
+
+  useEffect(() => {
+    const request = preparationRequestRef.current;
+    if (request && (request.sourceDeck !== state.sourceDeck || request.waves !== state.waves || request.removedCardIds !== state.removedCardIds)) request.controller.abort();
+  }, [state.sourceDeck, state.waves, state.removedCardIds]);
+
+  useEffect(() => () => preparationRequestRef.current?.controller.abort(), []);
 
   useEffect(() => {
     if (!state.undo) {
+      focusUndoAfterToastRef.current = false;
       setUndoToastVisible(false);
       return undefined;
     }
     setUndoToastVisible(true);
-    const timer = window.setTimeout(() => setUndoToastVisible(false), 5000);
+    const timer = window.setTimeout(() => {
+      focusUndoAfterToastRef.current = Boolean(document.activeElement?.closest(".undo-toast"));
+      setUndoToastVisible(false);
+    }, 5000);
     return () => window.clearTimeout(timer);
   }, [state.undo]);
 
   useEffect(() => {
-    if (state.mode === "spell") spellInputRef.current?.focus();
-  }, [state.mode, state.spellIndex, state.spellResult]);
+    if (!undoToastVisible && focusUndoAfterToastRef.current) {
+      focusUndoAfterToastRef.current = false;
+      headerUndoRef.current?.focus();
+    }
+  }, [undoToastVisible]);
 
   useEffect(() => {
-    if (
-      state.mode !== "study" ||
-      state.revealed ||
-      !state.autoPronounceEnabled ||
-      !currentStudyItem?.term ||
-      autoPronouncedStudyPageRef.current === currentStudyPageKey
-    ) return;
-    autoPronouncedStudyPageRef.current = currentStudyPageKey;
-    speak(currentStudyItem.term);
-  }, [
-    currentStudyItem?.term,
-    currentStudyPageKey,
-    speak,
-    state.autoPronounceEnabled,
-    state.mode,
-    state.revealed,
-  ]);
+    if (state.mode === "spell") spellInputRef.current?.focus();
+  }, [state.mode, state.spellIndex, state.spellResult]);
 
   useEffect(() => {
     if (!panelOpen) return;
@@ -196,9 +241,9 @@ export default function App() {
   );
 
   const chooseStudy = useCallback((correct) => {
-    if (state.autoPronounceEnabled) speak(currentStudyItem?.term);
     dispatch({ type: "CHOOSE_STUDY", correct });
-  }, [currentStudyItem?.term, speak, state.autoPronounceEnabled]);
+    if (correct === true && state.quickKnownEnabled) setNewUserGuide((previous) => ({ ...previous, studyComplete: true }));
+  }, [dispatch, state.quickKnownEnabled]);
 
   const advanceStudy = useCallback(
     (correctOverride) => {
@@ -206,67 +251,58 @@ export default function App() {
       const finalResult = typeof correctOverride === "boolean"
         ? correctOverride
         : state.studyResult;
-      const currentCardId = state.studyQueueIds[state.studyIndex];
-      const round = state.completedRounds.study + 1;
-      const nextLearningState = recordReview({
-        learningState: state.learningState,
-        cardId: currentCardId,
-        mode: "study",
-        round,
-        correct: finalResult,
-      });
-      const nextIndex = findNextUnscoredCardIndex({
-        queueIds: state.studyQueueIds,
-        currentIndex: state.studyIndex,
-        learningState: nextLearningState,
-        mode: "study",
-        round,
-      });
-
-      if (state.autoPronounceEnabled) {
-        if (nextIndex >= 0) {
-          const nextCardId = state.studyQueueIds[nextIndex];
-          const nextTerm = itemById.get(nextCardId)?.term;
-          autoPronouncedStudyPageRef.current = `${round}:${nextIndex}:${nextCardId}`;
-          speak(nextTerm);
-        }
-      }
       dispatch({ type: "ADVANCE_STUDY", correct: finalResult });
       setNewUserGuide((previous) => ({ ...previous, studyComplete: true }));
     },
     [
-      itemById,
-      speak,
-      state.autoPronounceEnabled,
-      state.completedRounds.study,
-      state.learningState,
-      state.revealed,
-      state.studyResult,
-      state.studyIndex,
-      state.studyQueueIds,
+      dispatch,
+      state,
     ],
   );
 
   const submitSpell = useCallback(() => {
     if (!state.spellInput.trim() && state.spellResult !== null) return;
-    if (state.autoPronounceEnabled) speak(currentSpellItem?.term);
     dispatch({ type: "SUBMIT_SPELL" });
     setNewUserGuide((previous) => ({ ...previous, spellComplete: true }));
   }, [
-    currentSpellItem?.term,
-    speak,
-    state.autoPronounceEnabled,
+    dispatch,
     state.spellInput,
     state.spellResult,
   ]);
 
-  const importDeck = useCallback((rawDeck) => {
+  const prepareMaterial = useCallback(async (deck) => {
+    if (preparationRequestRef.current) throw new Error("正在备料，请等本次完成或取消。");
+    const controller = new AbortController();
+    const snapshot = latestStateRef.current;
+    const request = { controller, sourceDeck: snapshot.sourceDeck, waves: snapshot.waves, removedCardIds: snapshot.removedCardIds, timedOut: false };
+    preparationRequestRef.current = request;
+    setPreparing(true);
+    const timeout = window.setTimeout(() => { request.timedOut = true; controller.abort(); }, 120000);
+    try {
+      const result = await prepareDeckWithAI({ deck, apiKey: aiSettings.apiKey, model: aiSettings.model,
+        signal: controller.signal, onProgress: setPreparationProgress });
+      const current = latestStateRef.current;
+      if (controller.signal.aborted || current.sourceDeck !== request.sourceDeck || current.waves !== request.waves || current.removedCardIds !== request.removedCardIds) throw new Error("词表已变化或备料已取消，结果未应用。");
+      return result.deck;
+    } catch (error) {
+      if (controller.signal.aborted) throw new Error(request.timedOut ? "DeepSeek 备料超时，请重试。原词表保持不变。" : "备料已取消，原词表保持不变。");
+      throw error;
+    } finally {
+      window.clearTimeout(timeout);
+      preparationRequestRef.current = null;
+      setPreparing(false);
+    }
+  }, [aiSettings.apiKey, aiSettings.model]);
+
+  const importDeck = useCallback(async (rawDeck) => {
     const normalized = normalizeDeck(rawDeck);
     if (!normalized.length) throw new Error("内容中没有有效的单词。");
-    dispatch({ type: "REPLACE_DECK", sourceDeck: normalized });
-    setPanelMessage(`已导入 ${normalized.length} 个词，并开始第一轮辨识。`);
+    const sourceDeck = aiSettings.enabled ? await prepareMaterial(normalized) : normalized;
+    dispatch({ type: "ADD_WAVE", sourceDeck, name: waveName });
+    setPanelMessage(`已新增 ${normalized.length} 个词，旧波次已冷藏。可在词表面板切换或复活。`);
     setPasteText("");
-  }, []);
+    setWaveName("");
+  }, [aiSettings.enabled, dispatch, prepareMaterial, waveName]);
 
   const handleFile = useCallback(
     async (event) => {
@@ -274,7 +310,7 @@ export default function App() {
       if (!file) return;
       try {
         const text = await readImportFile(file);
-        importDeck(parseDeckFromText(text));
+        await importDeck(parseDeckFromText(text));
       } catch (error) {
         setPanelMessage(`导入失败：${error?.message || "无法解析文件内容。"} 原词表保持不变。`);
       } finally {
@@ -284,18 +320,32 @@ export default function App() {
     [importDeck],
   );
 
-  const handlePasteImport = useCallback(() => {
+  const handlePasteImport = useCallback(async () => {
     try {
-      importDeck(parseDeckFromText(pasteText));
+      await importDeck(parseDeckFromText(pasteText));
     } catch (error) {
       setPanelMessage(`导入失败：${error?.message || "无法识别粘贴内容。"} 原词表保持不变。`);
     }
   }, [importDeck, pasteText]);
 
+  const prepareCurrentWave = useCallback(async () => {
+    const snapshot = latestStateRef.current;
+    const active = new Set(getActiveCardIds(snapshot));
+    const ids = createCardIds(snapshot.sourceDeck);
+    const positions = ids.flatMap((cardId, index) => active.has(cardId) ? [index] : []);
+    try {
+      const deck = await prepareMaterial(positions.map((index) => snapshot.sourceDeck[index]));
+      dispatch({ type: "APPLY_PREPARATION", entries: deck.map((entry, index) => ({ cardId: ids[positions[index]], entry })) });
+      setPanelMessage(`已补齐 ${deck.length} 个词的资料；可撤销，也可开始情景题或对位辨析。`);
+    } catch (error) {
+      setPanelMessage(`备料未应用：${error?.message || "请求失败，请重试。"}`);
+    }
+  }, [dispatch, prepareMaterial]);
+
   const useSample = useCallback(() => {
     dispatch({ type: "USE_SAMPLE", sourceDeck: cloneDeck() });
-    setPanelMessage("已恢复 24 个示例词。");
-  }, []);
+    setPanelMessage(latestStateRef.current.notice);
+  }, [dispatch]);
 
   const releasePointerFocus = useCallback((event) => {
     if (event.detail === 0) return;
@@ -325,11 +375,17 @@ export default function App() {
     onClosePanel: closePanel,
     onLearningKey: hideForLearning,
     onShowChrome: showChrome,
+    onContinueRound: () => dispatch({ type: "CONTINUE_ROUND" }),
+    quiz: state.quiz,
+    onAnswerQuiz: (answer) => dispatch({ type: "ANSWER_QUIZ", answer }),
+    onNextQuiz: () => dispatch({ type: "NEXT_QUIZ" }),
   });
 
   const progress =
     state.mode === "study"
-      ? { current: state.studyIndex + 1, total: state.studyQueueIds.length, label: "辨识" }
+      ? state.studyPracticeId
+        ? { current: 3 - state.studyPractices.find((practice) => practice.cardId === state.studyPracticeId).remaining, total: 2, label: "本轮加练" }
+        : { current: state.studyIndex + 1, total: state.studyQueueIds.length, label: "辨识" }
       : state.mode === "spell"
         ? { current: state.spellIndex + 1, total: state.spellQueueIds.length, label: "拼写" }
         : null;
@@ -342,7 +398,8 @@ export default function App() {
       <header className="app-header" onFocusCapture={showChrome}>
         <div className="brand">闪词 <span>3.0</span></div>
         <nav className="header-actions" aria-label="全局工具">
-          {state.undo ? <button type="button" className="header-button undo-button" onClick={() => dispatch({ type: "UNDO" })}>{state.undo.label}</button> : null}
+          {state.undo && !undoToastVisible ? <button ref={headerUndoRef} type="button" className="header-button undo-button" onClick={() => dispatch({ type: "UNDO" })}>{state.undo.label}</button> : null}
+          {state.mode !== "prepare" ? <button type="button" className="header-button" onClick={() => dispatch({ type: "OPEN_PREPARE" })}>准备页</button> : null}
           {state.mode !== "prepare" ? <button type="button" className="header-button import-button" onClick={() => openPanel("deck")}>Import</button> : null}
           <button type="button" className="header-button" onClick={() => openPanel("help")}>更多</button>
           <a className="github-link" href="https://github.com/Ganzhe2028/vocab2" target="_blank" rel="noreferrer" aria-label="在 GitHub 查看闪词">
@@ -361,9 +418,20 @@ export default function App() {
       ) : null}
 
       <main className="reading-column">
+        {state.mode !== "prepare" && state.waves.length ? <p className="learning-context">{state.waves.filter((wave) => wave.status === "active").map((wave) => wave.name).join(" · ")} · {getSessionKind(state.waves) === "intro" ? "初见局" : "刷词局"}</p> : null}
         {state.notice && !undoToastVisible ? <p className="page-notice" role="status">{state.notice}</p> : null}
+        {state.learningHint ? <p className="page-notice learning-hint" role="status">{state.learningHint}</p> : null}
         {state.mode === "prepare" ? (
           <PrepareView
+            importBusy={preparing}
+            aiControls={<AIPreparationControls settings={aiSettings} onChange={setAiSettings} busy={preparing} progress={preparationProgress} idPrefix="prepare-ai" onCancel={() => preparationRequestRef.current?.controller.abort()} />}
+            waveName={waveName}
+            wavePlaceholder={`W${state.waves.length + 1}`}
+            onWaveName={setWaveName}
+            hasWaves={Boolean(state.waves.length)}
+            onManage={() => openPanel("deck")}
+            canContinue={Boolean(state.resumeMode)}
+            onContinue={() => dispatch({ type: "CONTINUE_LEARNING" })}
             pasteText={pasteText}
             message={panelMessage}
             onPasteChange={setPasteText}
@@ -376,16 +444,21 @@ export default function App() {
         {state.mode === "study" && currentStudyItem ? (
           <StudyView
             item={currentStudyItem}
+            isPractice={Boolean(state.studyPracticeId)}
             revealed={state.revealed}
+            answerExpanded={state.answerExpanded}
             studyResult={state.studyResult}
+            quickKnownEnabled={state.quickKnownEnabled}
             insightsExpanded={state.insightsExpanded}
             pronunciationSupported={pronunciationSupported}
+            pronunciationMessage={pronunciationMessage}
             copyFeedback={copyFeedback}
             onCopy={copyCurrentWord}
             onPronounce={() => speak(currentStudyItem.term)}
             onChoose={chooseStudy}
             onAdvance={advanceStudy}
             onToggleInsights={() => dispatch({ type: "TOGGLE_INSIGHTS" })}
+            onShowAnswer={() => dispatch({ type: "SHOW_STUDY_ANSWER" })}
             guideActive={newUserGuide.enabled && !newUserGuide.studyComplete}
             onDismissGuide={() => setNewUserGuide((previous) => ({ ...previous, enabled: false }))}
           />
@@ -410,12 +483,33 @@ export default function App() {
             onStudy={() => dispatch({ type: "PAUSE_TO_STUDY" })}
           />
         ) : null}
+        {state.mode === "summary" ? (
+          <SummaryView
+            summary={state.roundSummary}
+            onContinue={() => dispatch({ type: "CONTINUE_ROUND" })}
+            onPrepare={() => dispatch({ type: "OPEN_PREPARE" })}
+            onQuiz={(kind) => dispatch({ type: "START_QUIZ", kind })}
+          />
+        ) : null}
+        {state.mode === "quiz" ? (
+          <QuestionView
+            quiz={state.quiz}
+            onAnswer={(answer) => dispatch({ type: "ANSWER_QUIZ", answer })}
+            onNext={() => dispatch({ type: "NEXT_QUIZ" })}
+            onEnd={() => dispatch({ type: "END_QUIZ" })}
+            onRestart={() => dispatch({ type: "START_QUIZ", kind: state.quiz.kind, intro: state.quiz.intro })}
+          />
+        ) : null}
         {state.mode === "empty" ? (
           <EmptyView
-            canUndo={Boolean(state.undo)}
-            onUndo={() => dispatch({ type: "UNDO" })}
             onManage={() => openPanel("deck")}
             onSample={openSampleConfirm}
+          />
+        ) : null}
+        {state.mode === "mastered" ? (
+          <MasteredView
+            onRestore={() => dispatch({ type: "RESTORE_GRADUATED" })}
+            onQuiz={() => dispatch({ type: "START_QUIZ" })}
           />
         ) : null}
 
@@ -438,13 +532,24 @@ export default function App() {
       ) : null}
 
       <ManagePanel
+        importBusy={preparing}
+        aiControls={<AIPreparationControls settings={aiSettings} onChange={setAiSettings} busy={preparing} progress={preparationProgress} idPrefix="panel-ai" onCancel={() => preparationRequestRef.current?.controller.abort()} onPrepareExisting={prepareCurrentWave} hasWords={getActiveCardIds(state).length > 0} />}
         open={panelOpen}
         panelRef={panelRef}
         section={panelSection}
         mode={state.mode}
         sourceDeck={state.sourceDeck}
         removedEntries={removedEntries}
+        graduatedCount={getActiveCardIds(state).filter((cardId) => isGraduated(state.mastery, cardId)).length}
+        waves={state.waves.map((wave) => ({ ...wave, count: state.sourceDeck.filter((entry) => getEntryWaveId(entry) === wave.id).length }))}
+        onWaveAction={(type, waveId) => { dispatch({ type, waveId }); closePanel(); }}
+        waveName={waveName}
+        wavePlaceholder={`W${state.waves.length + 1}`}
+        onWaveName={setWaveName}
+        onRestoreGraduated={() => { dispatch({ type: "RESTORE_GRADUATED" }); closePanel(); }}
         autoPronounceEnabled={state.autoPronounceEnabled}
+        spellingMode={state.spellingMode}
+        quickKnownEnabled={state.quickKnownEnabled}
         themePreference={themePreference}
         pronunciationSupported={pronunciationSupported}
         pasteText={pasteText}
@@ -459,12 +564,15 @@ export default function App() {
         onExportMarkdown={() => downloadText(buildMarkdownExport(exportDeck), "text/markdown", "flashvocab-deck.md")}
         onCopyCompletionPrompt={() => copyText(COMPLETION_PROMPT, "词表补全提示词已复制。")}
         onSetAutoPronounce={(value) => dispatch({ type: "SET_AUTO_PRONOUNCE", value })}
+        onSetSpellingMode={(value) => dispatch({ type: "SET_SPELLING_MODE", value })}
+        onSetQuickKnown={(value) => dispatch({ type: "SET_QUICK_KNOWN", value })}
         onSetThemePreference={setThemePreference}
         onRestoreRemoved={(cardId) => dispatch({ type: "RESTORE_REMOVED", cardId })}
-        onReset={() => dispatch({ type: "RESET_PROGRESS" })}
+        onReset={() => { dispatch({ type: "RESET_PROGRESS" }); setAiSettings({ enabled: false, apiKey: "", model: DEFAULT_PREPARATION_MODEL }); }}
         onSample={useSample}
         onRestartGuide={restartGuide}
         onConfirmConsumed={() => setPanelConfirmRequest(null)}
+        onQuiz={(kind) => { dispatch({ type: "START_QUIZ", kind }); closePanel(); }}
       />
     </div>
   );

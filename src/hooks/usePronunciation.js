@@ -31,12 +31,19 @@ export const selectAmericanVoice = (voices = []) => {
   const naturalVoices = americanVoices.filter(
     (voice) => !NOVELTY_AMERICAN_VOICE_NAME.test(voice?.name?.trim() ?? ""),
   );
+  const otherEnglishVoices = voices.filter((voice) =>
+    /^en(?:-|$)/.test(normalizeLanguage(voice?.lang)) &&
+    !NOVELTY_AMERICAN_VOICE_NAME.test(voice?.name?.trim() ?? ""),
+  );
 
   return (
     naturalVoices.find((voice) => voice.localService && voice.default) ??
     naturalVoices.find((voice) => voice.default) ??
     naturalVoices.find((voice) => voice.localService) ??
     naturalVoices[0] ??
+    otherEnglishVoices.find((voice) => voice.default) ??
+    otherEnglishVoices.find((voice) => voice.localService) ??
+    otherEnglishVoices[0] ??
     null
   );
 };
@@ -48,6 +55,8 @@ const browserSupportsPronunciation = () =>
 
 export function usePronunciation() {
   const [isSupported] = useState(browserSupportsPronunciation);
+  const [message, setMessage] = useState(() => browserSupportsPronunciation()
+    ? "" : "当前浏览器不支持发音，可换用支持语音的浏览器。");
   const voicesRef = useRef([]);
   const activeUtterancesRef = useRef(new Set());
 
@@ -55,7 +64,6 @@ export function usePronunciation() {
     if (!isSupported) return undefined;
 
     const synthesis = window.speechSynthesis;
-    const activeUtterances = activeUtterancesRef.current;
     const refreshVoices = () => {
       try {
         voicesRef.current = synthesis.getVoices();
@@ -69,7 +77,6 @@ export function usePronunciation() {
 
     return () => {
       synthesis.removeEventListener?.("voiceschanged", refreshVoices);
-      activeUtterances.clear();
     };
   }, [isSupported]);
 
@@ -86,7 +93,11 @@ export function usePronunciation() {
 
         const utterance = new SpeechSynthesisUtterance(spokenText);
         const americanVoice = selectAmericanVoice(voicesRef.current);
-        utterance.lang = AMERICAN_ENGLISH;
+        if (!americanVoice) {
+          setMessage("没有找到英语语音。请在系统语音设置中添加英语语音后重试。");
+          return null;
+        }
+        utterance.lang = americanVoice.lang || AMERICAN_ENGLISH;
         utterance.rate = 0.9;
         utterance.pitch = 1;
         if (americanVoice) {
@@ -94,10 +105,18 @@ export function usePronunciation() {
         }
 
         const releaseUtterance = () => activeUtterancesRef.current.delete(utterance);
-        utterance.onend = releaseUtterance;
-        utterance.onerror = releaseUtterance;
+        utterance.onstart = () => setMessage("正在播放。");
+        utterance.onend = () => { releaseUtterance(); setMessage(""); };
+        utterance.onerror = (event) => {
+          releaseUtterance();
+          if (!["interrupted", "canceled"].includes(event?.error)) {
+            setMessage("发音未能播放，请重试或检查系统语音设置。");
+          }
+        };
+        setMessage("");
         return utterance;
       } catch {
+        setMessage("无法读取英语语音，请检查系统语音设置后重试。");
         return null;
       }
     },
@@ -119,11 +138,12 @@ export function usePronunciation() {
         return true;
       } catch {
         activeUtterancesRef.current.delete(utterance);
+        setMessage("发音未能播放，请重试或检查系统语音设置。");
         return false;
       }
     },
     [createUtterance],
   );
 
-  return { isSupported, speak };
+  return { isSupported, speak, message };
 }

@@ -1,7 +1,8 @@
 import { createCardIds } from "../learningAlgorithm.js";
+import { normalizeWaves } from "../waveModel.js";
 
 export const DECK_STORAGE_KEY = "flashvocab-3-assets-v1";
-export const DECK_STORAGE_VERSION = 1;
+export const DECK_STORAGE_VERSION = 2;
 export const LEGACY_STORAGE_KEY = "vocab2-learning-v1";
 
 const isRecord = (value) =>
@@ -19,7 +20,7 @@ const getDefaultStorage = () => {
 export const normalizeDeckAssets = (value) => {
   if (
     !isRecord(value) ||
-    value.version !== DECK_STORAGE_VERSION ||
+    ![1, DECK_STORAGE_VERSION].includes(value.version) ||
     !Array.isArray(value.sourceDeck) ||
     !value.sourceDeck.every(isRecord)
   ) {
@@ -43,6 +44,7 @@ export const normalizeDeckAssets = (value) => {
     version: DECK_STORAGE_VERSION,
     sourceDeck: value.sourceDeck,
     removedCardIds,
+    waves: normalizeWaves(value.sourceDeck, value.waves),
   };
 };
 
@@ -103,6 +105,7 @@ export const writeDeckAssets = (assets, storage = getDefaultStorage()) => {
     version: DECK_STORAGE_VERSION,
     sourceDeck: assets?.sourceDeck,
     removedCardIds: assets?.removedCardIds,
+    waves: assets?.waves,
   });
   if (!normalized) {
     return { success: false, error: new Error("Deck assets are invalid.") };

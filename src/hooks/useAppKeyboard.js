@@ -18,6 +18,10 @@ export function useAppKeyboard({
   onClosePanel,
   onLearningKey,
   onShowChrome,
+  onContinueRound,
+  quiz,
+  onAnswerQuiz,
+  onNextQuiz,
 }) {
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -38,6 +42,25 @@ export function useAppKeyboard({
       const interactive =
         event.target instanceof Element && event.target.closest(INTERACTIVE_SELECTOR);
       if (interactive) return;
+
+      if (mode === "quiz") {
+        if (quiz.finished) return;
+        const choice = Number(event.key) - 1;
+        if (quiz.selected === null && /^[1-9]$/.test(event.key) && quiz.question.options[choice]) {
+          event.preventDefault();
+          onAnswerQuiz(quiz.question.options[choice]);
+        } else if (quiz.selected !== null && event.code === "KeyN") {
+          event.preventDefault();
+          onNextQuiz();
+        }
+        return;
+      }
+
+      if (mode === "summary" && event.key === "Enter") {
+        event.preventDefault();
+        onContinueRound();
+        return;
+      }
 
       if (mode === "pause") {
         if (event.key === "Enter") {
@@ -70,6 +93,10 @@ export function useAppKeyboard({
         event.preventDefault();
         onLearningKey();
         onChooseStudy(false);
+      } else if (!revealed && event.code === "KeyW") {
+        event.preventDefault();
+        onLearningKey();
+        onChooseStudy("fuzzy");
       } else if (revealed && event.code === "KeyN") {
         event.preventDefault();
         onLearningKey();
@@ -103,6 +130,10 @@ export function useAppKeyboard({
     onRemove,
     onResume,
     onShowChrome,
+    onContinueRound,
+    quiz,
+    onAnswerQuiz,
+    onNextQuiz,
     panelOpen,
     revealed,
     studyResult,

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createCardIds } from "../learningAlgorithm.js";
+import { normalizeWaves } from "../waveModel.js";
 import {
   DECK_STORAGE_KEY,
   DECK_STORAGE_VERSION,
@@ -19,6 +20,7 @@ const assets = (overrides = {}) => ({
   version: DECK_STORAGE_VERSION,
   sourceDeck,
   removedCardIds: [],
+  waves: normalizeWaves(sourceDeck),
   ...overrides,
 });
 
@@ -29,6 +31,14 @@ test("current assets keep source fields and normalize removed IDs", () => {
   }));
   assert.deepEqual(normalized.removedCardIds, [cardIds[1]]);
   assert.deepEqual(normalized.sourceDeck[0].custom, { kept: true });
+});
+
+test("v1 assets migrate to an undated legacy wave without changing removed IDs", () => {
+  const [cardId] = createCardIds(sourceDeck);
+  const normalized = normalizeDeckAssets({ version: 1, sourceDeck, removedCardIds: [cardId] });
+  assert.equal(normalized.version, 2);
+  assert.deepEqual(normalized.removedCardIds, [cardId]);
+  assert.deepEqual(normalized.waves, normalizeWaves(sourceDeck));
 });
 
 test("current storage is preferred and does not restore learning queues", () => {

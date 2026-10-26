@@ -1,3 +1,5 @@
+import { normalizeMemorySketch } from "../memorySketch.js";
+
 const DOCX_MIME =
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const DOC_MIME = "application/msword";
@@ -168,6 +170,12 @@ const MARKDOWN_FIELD_ALIASES = {
   relatedword: "relatedWord",
   related_word: "relatedWord",
   counterpart: "relatedWord",
+  "micro scene": "microScene",
+  "memory sketch": "memorySketch",
+  "near distractors": "distractors",
+  "usage tags": "usageTags",
+  "mini scenario": "miniScenario",
+  "contrast scenarios": "contrastScenarios",
 };
 
 const parseVocabMarkdown = (text) => {
@@ -342,13 +350,23 @@ export const parseDeckFromText = (rawText) => {
       continue;
     }
   }
-  throw new Error("无法识别内容，请确保包含 JSON 数组或 deck 字段。");
+  const words = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (words.every((word) => /^[a-z][a-z'’-]*$/i.test(word))) return words.map((term) => ({ term }));
+  throw new Error("无法识别内容，请确保包含 JSON 数组、词条格式或一行一个单词。");
 };
 
 const normalizeEntry = (entry) => {
   const toText = (value) => (value == null ? "" : String(value)).trim();
   const sourceEntry =
     entry && typeof entry === "object" && !Array.isArray(entry) ? entry : {};
+  const toList = (value) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string") {
+      try { const parsed = JSON.parse(value); if (Array.isArray(parsed)) return parsed; } catch { /* Legacy plain labels remain readable. */ }
+      return value.split(/[,，]/).map((part) => part.trim()).filter(Boolean);
+    }
+    return [];
+  };
   const normalizeExample = (example) => {
     if (typeof example === "string") {
       const sentence = toText(example);
@@ -411,6 +429,12 @@ const normalizeEntry = (entry) => {
     relatedWord: toText(
       entry?.relatedWord ?? entry?.related_word ?? entry?.counterpart,
     ),
+    microScene: toText(entry?.microScene ?? entry?.micro_scene),
+    memorySketch: normalizeMemorySketch(entry?.memorySketch ?? entry?.memory_sketch),
+    distractors: toList(entry?.distractors).map(toText).filter(Boolean),
+    usageTags: toList(entry?.usageTags ?? entry?.usage_tags).map(toText).filter(Boolean),
+    miniScenario: toText(entry?.miniScenario ?? entry?.mini_scenario),
+    contrastScenarios: toList(entry?.contrastScenarios ?? entry?.contrast_scenarios).filter((variant) => variant && typeof variant === "object" && !Array.isArray(variant)),
     examples,
   };
 };
@@ -445,6 +469,12 @@ export const buildMarkdownExport = (items) =>
         entry.meaningZh ? `- Meaning (ZH): ${entry.meaningZh}` : "",
         entry.wordOrigin ? `- Word Origin: ${entry.wordOrigin}` : "",
         entry.relatedWord ? `- Related Word: ${entry.relatedWord}` : "",
+        entry.microScene ? `- Micro Scene: ${entry.microScene.replaceAll("\n", " ")}` : "",
+        entry.memorySketch ? `- Memory Sketch: ${JSON.stringify(entry.memorySketch)}` : "",
+        entry.distractors?.length ? `- Near Distractors: ${JSON.stringify(entry.distractors)}` : "",
+        entry.usageTags?.length ? `- Usage Tags: ${JSON.stringify(entry.usageTags)}` : "",
+        entry.miniScenario ? `- Mini Scenario: ${entry.miniScenario}` : "",
+        entry.contrastScenarios?.length ? `- Contrast Scenarios: ${JSON.stringify(entry.contrastScenarios)}` : "",
       ];
       (entry.examples ?? []).forEach((example, index) => {
         lines.push(`- Sentence ${index + 1}: ${example.sentence || ""}`);
