@@ -43,7 +43,7 @@ export default function StudyView({
             onClick={onCopy}
             aria-describedby="copy-tip"
           >
-            {formatStudyHeading(revealed ? (item?.syllables || item?.term) : item?.term)}
+            {formatStudyHeading(revealed ? (item?.syllables?.replace(/-/g, "·") || item?.term) : item?.term)}
           </button>
         </h1>
         <button

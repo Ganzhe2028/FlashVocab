@@ -11,6 +11,7 @@ export default function SpellView({
   onDismissGuide,
 }) {
   const finished = result === "correct" || result === "corrected";
+  const syllables = item?.syllables?.replace(/-/g, "·") || item?.term;
   const hasError = result === "wrong" || result === "retrying";
   const canSubmit = finished || Boolean(value.trim()) || result === null;
   const submitLabel = result === null && !value.trim()
@@ -74,10 +75,10 @@ export default function SpellView({
           <p className="feedback-error">按正确拼写再提交一次；首次结果不会被覆盖。</p>
         ) : null}
         {result === "correct" ? (
-          <p className="feedback-success">拼对了：<strong>{item?.syllables || item?.term}</strong></p>
+          <p className="feedback-success">拼对了：<strong>{syllables}</strong></p>
         ) : null}
         {result === "corrected" ? (
-          <p className="feedback-success">已经改正：<strong>{item?.syllables || item?.term}</strong></p>
+          <p className="feedback-success">已经改正：<strong>{syllables}</strong></p>
         ) : null}
       </div>
 

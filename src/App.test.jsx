@@ -8,7 +8,7 @@ import { MASTERY_STORAGE_KEY } from "./storage/masteryStorage.js";
 
 const alpha = {
   term: "Alpha",
-  syllables: "Al·pha",
+  syllables: "Al-pha",
   respell: "[AL-fuh]",
   pos: "n.",
   meaning: "the first item in a group",
@@ -35,7 +35,7 @@ const beta = {
 const nasa = {
   ...alpha,
   term: "NASA",
-  syllables: "N·A·S·A",
+  syllables: "N-A-S-A",
 };
 
 const saveAssets = (sourceDeck = [alpha], removedCardIds = []) => {
