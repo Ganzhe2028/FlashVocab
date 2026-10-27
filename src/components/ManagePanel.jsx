@@ -16,9 +16,9 @@ const PANEL_TITLES = {
 };
 
 const SPELLING_OPTIONS = [
-  ["off", "只认词", "看到单词，判断认不认识"],
-  ["mistakes", "认词，再拼没认出的词", "本轮没认出的词拼一遍"],
-  ["all", "认词，再拼全部词", "每轮结束后整组拼一遍"],
+  ["off", "纯刷词", "大量多次地过完所有单词"],
+  ["mistakes", "刷词+拼写错词", "刷完后拼一遍不认识的词"],
+  ["all", "刷词+拼写全部", "每轮结束后全部拼一遍"],
 ];
 
 export default function ManagePanel({
