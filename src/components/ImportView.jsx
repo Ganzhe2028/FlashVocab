@@ -4,7 +4,7 @@ import {
   parseDeckFromTextDetailed,
   readImportFile,
 } from "../utils/deckImport.js";
-import { buildFillPrompt, mergeFilledEntries } from "../utils/importFill.js";
+import { buildFillPrompt, buildWorksheetPrompt, detectWorksheetMismatch, mergeFilledEntries } from "../utils/importFill.js";
 
 const EMPTY_ENTRIES = [];
 const STEPS = [
@@ -41,6 +41,10 @@ export default function ImportView({
   const [fillError, setFillError] = useState("");
   const [fillNotice, setFillNotice] = useState("");
   const [copyNotice, setCopyNotice] = useState("");
+  const [assistReply, setAssistReply] = useState("");
+  const [assistError, setAssistError] = useState("");
+  const [assistCopyNotice, setAssistCopyNotice] = useState("");
+  const [failedFile, setFailedFile] = useState("");
   const headingRef = useRef(null);
   const pasteRef = useRef(null);
 
@@ -59,17 +63,26 @@ export default function ImportView({
     if (sourceMode === "paste") pasteRef.current?.focus({ preventScroll: true });
   }, [sourceMode]);
 
-  const acceptText = (text) => {
+  const acceptText = (text, label = "") => {
     try {
       const parsed = parseDeckFromTextDetailed(text);
       const normalized = normalizeDeck(parsed.entries);
       if (!normalized.length) throw new Error("没有认出可用的单词，请检查词表内容。");
-      setDraft({ ...parsed, entries: normalized });
+      setDraft({
+        ...parsed,
+        entries: normalized,
+        worksheetLike: detectWorksheetMismatch(normalized),
+        sourceName: label,
+      });
       setSourceText(text);
       setError("");
+      setFailedFile("");
       setShowAll(false);
       setFillOpen(false);
       setFillNotice("");
+      setAssistReply("");
+      setAssistError("");
+      setAssistCopyNotice("");
       setStage("preview");
     } catch (parseError) {
       setError(parseError?.message || "无法识别这份词表。");
@@ -79,11 +92,13 @@ export default function ImportView({
   const handleFile = async (file) => {
     if (!file || parsing) return;
     setError("");
+    setFailedFile("");
     setParsing(true);
     try {
-      acceptText(await readImportFile(file));
+      acceptText(await readImportFile(file), file.name);
     } catch (fileError) {
       setError(fileError?.message || "无法读取这个文件。");
+      setFailedFile(file.name);
     } finally {
       setParsing(false);
     }
@@ -98,7 +113,19 @@ export default function ImportView({
   const backToInput = () => {
     setError("");
     setFillOpen(false);
+    setAssistError("");
+    setFailedFile("");
     setStage("input");
+  };
+
+  const openFailedFileAssist = () => {
+    if (!failedFile) return;
+    setDraft({ entries: [], skipped: [], worksheetLike: true, sourceName: failedFile });
+    setError("");
+    setAssistReply("");
+    setAssistError("");
+    setAssistCopyNotice("");
+    setStage("preview");
   };
 
   const startImport = async () => {
@@ -119,6 +146,40 @@ export default function ImportView({
       setCopyNotice("已复制。把 AI 的回复粘贴到下面。");
     } catch {
       setCopyNotice("复制失败，请展开下面的「查看要复制的内容」手动复制。");
+    }
+  };
+
+  const copyWorksheetPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(buildWorksheetPrompt());
+      setAssistCopyNotice("已复制。和原文件一起发给 AI。");
+    } catch {
+      setAssistCopyNotice("复制失败，请展开下面的「查看要复制的内容」手动复制。");
+    }
+  };
+
+  const applyWorksheetReply = () => {
+    setAssistError("");
+    if (!assistReply.trim()) {
+      setAssistError("先把 AI 的回复粘贴进来。");
+      return;
+    }
+    try {
+      const parsed = parseDeckFromTextDetailed(assistReply);
+      const normalized = normalizeDeck(parsed.entries);
+      if (!normalized.length) throw new Error("没有在回复里找到词表行。请确认 AI 按「单词 | 词性 | 中文 | 英文」输出。");
+      if (detectWorksheetMismatch(normalized)) throw new Error("回复里还带着页码，或者单词和释义没有配好。请让 AI 按格式重发。");
+      setDraft({
+        entries: normalized,
+        skipped: parsed.skipped,
+        worksheetLike: false,
+        sourceName: draft?.sourceName ?? "",
+      });
+      setAssistReply("");
+      setAssistCopyNotice("");
+      setFillNotice(`AI 整理了 ${normalized.length} 个词，请核对。`);
+    } catch (replacementError) {
+      setAssistError(replacementError?.message || "没看懂这份回复。");
     }
   };
 
@@ -158,6 +219,42 @@ export default function ImportView({
       </ol>
 
       {stage === "preview" ? (
+        draft?.worksheetLike ? (
+          <div className="import-step-body">
+            <button type="button" className="text-button import-back" onClick={backToInput}>← 换一份</button>
+            <h1 id="import-title" ref={headingRef} tabIndex="-1">这份表要请 AI 读一下。</h1>
+            <p className="import-summary">
+              {entries.length
+                ? "它像是匹配/填空题：单词和释义分开放，闪词猜不出谁配谁。"
+                : "这份文件闪词读不出来，但 AI 可以。"}
+            </p>
+            {draft.sourceName ? <p className="assist-source">{draft.sourceName}</p> : null}
+
+            <div className="assist-panel">
+              <p className="fill-step"><span>1</span>打开 <a className="text-button" href="https://chat.deepseek.com/" target="_blank" rel="noreferrer">DeepSeek</a>，把这份原文件拖进对话。</p>
+              <p className="fill-step"><span>2</span>复制这段话，和文件一起发过去。</p>
+              <div className="fill-actions">
+                <button type="button" className="secondary-action" onClick={copyWorksheetPrompt}>复制这段话</button>
+                {assistCopyNotice ? <span className="fill-note" role="status">{assistCopyNotice}</span> : null}
+              </div>
+              <details className="fill-prompt-details">
+                <summary>查看要复制的内容</summary>
+                <textarea className="fill-prompt" readOnly rows="6" value={buildWorksheetPrompt()} onFocus={(event) => event.target.select()} aria-label="整理提示词" />
+              </details>
+              <p className="fill-step"><span>3</span>把 AI 的回复粘贴回来。</p>
+              <textarea
+                className="fill-reply"
+                rows="6"
+                value={assistReply}
+                onChange={(event) => setAssistReply(event.target.value)}
+                placeholder={"abandon | v. | 放弃 | to leave something\nbenefit | n. | 好处 | an advantage"}
+                aria-label="AI 词表回复"
+              />
+              {assistError ? <p className="inline-error" role="alert">{assistError}</p> : null}
+              <button type="button" className="primary-action" onClick={applyWorksheetReply}>生成词表</button>
+            </div>
+          </div>
+        ) : (
         <div className="import-step-body">
           <button type="button" className="text-button import-back" onClick={backToInput}>← 换一份</button>
           <h1 id="import-title" ref={headingRef} tabIndex="-1">这些词对吗？</h1>
@@ -246,16 +343,17 @@ export default function ImportView({
             {busy ? "正在加入…" : `开始背这 ${entries.length} 个词`}
           </button>
         </div>
+        )
       ) : (
         <div className="import-step-body">
           {canContinue ? <button type="button" className="text-button import-back" onClick={onContinue}>← 继续学习</button> : null}
           <h1 id="import-title" ref={headingRef} tabIndex="-1">{hasWaves ? "再加一组词。" : "单词表在哪？"}</h1>
 
           <div className="source-tabs" role="group" aria-label="词表来源">
-            <button type="button" aria-pressed={sourceMode === "file"} disabled={parsing} onClick={() => { setSourceMode("file"); setError(""); }}>
+            <button type="button" aria-pressed={sourceMode === "file"} disabled={parsing} onClick={() => { setSourceMode("file"); setError(""); setFailedFile(""); }}>
               文件
             </button>
-            <button type="button" aria-pressed={sourceMode === "paste"} disabled={parsing} onClick={() => { setSourceMode("paste"); setError(""); }}>
+            <button type="button" aria-pressed={sourceMode === "paste"} disabled={parsing} onClick={() => { setSourceMode("paste"); setError(""); setFailedFile(""); }}>
               粘贴
             </button>
           </div>
@@ -298,7 +396,7 @@ export default function ImportView({
                     setError("先把单词表粘贴到框里。");
                     return;
                   }
-                  acceptText(sourceText);
+                  acceptText(sourceText, "粘贴内容");
                 }}
               >
                 识别单词
@@ -307,6 +405,11 @@ export default function ImportView({
           )}
 
           {error ? <p className="inline-error" role="alert">{error}</p> : null}
+          {failedFile ? (
+            <button type="button" className="text-button import-ai-fallback" onClick={openFailedFileAssist}>
+              把这份文件交给 AI 整理
+            </button>
+          ) : null}
 
           {!hasWaves ? (
             <button type="button" className="text-button import-sample" disabled={parsing} onClick={onSample}>

@@ -481,6 +481,23 @@ describe("FlashVocab 3.0", () => {
     expect(screen.getByRole("textbox", { name: "单词表内容" })).toBeTruthy();
   });
 
+  test("a matching worksheet routes to the AI rescue and replaces the broken preview", () => {
+    render(<App />);
+    previewImport("unequivocally (54) highbrow (54)\ncommotion (57) disbelief (57)");
+    expect(screen.getByRole("heading", { name: "这份表要请 AI 读一下。" })).toBeTruthy();
+    expect(screen.getByText(/单词和释义分开放/)).toBeTruthy();
+    fireEvent.click(screen.getByText("查看要复制的内容"));
+    expect(screen.getByRole("textbox", { name: "整理提示词" }).value).toContain("上传的文件");
+    fireEvent.change(screen.getByRole("textbox", { name: "AI 词表回复" }), {
+      target: { value: "unequivocally | adv. | 明确地 | in a way that leaves no doubt\nhighbrow | adj. | 高雅的 | interested in serious culture" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "生成词表" }));
+    expect(screen.getByRole("heading", { name: "这些词对吗？" })).toBeTruthy();
+    expect(screen.getByText(/AI 整理了 2 个词/)).toBeTruthy();
+    expect(screen.getByText(/2 个有中文释义/)).toBeTruthy();
+    expect(screen.queryByText("highbrow (54)")).toBeNull();
+  });
+
   test("a word without a Chinese meaning can be completed through one copy-and-paste AI step", () => {
     render(<App />);
     previewImport("alpha 第一项\nuntamed");

@@ -52,6 +52,29 @@
 
 学习页进入导入时，左上角出现「← 继续学习」。它与三步向导不冲突，不导入时可以原样返回；新增词表后按 Undo 也会回到原来的学习现场，而不是停在导入页。
 
+## 匹配/填空 worksheet：不再假装能解析
+
+真实的 HTA Chapter 4 worksheet 暴露了一个比解析 bug 更根本的问题：它不是「一行一个词」的词表，而是两份表——
+
+- 一张词库表，每行放 5 个词，词后带页码，如 `unequivocally (54)`；
+- 一张释义匹配表，`Vocabulary` 列是空的，只有编号、页码、词性和英文释义。
+
+学生版没有答案，单词和释义的对应关系只存在于题目设计里；本地解析器无法可靠地猜出「哪个释义配哪个词」。旧逻辑会把词库行里的第二个词误当成第一个词的释义，预览看起来像成功了，实际词义是错的。
+
+现在的处理：
+
+- 解析后先做一次低置信度检查：单词或释义里出现 `(54)` 这种页码、或把长释义误识别成单词时，不再展示「这些词对吗」的假预览。
+- 第 2 步直接切换为「这份表要请 AI 读一下。」，说明「单词和释义分开放，闪词猜不出谁配谁」。
+- 面板里给三步：
+  1. 打开 DeepSeek，把原文件拖进对话；
+  2. 复制给 AI 的话，和文件一起发送；
+  3. 把 AI 的回复粘贴回来。
+- 提示词要求 AI 按 `单词 | 词性 | 中文释义 | 英文释义` 输出一行一个词，不要求 JSON。
+- 收到回复后替换掉不可用的预览，进入正常的「这些词对吗」核对；这时才开始计词数、缺释义和背诵。
+- 文件完全读不出来（例如 PDF、旧格式或损坏文件）时，错误下面也会出现「把这份文件交给 AI 整理」，走同一个面板。
+
+这不是把解析器做得更复杂，而是承认这类 worksheet 的正确工具是能同时看词库和释义表的 AI；闪词负责把交接说清楚，并把结果接回来。
+
 ## 解析契约
 
 `src/utils/deckImport.js` 先尝试 JSON / Markdown / 带表头的 CSV，再进入宽松文本解析，最后才报错。宽松解析支持：
@@ -116,7 +139,7 @@ Word 的表格提取在 `extractDocxText` 内完成：表格每一行转换为 t
 
 ## 验证
 
-自动检查：`npm run check` 通过，84 项 Node 测试、59 项 UI 测试、ESLint 和 Vite 生产构建全绿。日志见 [check.log](validation-2026-10-27/check.log)。
+自动检查：`npm run check` 通过，86 项 Node 测试、60 项 UI 测试、ESLint 和 Vite 生产构建全绿。日志见 [check.log](validation-2026-10-27/check.log)。
 
 真实 Chrome 生产构建验证：
 
@@ -124,6 +147,7 @@ Word 的表格提取在 `extractDocxText` 内完成：表格每一行转换为 t
 - 第 1 步「粘贴」：切换后只出现输入框和「识别单词」。[桌面](validation-2026-10-27/desktop-paste.png)、[移动](validation-2026-10-27/mobile-paste.png)。
 - 第 2 步「核对」：一行摘要、缺释义行、前五个词、一个主按钮、左上角返回。[亮色](validation-2026-10-27/desktop-preview.png)、[390px](validation-2026-10-27/mobile-preview.png)、[280px](validation-2026-10-27/narrow-preview.png)、[200%](validation-2026-10-27/zoom200-preview.png)。
 - 教师风格 DOCX 表格：5 个词、5 个有中文释义、含 `take off` 短语；[预览截图](validation-2026-10-27/docx-preview.png)。XLSX 同样 5 个词、5 个有中文释义；[预览截图](validation-2026-10-27/xlsx-preview.png)。
+- 真实 HTA Chapter 4 worksheet：不再显示错误词义，而是进入 [AI 整理面板](validation-2026-10-27/hta-worksheet-rescue.png)、[390px 同一屏](validation-2026-10-27/mobile-hta-rescue.png)；粘贴一段模拟 AI 回复后进入 [正常核对](validation-2026-10-27/hta-ai-preview.png)。这里验证的是交接和替换流程，不代表 DeepSeek 对该文件的真实作答。
 - 粘贴 `abandon 放弃 / benefit 好处；利益 / take off 起飞 / translucent 半透明的 / resilient`：正确识别 5 个词，缺 1 个中文释义；补全流程可用；[补全面板](validation-2026-10-27/desktop-fill.png)、[展开要复制的文字](validation-2026-10-27/desktop-fill-open.png)、[补全后](validation-2026-10-27/desktop-filled.png)、[开始学习](validation-2026-10-27/desktop-study.png)、[390px 补全](validation-2026-10-27/mobile-fill.png)。
 - 词表管理：每组词保留一个低干扰的「改名」入口，改名可撤销；见 [词表](validation-2026-10-27/desktop-deck.png)、[改名输入](validation-2026-10-27/desktop-rename.png)、[改名后](validation-2026-10-27/desktop-deck-renamed.png)。
 - 桌面亮色：设置、帮助见 [设置](validation-2026-10-27/desktop-settings.png)、[帮助](validation-2026-10-27/desktop-help.png)。

@@ -240,6 +240,7 @@ const extractDeckFromParsed = (parsed) => {
 };
 
 const HAN_RE = /[\u3400-\u9fff]/;
+const PAGE_REF_RE = /\(\s*\d{1,3}\s*\)/;
 const WORD_RE = /[A-Za-z][A-Za-z'’-]*/g;
 const POS_ANY_RE =
   /\b(?:n|v|vt|vi|adj|adv|prep|conj|pron|num|art|aux|phr|phrase|pl|abbr)\.(?:\s*[&/]\s*(?:n|v|vt|vi|adj|adv|prep|conj|pron|num|art|aux|phr|phrase|pl|abbr)\.)?/i;
@@ -419,10 +420,11 @@ const parseLooseLine = (rawLine) => {
     }
   }
   term = term.replace(/^["'“”]+|["'“”]+$/g, "").replace(/[,，;；:：|｜]+$/, "").trim();
+  term = term.replace(/\s*\(\s*\d{1,3}\s*\)\s*$/, "").trim();
   if (!term || !/^[A-Za-z]/.test(term) || term.length > 60) return { kind: "none" };
   const firstTermWord = (term.match(WORD_RE) ?? [])[0]?.toLowerCase() ?? "";
   if (!HAN_RE.test(line) && TERM_STOPWORDS.has(firstTermWord)) return { kind: "sentence" };
-  if (!HAN_RE.test(line) && words.length > 1 && term === words[0] && !explicit) {
+  if (!HAN_RE.test(line) && words.length > 1 && term === words[0] && !explicit && !PAGE_REF_RE.test(line)) {
     return { kind: "sentence" };
   }
 
