@@ -28,15 +28,13 @@ export default function StudyView({
   onChoose,
   onAdvance,
   onToggleInsights,
-  guideActive,
-  onDismissGuide,
 }) {
   const examples = selectExamples(item?.examples);
   const hasInsights = Boolean(item?.wordOrigin || item?.relatedWord);
 
   return (
     <section className="study-view" aria-labelledby="study-term">
-      <p className="eyebrow">{isPractice ? "辨识 · 本轮再遇见" : "辨识"}</p>
+      <p className="eyebrow">{isPractice ? "认词 · 再遇见" : "认词"}</p>
       <div className="word-heading-row">
         <h1 id="study-term" className="word-heading">
           <button
@@ -68,22 +66,6 @@ export default function StudyView({
       {copyFeedback ? <p className="copy-feedback" role="status">{copyFeedback}</p> : null}
 
       {pronunciationMessage ? <p className="page-notice" role="status">{pronunciationMessage}</p> : null}
-
-      {guideActive ? (
-        <aside className="learning-guide" aria-label="首次辨识提示">
-          <div>
-            <strong>{revealed ? "答案页只做一件事" : "第一次先凭记忆判断"}</strong>
-            <p>{revealed
-              ? studyResult === true
-                ? "按 N 确认并去下一词；如果刚才其实没认出，按 M 改判后继续。"
-                : "看完答案，按 N 确认不认识并去下一词。"
-              : quickKnownEnabled
-                ? "认识按 Q 直接前进；不认识按 E，看完答案再按 N。"
-                : "认识按 Q，不认识按 E。两种选择都会展开答案，不需要先猜拼写。"}</p>
-          </div>
-          <button type="button" className="text-button" onClick={onDismissGuide}>不再提示</button>
-        </aside>
-      ) : null}
 
       {revealed ? (
         <div className="answer" data-testid="study-answer">
@@ -129,7 +111,7 @@ export default function StudyView({
             </div>
           ) : null}
 
-          <div className="study-actions" aria-label="辨识结果">
+          <div className="study-actions" aria-label="认词结果">
             <button type="button" className="primary-action" onClick={() => onAdvance()}>
               <span>下一个</span><kbd>N</kbd>
             </button>
@@ -142,8 +124,8 @@ export default function StudyView({
         </div>
       ) : (
         <div className="study-prompt">
-          <p>{quickKnownEnabled ? "认识按 Q 直接前进；不认识按 E 展开答案。" : "先判断自己是否认识，再查看答案。"}</p>
-          <div className="study-actions study-choice-actions" aria-label="辨识选择">
+          <p>{quickKnownEnabled ? "认识按 Q 直接前进；不认识按 E 展开答案。" : "凭记忆判断，然后看答案。"}</p>
+          <div className="study-actions study-choice-actions" aria-label="认词选择">
             <button type="button" className="choice-action" onClick={() => onChoose(true)}>
               <span>认识</span><kbd>Q</kbd>
             </button>

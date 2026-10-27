@@ -1,6 +1,6 @@
 import { buildQuestion } from "./questionBuilder.js";
 import { compareMastery, getMastery, isGraduated, masteryPriority, recordMastery, summarizeMastery } from "./mastery.js";
-import { createWave, getEntryWaveId, getSessionKind, LEGACY_WAVE_ID, normalizeWaves } from "./waveModel.js";
+import { createWave, getEntryWaveId, LEGACY_WAVE_ID, normalizeWaves } from "./waveModel.js";
 
 const hashText = (value) => {
   let hash = 2166136261;
@@ -139,7 +139,12 @@ export const buildExportDeck = (sourceDeck, removedCardIds = []) => {
   return sourceDeck.filter((_, index) => !removed.has(cardIds[index]));
 };
 
-const snapshotForUndo = (state) => ({ ...state, undo: null, notice: null });
+const snapshotForUndo = (state) => ({
+  ...state,
+  undo: null,
+  notice: null,
+  ...(state.mode === "prepare" && state.resumeMode ? { mode: state.resumeMode, resumeMode: null } : {}),
+});
 
 export const getCurrentStudyCardId = (state) =>
   state.studyPracticeId ?? state.studyQueueIds[state.studyIndex] ?? null;
@@ -240,7 +245,6 @@ const createLearningSession = ({
     insightsExpanded: false,
     undo: null,
     notice: null,
-    learningHint: null,
   };
 };
 
@@ -263,12 +267,7 @@ export const createInitialState = ({ assets = null, mastery = {}, random = Math.
   });
 };
 
-const startWaveSession = (options, now = Date.now()) => {
-  const session = createLearningSession(options);
-  if (session.mode !== "study" || getSessionKind(session.waves, now) !== "intro") return session;
-  const intro = learningReducer(session, { type: "START_QUIZ", kind: "scenario", intro: true, random: options.random });
-  return intro.mode === "quiz" ? intro : { ...session, learningHint: "初见局：可用情景题不足，先从辨识学词；补上例句后可练情景题。" };
-};
+const startWaveSession = (options) => createLearningSession(options);
 
 export const getActiveCardIds = (state) => {
   const removed = new Set(state.removedCardIds);
@@ -453,20 +452,19 @@ export const learningReducer = (state, action) => {
       const itemById = new Map(createCardIds(state.sourceDeck).map((id, index) => [id, state.sourceDeck[index]]));
       const queueIds = shuffle(getActiveCardIds(state).filter((cardId) =>
         buildQuestion({ kind, entry: itemById.get(cardId), sourceDeck, random: () => 0.5 })), random);
-      if (!queueIds.length) return { ...state, notice: kind === "scenario" ? "情景题需至少两个不同词，并有包含目标词原形的例句。" : kind === "bank" ? "词库题需要包含有效 focus 搭配的例句，focus 必须原样出现在句中。" : kind === "contrast" ? "对位辨析需要分界线情景。请在词表面板用 DeepSeek 补齐，或导入带这类资料的词表。" : "至少需要两个不同的词，且目标词需有释义，才能组选择题。" };
+      if (!queueIds.length) return { ...state, notice: kind === "scenario" ? "情景题需至少两个不同词，并有包含目标词原形的例句。" : kind === "bank" ? "填搭配需要包含 target 搭配的例句，搭配必须原样出现在句中。" : kind === "contrast" ? "辨析近义词需要分界线情景。可在「词表」里用 DeepSeek 补全，或导入带这类资料的词表。" : "至少需要两个不同的词，且目标词需有释义，才能组选择题。" };
       return {
         ...state,
         mode: "quiz",
         quiz: {
           queueIds, index: 0, selected: null, results: [], finished: false,
-          kind, intro: Boolean(action.intro),
+          kind,
           returnState: state.mode === "quiz" ? state.quiz.returnState : state,
           question: buildQuestion({ kind, entry: itemById.get(queueIds[0]), sourceDeck,
             extraDeck: buildExportDeck(state.sourceDeck, state.removedCardIds), random }),
         },
         notice: null,
-        learningHint: null,
-      };
+          };
     }
     case "ANSWER_QUIZ": {
       if (state.mode !== "quiz" || state.quiz.finished || state.quiz.selected !== null || !state.quiz.question.options.includes(action.answer)) return state;
@@ -491,10 +489,7 @@ export const learningReducer = (state, action) => {
     case "END_QUIZ": {
       if (state.mode !== "quiz") return state;
       const returned = { ...state.quiz.returnState, mastery: state.mastery, undo: state.undo, quickKnownEnabled: state.quickKnownEnabled };
-      if (!state.quiz.intro) return returned;
-      const queue = buildRoundCardIds({ cardIds: getActiveCardIds(returned), mastery: returned.mastery,
-        learningState: returned.learningState, mode: "study", round: returned.completedRounds.study + 1, random });
-      return { ...returned, studyQueueIds: queue, studyIndex: 0, mode: queue.length ? "study" : "mastered" };
+      return returned;
     }
     case "RESTORE_GRADUATED": {
       const graduated = getActiveCardIds(state).filter((cardId) => isGraduated(state.mastery, cardId));
@@ -530,8 +525,7 @@ export const learningReducer = (state, action) => {
             ...state,
             revealed: true,
             studyResult: action.correct,
-            learningHint: null,
-            insightsExpanded: false,
+                    insightsExpanded: false,
             notice: null,
           };
       return state.quickKnownEnabled && action.correct === true
@@ -652,8 +646,10 @@ export const learningReducer = (state, action) => {
       const waves = [...state.waves.map((previous) => ({ ...previous, status: "cold" })), wave];
       return {
         ...startWaveSession({ sourceDeck, waves, removedCardIds: state.removedCardIds, mastery: state.mastery, random }, action.now ?? Date.now()),
-        undo: { label: "撤销新增波次", snapshot: snapshotForUndo(state) },
-        notice: `已新增 ${wave.name}，${action.sourceDeck.length} 个词；旧波次已冷藏。`,
+        undo: { label: "撤销新增词表", snapshot: snapshotForUndo(state) },
+        notice: state.waves.length
+          ? `已新增 ${wave.name}，${action.sourceDeck.length} 个词；之前的词表已收起，可随时切回。`
+          : `已新增 ${wave.name}，${action.sourceDeck.length} 个词。`,
       };
     }
     case "APPLY_PREPARATION": {
@@ -670,7 +666,7 @@ export const learningReducer = (state, action) => {
       return {
         ...createLearningSession({ sourceDeck, waves: state.waves, removedCardIds, mastery, random }),
         autoPronounceEnabled: state.autoPronounceEnabled, spellingMode: state.spellingMode, quickKnownEnabled: state.quickKnownEnabled,
-        undo: { label: "撤销备料", snapshot: snapshotForUndo(state) }, notice: `已补齐 ${updates.size} 词资料，从新一轮辨识继续。`,
+        undo: { label: "撤销补全", snapshot: snapshotForUndo(state) }, notice: `已补齐 ${updates.size} 词资料，从新一轮认词继续。`,
       };
     }
     case "SELECT_WAVE":
@@ -687,8 +683,8 @@ export const learningReducer = (state, action) => {
       }
       return {
         ...createLearningSession({ sourceDeck: state.sourceDeck, waves, removedCardIds: state.removedCardIds, mastery, random }),
-        undo: { label: "撤销波次切换", snapshot: snapshotForUndo(state) },
-        notice: action.type === "REVIVE_ALL_WAVES" ? "全部波次已复活，开始总复习。" : "波次已更新，掌握度保留。",
+        undo: { label: "撤销切换词表", snapshot: snapshotForUndo(state) },
+        notice: action.type === "REVIVE_ALL_WAVES" ? "全部词表已恢复，开始总复习。" : "词表已更新，掌握度保留。",
       };
     }
     case "USE_SAMPLE":
@@ -792,7 +788,7 @@ export const learningReducer = (state, action) => {
           revealed: false,
           studyResult: null,
           undo: { label: "撤销找回单词", snapshot: previous },
-          notice: "已找回，重新从辨识开始。",
+          notice: "已找回，重新从认词开始。",
         };
       }
       return {
@@ -801,7 +797,7 @@ export const learningReducer = (state, action) => {
         learningState,
         mastery,
         undo: { label: "撤销找回单词", snapshot: previous },
-        notice: "已找回；下次建立辨识和拼写队列时加入。",
+        notice: "已找回；下一轮会加入。",
       };
     }
     case "UNDO":

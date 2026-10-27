@@ -75,6 +75,6 @@ test("preparation adds exact-target examples to inflected originals and rejects 
   assert.equal(result.deck[0].examples.length, 3);
   assert.deepEqual(result.deck[0].examples[0], source[0].examples[0]);
   assert.equal(needsPreparation(result.deck[0]), false);
-  await assert.rejects(prepareDeckWithAI({ deck: source, apiKey: "fake", fetchImpl: async () => response([{ ...preparedPatch(0, "devise"), examples: source[0].examples }]) }), /备料不完整/);
-  await assert.rejects(prepareDeckWithAI({ deck: source, apiKey: "fake", fetchImpl: async () => response([{ ...preparedPatch(0, "devise"), memorySketch: { left: { icon: "script", label: "bad" } } }]) }), /备料不完整/);
+  await assert.rejects(prepareDeckWithAI({ deck: source, apiKey: "fake", fetchImpl: async () => response([{ ...preparedPatch(0, "devise"), examples: source[0].examples }]) }), /补全资料不完整/);
+  await assert.rejects(prepareDeckWithAI({ deck: source, apiKey: "fake", fetchImpl: async () => response([{ ...preparedPatch(0, "devise"), memorySketch: { left: { icon: "script", label: "bad" } } }]) }), /补全资料不完整/);
 });

@@ -20,10 +20,3 @@ export const createWave = (waves, name, now = Date.now()) => {
   while (waves.some((wave) => wave.id === id)) id = `wave-${now.toString(36)}-${++suffix}`;
   return { id, name: String(name ?? "").trim() || `W${waves.length + 1}`, status: "active", createdAt: now };
 };
-
-export const getSessionKind = (waves, now = Date.now()) => {
-  const today = new Date(now).toDateString();
-  const active = waves.filter((wave) => wave.status === "active");
-  return active.length === 1 && active[0].createdAt !== null && new Date(active[0].createdAt).toDateString() === today
-    ? "intro" : "review";
-};

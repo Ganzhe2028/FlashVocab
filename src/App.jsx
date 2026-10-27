@@ -2,12 +2,13 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "r
 import ManagePanel from "./components/ManagePanel.jsx";
 import AIPreparationControls from "./components/AIPreparationControls.jsx";
 import { DEFAULT_PREPARATION_MODEL, prepareDeckWithAI } from "./aiPreparation.js";
+import ImportView from "./components/ImportView.jsx";
 import QuestionView from "./components/QuestionView.jsx";
 import SpellView from "./components/SpellView.jsx";
 import StudyView from "./components/StudyView.jsx";
-import { EmptyView, MasteredView, PauseView, PrepareView, SummaryView } from "./components/StatusView.jsx";
+import { EmptyView, MasteredView, PauseView, SummaryView } from "./components/StatusView.jsx";
 import { isGraduated } from "./mastery.js";
-import { getEntryWaveId, getSessionKind } from "./waveModel.js";
+import { getEntryWaveId } from "./waveModel.js";
 import { cloneDeck } from "./data/baseDeck.js";
 import { useAppKeyboard } from "./hooks/useAppKeyboard.js";
 import { usePronunciation } from "./hooks/usePronunciation.js";
@@ -27,11 +28,7 @@ import { readMastery, writeMastery } from "./storage/masteryStorage.js";
 import {
   buildMarkdownExport,
   normalizeDeck,
-  parseDeckFromText,
-  readImportFile,
 } from "./utils/deckImport.js";
-
-const COMPLETION_PROMPT = `请把我提供的英语单词整理成可导入闪词的 JSON 数组。每项保留 term、syllables、respell、pos、meaning、meaningZh、wordOrigin、relatedWord 和 examples。普通英语词的 term 与 syllables 使用全小写；只有原词本身就是全大写的缩写或特殊词时，才保留全大写。syllables 的音节之间用「·」分隔，例如 va·cant。meaning 使用简短易懂的英英释义；examples 提供 2–3 个自然的 B1–B2 例句，每项包含 sentence 与在句中原样出现的 focus。只输出 JSON 代码块，不要附加说明。`;
 
 const POINTER_FOCUS_SELECTOR =
   'button, a[href], input[type="checkbox"], input[type="radio"], [role="button"]';
@@ -67,11 +64,9 @@ export default function App() {
       }),
   );
   const [panelOpen, setPanelOpen] = useState(false);
-  const [panelSection, setPanelSection] = useState("help");
+  const [panelSection, setPanelSection] = useState("deck");
   const [panelConfirmRequest, setPanelConfirmRequest] = useState(null);
-  const [pasteText, setPasteText] = useState("");
-  const [waveName, setWaveName] = useState("");
-  const [aiSettings, setAiSettings] = useState({ enabled: false, apiKey: "", model: DEFAULT_PREPARATION_MODEL });
+  const [aiSettings, setAiSettings] = useState({ apiKey: "", model: DEFAULT_PREPARATION_MODEL });
   const [preparing, setPreparing] = useState(false);
   const [preparationProgress, setPreparationProgress] = useState({ current: 0, total: 0 });
   const preparationRequestRef = useRef(null);
@@ -81,11 +76,6 @@ export default function App() {
   const [copyFeedback, setCopyFeedback] = useState("");
   const [manualCopy, setManualCopy] = useState("");
   const [undoToastVisible, setUndoToastVisible] = useState(false);
-  const [newUserGuide, setNewUserGuide] = useState(() => ({
-    enabled: !loaded.assets,
-    studyComplete: false,
-    spellComplete: false,
-  }));
   const panelRef = useRef(null);
   const spellInputRef = useRef(null);
   const headerUndoRef = useRef(null);
@@ -197,7 +187,7 @@ export default function App() {
     setPanelConfirmRequest(null);
   }, []);
 
-  const openPanel = useCallback((section = "help") => {
+  const openPanel = useCallback((section = "deck") => {
     setPanelConfirmRequest(null);
     setPanelSection(section);
     setPanelOpen(true);
@@ -208,11 +198,6 @@ export default function App() {
     setPanelSection("deck");
     setPanelOpen(true);
   }, []);
-
-  const restartGuide = useCallback(() => {
-    setNewUserGuide({ enabled: true, studyComplete: false, spellComplete: false });
-    closePanel();
-  }, [closePanel]);
 
   const copyText = useCallback(async (text, successMessage) => {
     try {
@@ -242,8 +227,7 @@ export default function App() {
 
   const chooseStudy = useCallback((correct) => {
     dispatch({ type: "CHOOSE_STUDY", correct });
-    if (correct === true && state.quickKnownEnabled) setNewUserGuide((previous) => ({ ...previous, studyComplete: true }));
-  }, [dispatch, state.quickKnownEnabled]);
+  }, [dispatch]);
 
   const advanceStudy = useCallback(
     (correctOverride) => {
@@ -252,26 +236,17 @@ export default function App() {
         ? correctOverride
         : state.studyResult;
       dispatch({ type: "ADVANCE_STUDY", correct: finalResult });
-      setNewUserGuide((previous) => ({ ...previous, studyComplete: true }));
     },
-    [
-      dispatch,
-      state,
-    ],
+    [dispatch, state],
   );
 
   const submitSpell = useCallback(() => {
     if (!state.spellInput.trim() && state.spellResult !== null) return;
     dispatch({ type: "SUBMIT_SPELL" });
-    setNewUserGuide((previous) => ({ ...previous, spellComplete: true }));
-  }, [
-    dispatch,
-    state.spellInput,
-    state.spellResult,
-  ]);
+  }, [dispatch, state.spellInput, state.spellResult]);
 
   const prepareMaterial = useCallback(async (deck) => {
-    if (preparationRequestRef.current) throw new Error("正在备料，请等本次完成或取消。");
+    if (preparationRequestRef.current) throw new Error("正在补全资料，请等本次完成或取消。");
     const controller = new AbortController();
     const snapshot = latestStateRef.current;
     const request = { controller, sourceDeck: snapshot.sourceDeck, waves: snapshot.waves, removedCardIds: snapshot.removedCardIds, timedOut: false };
@@ -282,10 +257,10 @@ export default function App() {
       const result = await prepareDeckWithAI({ deck, apiKey: aiSettings.apiKey, model: aiSettings.model,
         signal: controller.signal, onProgress: setPreparationProgress });
       const current = latestStateRef.current;
-      if (controller.signal.aborted || current.sourceDeck !== request.sourceDeck || current.waves !== request.waves || current.removedCardIds !== request.removedCardIds) throw new Error("词表已变化或备料已取消，结果未应用。");
+      if (controller.signal.aborted || current.sourceDeck !== request.sourceDeck || current.waves !== request.waves || current.removedCardIds !== request.removedCardIds) throw new Error("词表已变化或补全已取消，结果未应用。");
       return result.deck;
     } catch (error) {
-      if (controller.signal.aborted) throw new Error(request.timedOut ? "DeepSeek 备料超时，请重试。原词表保持不变。" : "备料已取消，原词表保持不变。");
+      if (controller.signal.aborted) throw new Error(request.timedOut ? "DeepSeek 补全超时，请重试。原词表保持不变。" : "补全已取消，原词表保持不变。");
       throw error;
     } finally {
       window.clearTimeout(timeout);
@@ -294,39 +269,11 @@ export default function App() {
     }
   }, [aiSettings.apiKey, aiSettings.model]);
 
-  const importDeck = useCallback(async (rawDeck) => {
+  const importDeck = useCallback(async (rawDeck, options = {}) => {
     const normalized = normalizeDeck(rawDeck);
     if (!normalized.length) throw new Error("内容中没有有效的单词。");
-    const sourceDeck = aiSettings.enabled ? await prepareMaterial(normalized) : normalized;
-    dispatch({ type: "ADD_WAVE", sourceDeck, name: waveName });
-    setPanelMessage(`已新增 ${normalized.length} 个词，旧波次已冷藏。可在词表面板切换或复活。`);
-    setPasteText("");
-    setWaveName("");
-  }, [aiSettings.enabled, dispatch, prepareMaterial, waveName]);
-
-  const handleFile = useCallback(
-    async (event) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
-      try {
-        const text = await readImportFile(file);
-        await importDeck(parseDeckFromText(text));
-      } catch (error) {
-        setPanelMessage(`导入失败：${error?.message || "无法解析文件内容。"} 原词表保持不变。`);
-      } finally {
-        event.target.value = "";
-      }
-    },
-    [importDeck],
-  );
-
-  const handlePasteImport = useCallback(async () => {
-    try {
-      await importDeck(parseDeckFromText(pasteText));
-    } catch (error) {
-      setPanelMessage(`导入失败：${error?.message || "无法识别粘贴内容。"} 原词表保持不变。`);
-    }
-  }, [importDeck, pasteText]);
+    dispatch({ type: "ADD_WAVE", sourceDeck: normalized, name: options.name ?? "" });
+  }, [dispatch]);
 
   const prepareCurrentWave = useCallback(async () => {
     const snapshot = latestStateRef.current;
@@ -336,9 +283,9 @@ export default function App() {
     try {
       const deck = await prepareMaterial(positions.map((index) => snapshot.sourceDeck[index]));
       dispatch({ type: "APPLY_PREPARATION", entries: deck.map((entry, index) => ({ cardId: ids[positions[index]], entry })) });
-      setPanelMessage(`已补齐 ${deck.length} 个词的资料；可撤销，也可开始情景题或对位辨析。`);
+      setPanelMessage(`已补齐 ${deck.length} 个词的资料；可撤销，也可开始情景题或辨析题。`);
     } catch (error) {
-      setPanelMessage(`备料未应用：${error?.message || "请求失败，请重试。"}`);
+      setPanelMessage(`补全未应用：${error?.message || "请求失败，请重试。"}`);
     }
   }, [dispatch, prepareMaterial]);
 
@@ -385,7 +332,7 @@ export default function App() {
     state.mode === "study"
       ? state.studyPracticeId
         ? { current: 3 - state.studyPractices.find((practice) => practice.cardId === state.studyPracticeId).remaining, total: 2, label: "本轮加练" }
-        : { current: state.studyIndex + 1, total: state.studyQueueIds.length, label: "辨识" }
+        : { current: state.studyIndex + 1, total: state.studyQueueIds.length, label: "认词" }
       : state.mode === "spell"
         ? { current: state.spellIndex + 1, total: state.spellQueueIds.length, label: "拼写" }
         : null;
@@ -396,13 +343,17 @@ export default function App() {
       onClick={releasePointerFocus}
     >
       <header className="app-header" onFocusCapture={showChrome}>
-        <div className="brand">闪词 <span>3.0</span></div>
+        <div className="brand">闪词</div>
         <nav className="header-actions" aria-label="全局工具">
           {state.undo && !undoToastVisible ? <button ref={headerUndoRef} type="button" className="header-button undo-button" onClick={() => dispatch({ type: "UNDO" })}>{state.undo.label}</button> : null}
-          {state.mode !== "prepare" ? <button type="button" className="header-button" onClick={() => dispatch({ type: "OPEN_PREPARE" })}>准备页</button> : null}
-          {state.mode !== "prepare" ? <button type="button" className="header-button import-button" onClick={() => openPanel("deck")}>Import</button> : null}
-          <button type="button" className="header-button" onClick={() => openPanel("help")}>更多</button>
-          <a className="github-link" href="https://github.com/Ganzhe2028/vocab2" target="_blank" rel="noreferrer" aria-label="在 GitHub 查看闪词">
+          {state.waves.length ? <button type="button" className="header-button" onClick={() => openPanel("deck")}>词表</button> : null}
+          <button type="button" className="header-icon-button" onClick={() => openPanel("settings")} aria-label="设置">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" /><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1-2.9 2.9-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5v.2h-4v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1-2.9-2.9.1-.1A1.6 1.6 0 0 0 4.6 15a1.6 1.6 0 0 0-1.5-1H3v-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1 2.9-2.9.1.1a1.6 1.6 0 0 0 1.8.3 1.6 1.6 0 0 0 1-1.5V3h4v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1 2.9 2.9-.1.1a1.6 1.6 0 0 0-.3 1.8 1.6 1.6 0 0 0 1.5 1h.2v4h-.2a1.6 1.6 0 0 0-1.5 1Z" /></svg>
+          </button>
+          <button type="button" className="header-icon-button" onClick={() => openPanel("help")} aria-label="帮助">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.6 9a2.5 2.5 0 1 1 4 2c-.9.6-1.6 1.1-1.6 2.2M12 17h.01" /></svg>
+          </button>
+          <a className="github-link" href="https://github.com/Ganzhe2028/FlashVocab" target="_blank" rel="noreferrer" aria-label="在 GitHub 查看闪词">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path fillRule="evenodd" d="M12 .297a12 12 0 0 0-3.793 23.388c.6.113.82-.26.82-.577v-2.234c-3.338.726-4.042-1.416-4.042-1.416-.546-1.386-1.332-1.755-1.332-1.755-1.089-.745.083-.73.083-.73 1.205.084 1.839 1.237 1.839 1.237 1.07 1.835 2.809 1.305 3.495.998.108-.776.418-1.305.762-1.605-2.665-.303-5.466-1.332-5.466-5.931 0-1.31.468-2.381 1.235-3.221-.124-.303-.535-1.523.117-3.176 0 0 1.008-.322 3.301 1.23A11.5 11.5 0 0 1 12 6.099c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.873.118 3.176.769.84 1.233 1.911 1.233 3.221 0 4.61-2.805 5.625-5.475 5.921.43.371.823 1.102.823 2.222v3.295c0 .32.216.694.825.576A12 12 0 0 0 12 .297Z" clipRule="evenodd" />
             </svg>
@@ -418,27 +369,17 @@ export default function App() {
       ) : null}
 
       <main className="reading-column">
-        {state.mode !== "prepare" && state.waves.length ? <p className="learning-context">{state.waves.filter((wave) => wave.status === "active").map((wave) => wave.name).join(" · ")} · {getSessionKind(state.waves) === "intro" ? "初见局" : "刷词局"}</p> : null}
+        {state.mode !== "prepare" && state.waves.length ? <p className="learning-context">{state.waves.filter((wave) => wave.status === "active").map((wave) => wave.name).join(" · ")} · {getActiveCardIds(state).length} 个词</p> : null}
         {state.notice && !undoToastVisible ? <p className="page-notice" role="status">{state.notice}</p> : null}
-        {state.learningHint ? <p className="page-notice learning-hint" role="status">{state.learningHint}</p> : null}
         {state.mode === "prepare" ? (
-          <PrepareView
-            importBusy={preparing}
-            aiControls={<AIPreparationControls settings={aiSettings} onChange={setAiSettings} busy={preparing} progress={preparationProgress} idPrefix="prepare-ai" onCancel={() => preparationRequestRef.current?.controller.abort()} />}
-            waveName={waveName}
-            wavePlaceholder={`W${state.waves.length + 1}`}
-            onWaveName={setWaveName}
-            hasWaves={Boolean(state.waves.length)}
-            onManage={() => openPanel("deck")}
+          <ImportView
             canContinue={Boolean(state.resumeMode)}
             onContinue={() => dispatch({ type: "CONTINUE_LEARNING" })}
-            pasteText={pasteText}
-            message={panelMessage}
-            onPasteChange={setPasteText}
-            onPasteImport={handlePasteImport}
-            onFile={handleFile}
+            hasWaves={Boolean(state.waves.length)}
+            wavePlaceholder={`W${state.waves.length + 1}`}
+            onManage={() => openPanel("deck")}
             onSample={useSample}
-            onHelp={() => openPanel("help")}
+            onImport={importDeck}
           />
         ) : null}
         {state.mode === "study" && currentStudyItem ? (
@@ -457,8 +398,6 @@ export default function App() {
             onChoose={chooseStudy}
             onAdvance={advanceStudy}
             onToggleInsights={() => dispatch({ type: "TOGGLE_INSIGHTS" })}
-            guideActive={newUserGuide.enabled && !newUserGuide.studyComplete}
-            onDismissGuide={() => setNewUserGuide((previous) => ({ ...previous, enabled: false }))}
           />
         ) : null}
         {state.mode === "spell" && currentSpellItem ? (
@@ -471,8 +410,6 @@ export default function App() {
             onSubmit={submitSpell}
             onAdvance={() => dispatch({ type: "ADVANCE_SPELL" })}
             onPause={() => dispatch({ type: "PAUSE_SPELL" })}
-            guideActive={newUserGuide.enabled && !newUserGuide.spellComplete}
-            onDismissGuide={() => setNewUserGuide((previous) => ({ ...previous, enabled: false }))}
           />
         ) : null}
         {state.mode === "pause" ? (
@@ -495,7 +432,7 @@ export default function App() {
             onAnswer={(answer) => dispatch({ type: "ANSWER_QUIZ", answer })}
             onNext={() => dispatch({ type: "NEXT_QUIZ" })}
             onEnd={() => dispatch({ type: "END_QUIZ" })}
-            onRestart={() => dispatch({ type: "START_QUIZ", kind: state.quiz.kind, intro: state.quiz.intro })}
+            onRestart={() => dispatch({ type: "START_QUIZ", kind: state.quiz.kind })}
           />
         ) : null}
         {state.mode === "empty" ? (
@@ -530,47 +467,36 @@ export default function App() {
       ) : null}
 
       <ManagePanel
-        importBusy={preparing}
         aiControls={<AIPreparationControls settings={aiSettings} onChange={setAiSettings} busy={preparing} progress={preparationProgress} idPrefix="panel-ai" onCancel={() => preparationRequestRef.current?.controller.abort()} onPrepareExisting={prepareCurrentWave} hasWords={getActiveCardIds(state).length > 0} />}
         open={panelOpen}
         panelRef={panelRef}
         section={panelSection}
-        mode={state.mode}
         sourceDeck={state.sourceDeck}
         removedEntries={removedEntries}
         graduatedCount={getActiveCardIds(state).filter((cardId) => isGraduated(state.mastery, cardId)).length}
         waves={state.waves.map((wave) => ({ ...wave, count: state.sourceDeck.filter((entry) => getEntryWaveId(entry) === wave.id).length }))}
         onWaveAction={(type, waveId) => { dispatch({ type, waveId }); closePanel(); }}
-        waveName={waveName}
-        wavePlaceholder={`W${state.waves.length + 1}`}
-        onWaveName={setWaveName}
         onRestoreGraduated={() => { dispatch({ type: "RESTORE_GRADUATED" }); closePanel(); }}
         autoPronounceEnabled={state.autoPronounceEnabled}
         spellingMode={state.spellingMode}
         quickKnownEnabled={state.quickKnownEnabled}
         themePreference={themePreference}
         pronunciationSupported={pronunciationSupported}
-        pasteText={pasteText}
         message={panelMessage}
         initialConfirmAction={panelConfirmRequest}
         onClose={closePanel}
-        onSectionChange={setPanelSection}
-        onFile={handleFile}
-        onPasteChange={setPasteText}
-        onPasteImport={handlePasteImport}
+        onAddDeck={() => { closePanel(); dispatch({ type: "OPEN_PREPARE" }); }}
+        onQuiz={(kind) => { dispatch({ type: "START_QUIZ", kind }); closePanel(); }}
         onExportJson={() => downloadText(JSON.stringify(exportDeck, null, 2), "application/json", "flashvocab-deck.json")}
         onExportMarkdown={() => downloadText(buildMarkdownExport(exportDeck), "text/markdown", "flashvocab-deck.md")}
-        onCopyCompletionPrompt={() => copyText(COMPLETION_PROMPT, "词表补全提示词已复制。")}
         onSetAutoPronounce={(value) => dispatch({ type: "SET_AUTO_PRONOUNCE", value })}
         onSetSpellingMode={(value) => dispatch({ type: "SET_SPELLING_MODE", value })}
         onSetQuickKnown={(value) => dispatch({ type: "SET_QUICK_KNOWN", value })}
         onSetThemePreference={setThemePreference}
         onRestoreRemoved={(cardId) => dispatch({ type: "RESTORE_REMOVED", cardId })}
-        onReset={() => { dispatch({ type: "RESET_PROGRESS" }); setAiSettings({ enabled: false, apiKey: "", model: DEFAULT_PREPARATION_MODEL }); }}
+        onReset={() => { dispatch({ type: "RESET_PROGRESS" }); setAiSettings({ apiKey: "", model: DEFAULT_PREPARATION_MODEL }); }}
         onSample={useSample}
-        onRestartGuide={restartGuide}
         onConfirmConsumed={() => setPanelConfirmRequest(null)}
-        onQuiz={(kind) => { dispatch({ type: "START_QUIZ", kind }); closePanel(); }}
       />
     </div>
   );

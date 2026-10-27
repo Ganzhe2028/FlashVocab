@@ -54,7 +54,7 @@ const prepareEntry = (original, patch, model, generatedAt) => {
     !pair.every((term) => contrastScenarios.some((variant) => key(variant.answer) === key(term))) ||
     !filled.examples.some((example) => validExample(example, original.term)) || pair.some((term) => maskTarget(miniScenario, term)) ||
     contrastScenarios.some((variant) => pair.some((term) => maskTarget(variant.scenario, term)))) {
-    throw new Error(`「${original.term}」的备料不完整或格式不符，请重试；原词表保持不变。`);
+    throw new Error(`「${original.term}」的补全资料不完整或格式不符，请重试；原词表保持不变。`);
   }
   return { ...filled, microScene, memorySketch, distractors, usageTags, miniScenario, contrastScenarios,
     preparation: { provider: "DeepSeek", model, generatedAt } };
@@ -65,7 +65,7 @@ export const prepareDeckWithAI = async ({ deck, apiKey, model = DEFAULT_PREPARAT
   const result = normalizeDeck(deck);
   const pending = result.flatMap((entry, index) => needsPreparation(entry) ? [{ entry, index }] : []);
   onProgress({ current: 0, total: pending.length });
-  if (pending.length && !text(apiKey)) throw new Error("请先填写 DeepSeek API key，或关闭 AI 备料后直接导入。");
+  if (pending.length && !text(apiKey)) throw new Error("请先填写 DeepSeek API key。");
   if (pending.length && !text(model)) throw new Error("请填写 DeepSeek 模型 ID。");
   const size = Math.max(1, Math.min(6, Math.floor(batchSize) || 6));
   for (let offset = 0; offset < pending.length; offset += size) {
@@ -87,14 +87,14 @@ export const prepareDeckWithAI = async ({ deck, apiKey, model = DEFAULT_PREPARAT
     }
     const payload = await response.json();
     const choice = payload?.choices?.[0];
-    if (choice?.finish_reason !== "stop" || !text(choice?.message?.content)) throw new Error("DeepSeek 返回内容为空或未完成，未应用备料。请重试。");
+    if (choice?.finish_reason !== "stop" || !text(choice?.message?.content)) throw new Error("DeepSeek 返回内容为空或未完成，未应用补全。请重试。");
     let parsed;
-    try { parsed = JSON.parse(choice.message.content); } catch { throw new Error("DeepSeek 返回的 JSON 无法读取，未应用备料。请重试。"); }
-    if (!Array.isArray(parsed?.items) || parsed.items.length !== batch.length) throw new Error("DeepSeek 返回词数不符，未应用备料。请重试。");
+    try { parsed = JSON.parse(choice.message.content); } catch { throw new Error("DeepSeek 返回的 JSON 无法读取，未应用补全。请重试。"); }
+    if (!Array.isArray(parsed?.items) || parsed.items.length !== batch.length) throw new Error("DeepSeek 返回词数不符，未应用补全。请重试。");
     const seen = new Set();
     for (const patch of parsed.items) {
       const target = batch.find(({ index, entry }) => index === patch?.index && key(entry.term) === key(patch?.term));
-      if (!target || seen.has(patch.index)) throw new Error("DeepSeek 返回了重复或不匹配的词，未应用备料。请重试。");
+      if (!target || seen.has(patch.index)) throw new Error("DeepSeek 返回了重复或不匹配的词，未应用补全。请重试。");
       seen.add(patch.index);
       result[target.index] = prepareEntry(target.entry, patch, model.trim(), now());
     }

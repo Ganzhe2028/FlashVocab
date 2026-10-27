@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createWave, getSessionKind, LEGACY_WAVE_ID, normalizeWaves } from "./waveModel.js";
+import { createWave, LEGACY_WAVE_ID, normalizeWaves } from "./waveModel.js";
 import { createCardIds, createInitialState, getActiveCardIds, learningReducer } from "./learningAlgorithm.js";
 
 const oldWord = { term: "alpha", meaning: "first", custom: { retained: true } };
@@ -47,33 +47,24 @@ test("recognition and MCQ pools exclude cold waves", () => {
   assert.equal(state.quiz.question.options.includes("cold"), false);
 });
 
-test("legacy wave dates remain unknown and first-day classification uses recorded creation time", () => {
+test("legacy wave dates remain unknown and new waves record their creation time", () => {
   const legacy = normalizeWaves([oldWord]);
   assert.equal(legacy[0].createdAt, null);
   const now = new Date("2026-10-20T12:00:00Z").getTime();
   const wave = createWave([], "W5", now);
-  assert.equal(getSessionKind([wave], now), "intro");
-  assert.equal(getSessionKind([wave], now + 86400000), "review");
-  assert.equal(getSessionKind(legacy, now), "review");
+  assert.equal(wave.createdAt, now);
   assert.notEqual(createWave([wave], "W6", now).id, wave.id);
 });
 
-test("new waves begin with scenario learning when usable examples exist, then review sorts by results", () => {
+test("new waves start with recognition even when examples could support a scenario practice", () => {
   const sourceDeck = [
     { term: "alpha", meaning: "first", examples: [{ sentence: "Alpha comes first.", focus: "Alpha" }] },
     { term: "beta", meaning: "second", examples: [{ sentence: "Beta comes second.", focus: "Beta" }] },
   ];
   let state = createInitialState();
   state = learningReducer(state, { type: "ADD_WAVE", sourceDeck, now: Date.now(), random });
-  assert.equal(state.mode, "quiz");
-  assert.equal(state.quiz.intro, true);
-  assert.equal(state.quiz.kind, "scenario");
-  const firstId = state.quiz.queueIds[0];
-  const wrong = state.quiz.question.options.find((option) => option !== state.quiz.question.answer);
-  state = learningReducer(state, { type: "ANSWER_QUIZ", answer: wrong, now: 1000 });
-  state = learningReducer(state, { type: "END_QUIZ", random });
   assert.equal(state.mode, "study");
-  assert.equal(state.studyQueueIds[0], firstId);
-  assert.equal(state.mastery[firstId].mistakes, 1);
+  assert.ok(state.studyQueueIds.length > 0);
   assert.ok(state.undo);
+  assert.ok(state.waves[0].createdAt);
 });

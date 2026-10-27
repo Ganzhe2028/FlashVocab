@@ -4,6 +4,7 @@ import {
   buildMarkdownExport,
   normalizeDeck,
   parseDeckFromText,
+  parseDeckFromTextDetailed,
   readImportFile,
 } from "./deckImport.js";
 
@@ -194,6 +195,14 @@ test("readImportFile keeps plain-text handling and rejects legacy .doc files", a
     readImportFile({ name: "legacy.doc", type: "application/msword" }),
     /暂不支持 \.doc/,
   );
+  await assert.rejects(
+    readImportFile({ name: "legacy.xls", type: "application/vnd.ms-excel" }),
+    /暂不支持旧 \.xls/,
+  );
+  await assert.rejects(
+    readImportFile({ name: "unit5.pdf", type: "application/pdf" }),
+    /暂不支持 PDF/,
+  );
 });
 
 test("Markdown export emits all modern examples and can be parsed again", () => {
@@ -240,4 +249,55 @@ test("plain one-word-per-line imports and AI material survives JSON and Markdown
   assert.deepEqual(json[0].custom, { kept: true });
   const markdown = normalizeDeck(parseDeckFromText(buildMarkdownExport(source)));
   for (const field of ["microScene", "memorySketch", "distractors", "usageTags", "miniScenario", "contrastScenarios", "examples"]) assert.deepEqual(markdown[0][field], source[0][field]);
+});
+
+test("teacher-style plain lists accept Chinese pairs, numbering, POS, phonetics, and phrases", () => {
+  const deck = normalizeDeck(parseDeckFromText(`abandon 放弃
+1. benefit v. 好处；利益
+take off /teɪk ɒf/ phr. 起飞
+translucent (adj.) 半透明的
+fragile adj 易碎的
+[resilient] 有韧性的`));
+
+  assert.deepEqual(deck.map((entry) => [entry.term, entry.pos, entry.meaningZh, entry.respell]), [
+    ["abandon", "", "放弃", ""],
+    ["benefit", "v.", "好处；利益", ""],
+    ["take off", "phr.", "起飞", "/teɪk ɒf/"],
+    ["translucent", "adj.", "半透明的", ""],
+    ["fragile", "adj.", "易碎的", ""],
+    ["resilient", "", "有韧性的", ""],
+  ]);
+});
+
+test("tab, pipe, headerless CSV, and chip-style rows stay aligned", () => {
+  const raw = `Word\tPOS\tChinese\tExample
+abandon\tv.\t放弃\tHe abandoned the plan.
+benefit\tn.\t好处\tIt has many benefits.`;
+  const table = normalizeDeck(parseDeckFromText(raw));
+  assert.equal(table[0].term, "abandon");
+  assert.equal(table[0].meaningZh, "放弃");
+  assert.equal(table[0].examples[0].sentence, "He abandoned the plan.");
+
+  const pipe = normalizeDeck(parseDeckFromText("abandon | v. | 放弃 | to leave somebody"));
+  assert.deepEqual([pipe[0].term, pipe[0].pos, pipe[0].meaningZh, pipe[0].meaning], ["abandon", "v.", "放弃", "to leave somebody"]);
+
+  const csv = normalizeDeck(parseDeckFromText("abandon,放弃\nbenefit,好处"));
+  assert.deepEqual(csv.map((entry) => entry.meaningZh), ["放弃", "好处"]);
+});
+
+test("split lines, Chinese-first pairs, and document headings still import the words", () => {
+  const split = normalizeDeck(parseDeckFromText("abandon\n放弃\nbenefit\n好处"));
+  assert.deepEqual(split.map((entry) => [entry.term, entry.meaningZh]), [["abandon", "放弃"], ["benefit", "好处"]]);
+
+  const chineseFirst = normalizeDeck(parseDeckFromText("放弃 abandon\n好处 benefit"));
+  assert.deepEqual(chineseFirst.map((entry) => [entry.term, entry.meaningZh]), [["abandon", "放弃"], ["benefit", "好处"]]);
+
+  const detailed = parseDeckFromTextDetailed("Unit 1 Vocabulary\n单词 词性 中文\nabandon v. 放弃\nPage 2");
+  assert.equal(normalizeDeck(detailed.entries)[0].term, "abandon");
+  assert.ok(detailed.skipped.length >= 2);
+});
+
+test("unrecognized prose still fails with a concrete example", () => {
+  assert.throws(() => parseDeckFromText("not a deck"), /没有认出英文单词/);
+  assert.throws(() => parseDeckFromText("Some generated output:"), /没有认出英文单词/);
 });
