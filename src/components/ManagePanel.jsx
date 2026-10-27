@@ -31,6 +31,7 @@ export default function ManagePanel({
   onRestoreGraduated,
   waves,
   onWaveAction,
+  onRenameWave,
   aiControls,
   autoPronounceEnabled,
   spellingMode,
@@ -54,6 +55,8 @@ export default function ManagePanel({
   onConfirmConsumed,
 }) {
   const [confirmAction, setConfirmAction] = useState(null);
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameValue, setRenameValue] = useState("");
 
   useEffect(() => {
     if (open && initialConfirmAction) setConfirmAction(initialConfirmAction);
@@ -148,8 +151,40 @@ export default function ManagePanel({
                   {waves.map((wave) => (
                     <li key={wave.id} className={wave.status === "active" ? "is-active" : ""}>
                       <div className="wave-title-row">
-                        <strong>{wave.name}</strong>
-                        <span className="wave-status">{wave.status === "active" ? "在学" : "已收起"}</span>
+                        {renamingId === wave.id ? (
+                          <form
+                            className="wave-rename-form"
+                            onSubmit={(event) => {
+                              event.preventDefault();
+                              onRenameWave(wave.id, renameValue);
+                              setRenamingId(null);
+                            }}
+                          >
+                            <input
+                              autoFocus
+                              value={renameValue}
+                              aria-label={`重命名 ${wave.name}`}
+                              onChange={(event) => setRenameValue(event.target.value)}
+                              onKeyDown={(event) => { if (event.key === "Escape") setRenamingId(null); }}
+                            />
+                            <button type="submit" className="text-button">保存</button>
+                            <button type="button" className="text-button" onClick={() => setRenamingId(null)}>取消</button>
+                          </form>
+                        ) : (
+                          <>
+                            <div className="wave-name-row">
+                              <strong>{wave.name}</strong>
+                              <button
+                                type="button"
+                                className="text-button wave-rename-button"
+                                onClick={() => { setRenamingId(wave.id); setRenameValue(wave.name); }}
+                              >
+                                改名
+                              </button>
+                            </div>
+                            <span className="wave-status">{wave.status === "active" ? "在学" : "已收起"}</span>
+                          </>
+                        )}
                       </div>
                       <span>{wave.count} 个词</span>
                       <div className="inline-actions">

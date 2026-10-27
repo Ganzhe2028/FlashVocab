@@ -269,10 +269,10 @@ export default function App() {
     }
   }, [aiSettings.apiKey, aiSettings.model]);
 
-  const importDeck = useCallback(async (rawDeck, options = {}) => {
+  const importDeck = useCallback(async (rawDeck) => {
     const normalized = normalizeDeck(rawDeck);
     if (!normalized.length) throw new Error("内容中没有有效的单词。");
-    dispatch({ type: "ADD_WAVE", sourceDeck: normalized, name: options.name ?? "" });
+    dispatch({ type: "ADD_WAVE", sourceDeck: normalized });
   }, [dispatch]);
 
   const prepareCurrentWave = useCallback(async () => {
@@ -344,21 +344,23 @@ export default function App() {
     >
       <header className="app-header" onFocusCapture={showChrome}>
         <div className="brand">闪词</div>
-        <nav className="header-actions" aria-label="全局工具">
-          {state.undo && !undoToastVisible ? <button ref={headerUndoRef} type="button" className="header-button undo-button" onClick={() => dispatch({ type: "UNDO" })}>{state.undo.label}</button> : null}
-          {state.waves.length ? <button type="button" className="header-button" onClick={() => openPanel("deck")}>词表</button> : null}
-          <button type="button" className="header-icon-button" onClick={() => openPanel("settings")} aria-label="设置">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" /><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1-2.9 2.9-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5v.2h-4v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1-2.9-2.9.1-.1A1.6 1.6 0 0 0 4.6 15a1.6 1.6 0 0 0-1.5-1H3v-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1 2.9-2.9.1.1a1.6 1.6 0 0 0 1.8.3 1.6 1.6 0 0 0 1-1.5V3h4v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1 2.9 2.9-.1.1a1.6 1.6 0 0 0-.3 1.8 1.6 1.6 0 0 0 1.5 1h.2v4h-.2a1.6 1.6 0 0 0-1.5 1Z" /></svg>
-          </button>
-          <button type="button" className="header-icon-button" onClick={() => openPanel("help")} aria-label="帮助">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.6 9a2.5 2.5 0 1 1 4 2c-.9.6-1.6 1.1-1.6 2.2M12 17h.01" /></svg>
-          </button>
-          <a className="github-link" href="https://github.com/Ganzhe2028/FlashVocab" target="_blank" rel="noreferrer" aria-label="在 GitHub 查看闪词">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path fillRule="evenodd" d="M12 .297a12 12 0 0 0-3.793 23.388c.6.113.82-.26.82-.577v-2.234c-3.338.726-4.042-1.416-4.042-1.416-.546-1.386-1.332-1.755-1.332-1.755-1.089-.745.083-.73.083-.73 1.205.084 1.839 1.237 1.839 1.237 1.07 1.835 2.809 1.305 3.495.998.108-.776.418-1.305.762-1.605-2.665-.303-5.466-1.332-5.466-5.931 0-1.31.468-2.381 1.235-3.221-.124-.303-.535-1.523.117-3.176 0 0 1.008-.322 3.301 1.23A11.5 11.5 0 0 1 12 6.099c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.873.118 3.176.769.84 1.233 1.911 1.233 3.221 0 4.61-2.805 5.625-5.475 5.921.43.371.823 1.102.823 2.222v3.295c0 .32.216.694.825.576A12 12 0 0 0 12 .297Z" clipRule="evenodd" />
-            </svg>
-          </a>
-        </nav>
+        {state.mode !== "prepare" || state.waves.length ? (
+          <nav className="header-actions" aria-label="全局工具">
+            {state.undo && !undoToastVisible ? <button ref={headerUndoRef} type="button" className="header-button undo-button" onClick={() => dispatch({ type: "UNDO" })}>{state.undo.label}</button> : null}
+            {state.waves.length ? <button type="button" className="header-button" onClick={() => openPanel("deck")}>词表</button> : null}
+            <button type="button" className="header-icon-button" onClick={() => openPanel("settings")} aria-label="设置">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" /><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1-2.9 2.9-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5v.2h-4v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1-2.9-2.9.1-.1A1.6 1.6 0 0 0 4.6 15a1.6 1.6 0 0 0-1.5-1H3v-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1 2.9-2.9.1.1a1.6 1.6 0 0 0 1.8.3 1.6 1.6 0 0 0 1-1.5V3h4v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1 2.9 2.9-.1.1a1.6 1.6 0 0 0-.3 1.8 1.6 1.6 0 0 0 1.5 1h.2v4h-.2a1.6 1.6 0 0 0-1.5 1Z" /></svg>
+            </button>
+            <button type="button" className="header-icon-button" onClick={() => openPanel("help")} aria-label="帮助">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.6 9a2.5 2.5 0 1 1 4 2c-.9.6-1.6 1.1-1.6 2.2M12 17h.01" /></svg>
+            </button>
+            <a className="github-link" href="https://github.com/Ganzhe2028/FlashVocab" target="_blank" rel="noreferrer" aria-label="在 GitHub 查看闪词">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path fillRule="evenodd" d="M12 .297a12 12 0 0 0-3.793 23.388c.6.113.82-.26.82-.577v-2.234c-3.338.726-4.042-1.416-4.042-1.416-.546-1.386-1.332-1.755-1.332-1.755-1.089-.745.083-.73.083-.73 1.205.084 1.839 1.237 1.839 1.237 1.07 1.835 2.809 1.305 3.495.998.108-.776.418-1.305.762-1.605-2.665-.303-5.466-1.332-5.466-5.931 0-1.31.468-2.381 1.235-3.221-.124-.303-.535-1.523.117-3.176 0 0 1.008-.322 3.301 1.23A11.5 11.5 0 0 1 12 6.099c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.873.118 3.176.769.84 1.233 1.911 1.233 3.221 0 4.61-2.805 5.625-5.475 5.921.43.371.823 1.102.823 2.222v3.295c0 .32.216.694.825.576A12 12 0 0 0 12 .297Z" clipRule="evenodd" />
+              </svg>
+            </a>
+          </nav>
+        ) : null}
       </header>
 
       {undoToastVisible && state.undo ? (
@@ -368,7 +370,7 @@ export default function App() {
         </div>
       ) : null}
 
-      <main className="reading-column">
+      <main className={`reading-column${state.mode === "prepare" ? " is-importing" : ""}`}>
         {state.mode !== "prepare" && state.waves.length ? <p className="learning-context">{state.waves.filter((wave) => wave.status === "active").map((wave) => wave.name).join(" · ")} · {getActiveCardIds(state).length} 个词</p> : null}
         {state.notice && !undoToastVisible ? <p className="page-notice" role="status">{state.notice}</p> : null}
         {state.mode === "prepare" ? (
@@ -376,8 +378,6 @@ export default function App() {
             canContinue={Boolean(state.resumeMode)}
             onContinue={() => dispatch({ type: "CONTINUE_LEARNING" })}
             hasWaves={Boolean(state.waves.length)}
-            wavePlaceholder={`W${state.waves.length + 1}`}
-            onManage={() => openPanel("deck")}
             onSample={useSample}
             onImport={importDeck}
           />
@@ -476,6 +476,7 @@ export default function App() {
         graduatedCount={getActiveCardIds(state).filter((cardId) => isGraduated(state.mastery, cardId)).length}
         waves={state.waves.map((wave) => ({ ...wave, count: state.sourceDeck.filter((entry) => getEntryWaveId(entry) === wave.id).length }))}
         onWaveAction={(type, waveId) => { dispatch({ type, waveId }); closePanel(); }}
+        onRenameWave={(waveId, name) => dispatch({ type: "RENAME_WAVE", waveId, name })}
         onRestoreGraduated={() => { dispatch({ type: "RESTORE_GRADUATED" }); closePanel(); }}
         autoPronounceEnabled={state.autoPronounceEnabled}
         spellingMode={state.spellingMode}

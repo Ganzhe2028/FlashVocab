@@ -74,18 +74,15 @@ const openImport = () => {
   expect(document.querySelector(".import-view")).toBeTruthy();
 };
 
-const previewImport = (text, name = "") => {
+const previewImport = (text) => {
   openImport();
-  fireEvent.change(screen.getByRole("textbox", { name: "粘贴单词表" }), { target: { value: text } });
-  fireEvent.click(screen.getByRole("button", { name: "看看认出了什么" }));
-  if (name) {
-    fireEvent.click(screen.getByText("给这组词起个名字（可选）"));
-    fireEvent.change(screen.getByRole("textbox", { name: "这组词的名字" }), { target: { value: name } });
-  }
+  fireEvent.click(screen.getByRole("button", { name: "粘贴" }));
+  fireEvent.change(screen.getByRole("textbox", { name: "单词表内容" }), { target: { value: text } });
+  fireEvent.click(screen.getByRole("button", { name: "识别单词" }));
 };
 
-const importViaPaste = (text, name = "") => {
-  previewImport(text, name);
+const importViaPaste = (text) => {
+  previewImport(text);
   fireEvent.click(screen.getByRole("button", { name: /开始背这/ }));
 };
 
@@ -193,8 +190,10 @@ describe("FlashVocab 3.0", () => {
   test("a plain pasted word list is recognized, previewed, and starts learning without JSON", () => {
     render(<App />);
     previewImport("delta 德尔塔\nomega 欧米伽");
-    expect(screen.getByRole("heading", { name: "认出 2 个词。" })).toBeTruthy();
-    expect(screen.getByText("2 个有中文释义")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "这些词对吗？" })).toBeTruthy();
+    const steps = screen.getByRole("list", { name: "导入步骤" });
+    expect(within(steps).getByText("核对").closest("li").getAttribute("aria-current")).toBe("step");
+    expect(screen.getByText(/2 个有中文释义/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "开始背这 2 个词" }));
     expect(currentWordButton()).toBeTruthy();
     expect(document.querySelector(".undo-toast").textContent).toContain("已新增");
@@ -331,10 +330,10 @@ describe("FlashVocab 3.0", () => {
     openPractice("看情景选词");
     expect(screen.getByRole("heading", { name: "根据情景选词。" })).toBeTruthy();
   });
-  test("named imports add waves, retain old words, and allow revival or semester review", () => {
+  test("adding a second wave retains old words and allows switching or full review", () => {
     saveAssets();
     render(<App />);
-    importViaPaste(JSON.stringify([beta]), "W5");
+    importViaPaste(JSON.stringify([beta]));
     expect(currentWordButton().textContent).toBe("beta");
     const stored = JSON.parse(window.localStorage.getItem(DECK_STORAGE_KEY));
     expect(stored.sourceDeck).toHaveLength(2);
@@ -362,6 +361,18 @@ describe("FlashVocab 3.0", () => {
     const stored = JSON.parse(window.localStorage.getItem(MASTERY_STORAGE_KEY));
     expect(stored.mastery[cardId].fuzzy).toBe(0);
     expect(stored.mastery[cardId].mistakes).toBe(1);
+  });
+  test("a wave can be renamed from the deck panel and undone", () => {
+    saveAssets();
+    render(<App />);
+    openDeck();
+    fireEvent.click(screen.getByRole("button", { name: "改名" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "重命名 W1" }), { target: { value: "Unit 5" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    expect(screen.getAllByText("Unit 5").length).toBeGreaterThan(0);
+    fireEvent.click(document.querySelector(".undo-toast button"));
+    expect(screen.queryAllByText("Unit 5")).toHaveLength(0);
+    expect(screen.getAllByText("W1").length).toBeGreaterThan(0);
   });
   test("saved mastery orders weak words first and graduated words can be found back with Undo", () => {
     saveAssets([alpha, beta]);
@@ -433,7 +444,7 @@ describe("FlashVocab 3.0", () => {
     press("e", "KeyE");
     openImport();
     expect(screen.getByRole("heading", { name: "再加一组词。" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "继续学习" }));
+    fireEvent.click(screen.getByRole("button", { name: /继续学习/ }));
     expect(screen.getByText(alpha.meaning)).toBeTruthy();
   });
 
@@ -453,20 +464,29 @@ describe("FlashVocab 3.0", () => {
     press("n", "KeyN");
     expect(screen.getByRole("textbox", { name: "输入英文拼写" })).toBeTruthy();
   });
-  test("fresh visits start with one direct import surface and keep the sample secondary", () => {
+  test("fresh visits show a three-step wizard with one source picker and minimal chrome", () => {
     render(<App />);
-    expect(screen.getByRole("heading", { name: "把单词表放进来。" })).toBeTruthy();
-    expect(screen.getByText("选择或拖入文件")).toBeTruthy();
-    expect(screen.getByRole("textbox", { name: "粘贴单词表" })).toBeTruthy();
+    const steps = screen.getByRole("list", { name: "导入步骤" });
+    expect(within(steps).getAllByRole("listitem")).toHaveLength(3);
+    expect(within(steps).getByText("放入")).toBeTruthy();
+    expect(within(steps).getByText("核对")).toBeTruthy();
+    expect(within(steps).getByText("开始")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "单词表在哪？" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "文件" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "粘贴" })).toBeTruthy();
+    expect(screen.queryByRole("textbox", { name: "单词表内容" })).toBeNull();
     expect(screen.getByRole("button", { name: /用 24 个示例词试试/ })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Import" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "设置" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "粘贴" }));
+    expect(screen.getByRole("textbox", { name: "单词表内容" })).toBeTruthy();
   });
 
   test("a word without a Chinese meaning can be completed through one copy-and-paste AI step", () => {
     render(<App />);
     previewImport("alpha 第一项\nuntamed");
-    expect(screen.getByText("1 个缺中文释义")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "补中文释义" }));
+    expect(screen.getByText("1 个词缺中文释义")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "补上" }));
+    fireEvent.click(screen.getByText("查看要复制的内容"));
     const prompt = screen.getByRole("textbox", { name: "补全提示词" }).value;
     expect(prompt).toContain("untamed");
     expect(prompt).toContain("中文释义");
@@ -477,7 +497,7 @@ describe("FlashVocab 3.0", () => {
     fireEvent.click(screen.getByRole("button", { name: "识别并补全" }));
     expect(screen.getByText(/补全了 1 个词/)).toBeTruthy();
     expect(screen.getByText("未被驯服的")).toBeTruthy();
-    expect(screen.queryByText("1 个缺中文释义")).toBeNull();
+    expect(screen.queryByText("1 个词缺中文释义")).toBeNull();
   });
 
   test("saved decks start a fresh recognition round with layered reading content", () => {
@@ -590,15 +610,16 @@ describe("FlashVocab 3.0", () => {
     saveAssets();
     render(<App />);
     openImport();
-    const paste = screen.getByRole("textbox", { name: "粘贴单词表" });
+    fireEvent.click(screen.getByRole("button", { name: "粘贴" }));
+    const paste = screen.getByRole("textbox", { name: "单词表内容" });
 
     fireEvent.change(paste, { target: { value: "not a deck" } });
-    fireEvent.click(screen.getByRole("button", { name: "看看认出了什么" }));
+    fireEvent.click(screen.getByRole("button", { name: "识别单词" }));
     expect(screen.getByRole("alert").textContent).toContain("没有认出英文单词");
     expect(document.querySelector(".import-view")).toBeTruthy();
 
     fireEvent.change(paste, { target: { value: JSON.stringify([{ ...beta, extraField: "preserved" }]) } });
-    fireEvent.click(screen.getByRole("button", { name: "看看认出了什么" }));
+    fireEvent.click(screen.getByRole("button", { name: "识别单词" }));
     fireEvent.click(screen.getByRole("button", { name: /开始背这/ }));
     expect(screen.getByRole("button", { name: "beta" })).toBeTruthy();
     fireEvent.click(screen.getAllByRole("button", { name: "撤销新增词表" })[0]);

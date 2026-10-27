@@ -12,36 +12,45 @@
 
 ## 现在的首次使用
 
-### 一个入口，不是三个
+这一版在 2026-10-27 又按真实新用户的阅读顺序收了一次：第一版把文件、粘贴、补全、命名、词表入口都放在同一屏，用户虽然能完成，但不知道先看哪里、现在进行到哪一步。现在改成三步向导，每一步只保留一个决定和一个主动作。
 
-- 首次打开就是导入页，没有「准备页」「Import」「更多」三个平行入口。
-- 顶部只保留：品牌、`词表`（有词时）、设置齿轮、帮助、GitHub、Undo。
-- `词表` 打开词表管理；`添加新词表` 回到导入页；设置和帮助各自打开一个专注面板，没有二级 tab。
-- 学习中途进入导入页时，顶部会出现「刚才的学习还留着」和「继续学习」；不导入直接返回即可恢复原题、原答案和拼写输入。
-- 从导入页新增词表后按 Undo，会回到原来的学习现场，而不是停在导入页。
+### 三步向导
 
-### 导入页只做一件事
+`1 放入 → 2 核对 → 3 开始`
 
-页面上并列两个明确目标：
+- 每一步顶部都有这个进度指示；已完成的一步显示对勾，当前步高亮，下一步保持灰色。
+- 页面切换时焦点移到新标题，键盘和读屏用户不会留在上一步的输入框里。
+- 首次打开时顶部只留「闪词」品牌，隐藏设置、帮助、GitHub 和词表入口，避免在还没开始前先看到一排全局按钮。
 
-- 左：选择或拖入文件。支持 `.docx`、`.xlsx`、CSV、TXT、Markdown、JSON；旧 `.doc` 会提示另存为 `.docx`。
-- 右：粘贴单词表。输入框里直接展示可接受的格式示例，不需要先读说明。
-- 下方：24 个示例词作为次级入口；有词表时另有「查看已有词表」。
+### 第 1 步：放入
 
-导入前不问「这波叫什么」，也不要求填 DeepSeek key。命名折叠在预览页的「给这组词起个名字（可选）」里；不填就按 W1、W2 递增。
+- 只有一个问题：「单词表在哪？」
+- 来源只有两个 tab：「文件」「粘贴」。切到哪个，下面才出现哪个操作，不再同时摆两张卡。
+- 文件模式只有一个上传目标：点击选择或拖入。支持 Word、Excel、CSV、TXT、Markdown、JSON；旧 `.doc` / `.xls` 会提示另存为。
+- 文件读取期间，上传区显示「正在识别…」，用户知道网站正在处理。
+- 粘贴模式只有一行提示、一个输入框和一个「识别单词」。占位文字直接示范 `abandon 放弃`，不再另写一段格式说明。
+- 首次访问才显示「没有词表？用 24 个示例词试试」；已有词表时不显示。
+- 页面底部只保留一行「只保存在这台设备」。没有命名、没有 AI 设置、没有长格式说明、没有第二个上传入口；格式只用一行「Word · Excel · CSV · 文本」带过。
 
-### 先看识别结果，再决定导入
+### 第 2 步：核对
 
-文件或粘贴内容解析成功后，进入预览，而不是直接开背：
+这一屏只回答一个问题：「这些词对吗？」
 
-- 「认出 N 个词」。
-- 字段摘要：多少个有中文释义、词性、例句，多少个缺中文释义。
-- 前 6 个词的词条预览，可展开全部。
-- 没看懂的行单独列出，并说明是「像完整句子」还是「没有单词」；标题和日期只计数，不打扰用户。
-- 主按钮是「开始背这 N 个词」，次按钮是「调整原文」。
-- 有旧词表时提示「原来的词表会保留，可在「词表」里切回」。
+- 一行摘要：「5 个词 · 4 个有中文释义」。
+- 缺中文释义时只多一行：「1 个词缺中文释义 · 补上」。点开才出现 AI 补全面板。
+- 前 5 个词按「单词 / 中文」两列显示；超过 5 个时才出现「展开全部 N 个」。
+- 没识别的行收在「N 行没识别」的折叠项里，说明「像完整句子」或「没有单词」。
+- 有旧词表时补一句「会加进「词表」，原来的不会丢」。
+- 整屏只有一个主按钮：「开始背这 N 个词」。返回是左上角的「← 换一份」文字链接，不再放第二个同权重按钮。
+- 导入阶段不命名。默认使用 W1、W2；导入后可在「词表」面板对每一组词点「改名」，不占核对步骤的注意力。
 
-这一步直接解决「我明明输入了中英翻译却识别不了」：用户能看到系统到底认出了什么、漏了哪一行，而不是只收到一句泛泛的失败提示。
+### 第 3 步：开始
+
+点「开始背这 N 个词」直接进入认词，不再多一次确认页。进度条里的「开始」就是这一步；学习页本身是第 3 步的落地。
+
+### 学习中途再加一组
+
+学习页进入导入时，左上角出现「← 继续学习」。它与三步向导不冲突，不导入时可以原样返回；新增词表后按 Undo 也会回到原来的学习现场，而不是停在导入页。
 
 ## 解析契约
 
@@ -66,12 +75,12 @@ Word 的表格提取在 `extractDocxText` 内完成：表格每一行转换为 t
 
 ## 缺中文释义时：一次复制，一次粘贴
 
-如果预览里有词缺中文释义，会出现「补中文释义」。展开后只有两步：
+如果核对页里有词缺中文释义，会出现一行「N 个词缺中文释义 · 补上」。展开后只有两步：
 
 1. 复制一段已经包含缺词清单的普通文字，发给 DeepSeek、ChatGPT 或任意 AI。提示词要求输出 `单词 | 词性 | 中文释义 | 英文释义`，不要求 JSON。
 2. 把 AI 的回复整段粘回来，点「识别并补全」。
 
-合并按单词匹配，只填缺失字段，不覆盖已有内容；兼容竖线行、Markdown 表格、编号行和 JSON 回复。没有匹配到任何词时直接说明，不会悄悄改词表。这个入口只在缺资料时出现，不是导入的必经步骤。
+合并按单词匹配，只填缺失字段，不覆盖已有内容；兼容竖线行、Markdown 表格、编号行和 JSON 回复。没有匹配到任何词时直接说明，不会悄悄改词表。这个入口只在缺资料时出现，不在第 1 步出现，也不是导入的必经步骤。
 
 ## 设置页
 
@@ -102,21 +111,26 @@ Word 的表格提取在 `extractDocxText` 内完成：表格每一行转换为 t
 - 面向学习者的 JSON 补全提示词。
 - 顶部 `准备页`、`Import`、`更多` 三入口和面板二级 tab。
 - 新词表自动进入情景题的「初见局」。
+- 第 1 步同时并排的文件卡 / 粘贴卡 / 命名 / 查看已有词表。
+- 第 2 步的字段胶囊、词性/例句统计、命名折叠和「调整原文」次按钮。
 
 ## 验证
 
-自动检查：`npm run check` 通过，84 项 Node 测试、58 项 UI 测试、ESLint 和 Vite 生产构建全绿。日志见 [check.log](validation-2026-10-27/check.log)。
+自动检查：`npm run check` 通过，84 项 Node 测试、59 项 UI 测试、ESLint 和 Vite 生产构建全绿。日志见 [check.log](validation-2026-10-27/check.log)。
 
 真实 Chrome 生产构建验证：
 
-- 教师风格 DOCX 表格：认出 5 个词，含 `take off` 短语和 5 条例句；[预览截图](validation-2026-10-27/docx-preview.png)。
-- 教师风格 XLSX：认出 5 个词；[预览截图](validation-2026-10-27/xlsx-preview.png)。
-- 粘贴 `abandon 放弃 / benefit 好处；利益 / 1. take off v. 起飞 / translucent /... / resilient`：正确识别 5 个词，缺 1 个中文释义；补全流程可用；[预览](validation-2026-10-27/desktop-preview.png)、[补全](validation-2026-10-27/desktop-fill.png)。
-- 桌面亮色：导入、词表、设置、帮助见 [导入](validation-2026-10-27/desktop-import.png)、[词表](validation-2026-10-27/desktop-deck.png)、[设置](validation-2026-10-27/desktop-settings.png)、[帮助](validation-2026-10-27/desktop-help.png)。
-- 暗色：DOCX 预览与学习页见 [暗色预览](validation-2026-10-27/dark-docx-preview.png)、[暗色学习](validation-2026-10-27/dark-study.png)。
-- 390px：导入、预览、学习、设置、词表均无横向溢出；见 [移动导入](validation-2026-10-27/mobile-import.png)、[移动预览](validation-2026-10-27/mobile-preview.png)、[移动学习](validation-2026-10-27/mobile-study.png)、[移动设置](validation-2026-10-27/mobile-settings.png)、[移动词表](validation-2026-10-27/mobile-deck.png)。
-- 280px：导入与预览 `clientWidth = scrollWidth = 280`；见 [窄屏导入](validation-2026-10-27/narrow-import.png)、[窄屏预览](validation-2026-10-27/narrow-preview.png)。
-- 200% CSS 放大：预览 `clientWidth = scrollWidth = 1440`；见 [放大预览](validation-2026-10-27/zoom200-preview.png)、[放大设置](validation-2026-10-27/zoom200-settings.png)。
+- 第 1 步「放入」：只显示三步指示、`文件 / 粘贴`、一个上传目标、示例词次级入口和一行隐私说明；首次访问时全局导航隐藏。[亮色](validation-2026-10-27/desktop-import.png)、[暗色](validation-2026-10-27/dark-import.png)、[390px](validation-2026-10-27/mobile-import.png)、[280px](validation-2026-10-27/narrow-import.png)、[200%](validation-2026-10-27/zoom200-import.png)。
+- 第 1 步「粘贴」：切换后只出现输入框和「识别单词」。[桌面](validation-2026-10-27/desktop-paste.png)、[移动](validation-2026-10-27/mobile-paste.png)。
+- 第 2 步「核对」：一行摘要、缺释义行、前五个词、一个主按钮、左上角返回。[亮色](validation-2026-10-27/desktop-preview.png)、[390px](validation-2026-10-27/mobile-preview.png)、[280px](validation-2026-10-27/narrow-preview.png)、[200%](validation-2026-10-27/zoom200-preview.png)。
+- 教师风格 DOCX 表格：5 个词、5 个有中文释义、含 `take off` 短语；[预览截图](validation-2026-10-27/docx-preview.png)。XLSX 同样 5 个词、5 个有中文释义；[预览截图](validation-2026-10-27/xlsx-preview.png)。
+- 粘贴 `abandon 放弃 / benefit 好处；利益 / take off 起飞 / translucent 半透明的 / resilient`：正确识别 5 个词，缺 1 个中文释义；补全流程可用；[补全面板](validation-2026-10-27/desktop-fill.png)、[展开要复制的文字](validation-2026-10-27/desktop-fill-open.png)、[补全后](validation-2026-10-27/desktop-filled.png)、[开始学习](validation-2026-10-27/desktop-study.png)、[390px 补全](validation-2026-10-27/mobile-fill.png)。
+- 词表管理：每组词保留一个低干扰的「改名」入口，改名可撤销；见 [词表](validation-2026-10-27/desktop-deck.png)、[改名输入](validation-2026-10-27/desktop-rename.png)、[改名后](validation-2026-10-27/desktop-deck-renamed.png)。
+- 桌面亮色：设置、帮助见 [设置](validation-2026-10-27/desktop-settings.png)、[帮助](validation-2026-10-27/desktop-help.png)。
+- 暗色：学习页见 [暗色学习](validation-2026-10-27/dark-study.png)。
+- 390px：第 1/2 步、学习、设置、词表均无横向溢出；见 [移动学习](validation-2026-10-27/mobile-study.png)、[移动设置](validation-2026-10-27/mobile-settings.png)、[移动词表](validation-2026-10-27/mobile-deck.png)。
+- 280px：第 1/2 步 `clientWidth = scrollWidth = 280`。
+- 200% CSS 放大：第 1/2 步 `clientWidth = scrollWidth = 1440`；[放大设置](validation-2026-10-27/zoom200-settings.png)。
 
 ## 已知边界
 

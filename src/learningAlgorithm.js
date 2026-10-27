@@ -669,6 +669,17 @@ export const learningReducer = (state, action) => {
         undo: { label: "撤销补全", snapshot: snapshotForUndo(state) }, notice: `已补齐 ${updates.size} 词资料，从新一轮认词继续。`,
       };
     }
+    case "RENAME_WAVE": {
+      const name = String(action.name ?? "").trim().slice(0, 40);
+      if (!name || !state.waves.some((wave) => wave.id === action.waveId) ||
+        state.waves.find((wave) => wave.id === action.waveId).name === name) return state;
+      return {
+        ...state,
+        waves: state.waves.map((wave) => wave.id === action.waveId ? { ...wave, name } : wave),
+        undo: { label: "撤销改名", snapshot: snapshotForUndo(state) },
+        notice: "词表已改名。",
+      };
+    }
     case "SELECT_WAVE":
     case "COLD_WAVE":
     case "REVIVE_ALL_WAVES": {
