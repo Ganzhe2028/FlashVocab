@@ -152,7 +152,7 @@ export default function ImportView({
   const copyWorksheetPrompt = async () => {
     try {
       await navigator.clipboard.writeText(buildWorksheetPrompt());
-      setAssistCopyNotice("已复制。和原文件一起发给 AI。");
+      setAssistCopyNotice("已复制。下一步打开 DeepSeek 发送。");
     } catch {
       setAssistCopyNotice("复制失败，请展开下面的「查看要复制的内容」手动复制。");
     }
@@ -231,8 +231,7 @@ export default function ImportView({
             {draft.sourceName ? <p className="assist-source">{draft.sourceName}</p> : null}
 
             <div className="assist-panel">
-              <p className="fill-step"><span>1</span>打开 <a className="text-button" href="https://chat.deepseek.com/" target="_blank" rel="noreferrer">DeepSeek</a>，把这份原文件拖进对话。</p>
-              <p className="fill-step"><span>2</span>复制这段话，和文件一起发过去。</p>
+              <p className="fill-step"><span>1</span>复制这段话。</p>
               <div className="fill-actions">
                 <button type="button" className="secondary-action" onClick={copyWorksheetPrompt}>复制这段话</button>
                 {assistCopyNotice ? <span className="fill-note" role="status">{assistCopyNotice}</span> : null}
@@ -241,6 +240,7 @@ export default function ImportView({
                 <summary>查看要复制的内容</summary>
                 <textarea className="fill-prompt" readOnly rows="6" value={buildWorksheetPrompt()} onFocus={(event) => event.target.select()} aria-label="整理提示词" />
               </details>
+              <p className="fill-step"><span>2</span>打开 <a className="text-button" href="https://chat.deepseek.com/" target="_blank" rel="noreferrer">DeepSeek</a>，把这份原文件和刚复制的话一起发过去。</p>
               <p className="fill-step"><span>3</span>把 AI 的回复粘贴回来。</p>
               <textarea
                 className="fill-reply"

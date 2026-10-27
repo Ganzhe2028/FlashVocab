@@ -486,6 +486,10 @@ describe("FlashVocab 3.0", () => {
     previewImport("unequivocally (54) highbrow (54)\ncommotion (57) disbelief (57)");
     expect(screen.getByRole("heading", { name: "这份表要请 AI 读一下。" })).toBeTruthy();
     expect(screen.getByText(/单词和释义分开放/)).toBeTruthy();
+    const steps = [...document.querySelectorAll(".assist-panel .fill-step")].map((step) => step.textContent);
+    expect(steps[0]).toContain("复制这段话");
+    expect(steps[1]).toContain("DeepSeek");
+    expect(steps[2]).toContain("粘贴回来");
     fireEvent.click(screen.getByText("查看要复制的内容"));
     expect(screen.getByRole("textbox", { name: "整理提示词" }).value).toContain("上传的文件");
     fireEvent.change(screen.getByRole("textbox", { name: "AI 词表回复" }), {
