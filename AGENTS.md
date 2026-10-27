@@ -60,9 +60,10 @@ The completed rewrite is recorded in `docs/flashvocab-3-rewrite-plan.md`; its ar
 - Speech triggered by a learning action must be called synchronously inside that initiating event. Active utterances stay referenced until completion.
 - App computes each reducer transition once in its event dispatcher, speaks before committing the next scene, and does not start learning speech from an effect. Asynchronous import/material completion does not initiate speech. Summary continuation, review, remove, Undo, and preference-driven study entry follow the same synchronous path.
 - Voice choice prefers `Google US English`, then natural Microsoft/macOS American voices, and excludes novelty voices such as Albert, Whisper, and Zarvox.
-- When no natural American voice exists, other English voices may be used. Missing English voices and playback errors produce visible feedback. The replay control uses a speaker SVG. Utterance references are released by completion/error events, never by effect cleanup.
+- When no natural American voice exists, other English voices may be used. Missing English voices and playback errors keep visible text feedback in the study view's `.pronunciation-notice` directly under the metadata row; never reuse the negatively margined `.page-notice` for it. Active playback is shown without visible text: the speaker button gains `is-speaking`, animating its two path segments and an outward ring (static teal tint, border, and halo under reduced motion), while a visually hidden `aria-live="polite"` line carries "正在播放美式发音。". The replay control keeps its speaker SVG and stable `播放 … 的美式发音` accessible name. Utterance references are released by completion/error events, never by effect cleanup.
 - Do not call browser-global `speechSynthesis.cancel()` while idle or from React cleanup. Strict Mode and Vite HMR run cleanup during normal development, and canceling there can wedge a Chromium process-wide TTS backend. Interrupt only when speech is actively speaking or pending.
 - `speechSynthesis.speaking === true` is not proof that audio started. Validate `start` plus `end`/`error` events and perform an audible check. On 2026-09-10 Chrome completed Google-voice events normally; a long-running Arc process stalled both app playback and a direct local-voice probe with no events, requiring a full Arc restart rather than a tab refresh.
+- The playback indicator turns on synchronously when speech is queued, not from an effect. A 4-second start watchdog clears it and shows the failure notice when no `start` event arrives; only the latest utterance may clear the state, so interrupting one word with the next never leaves a stale animation or hides the new one.
 
 ### Persistence, management, and presentation
 
@@ -75,7 +76,7 @@ The completed rewrite is recorded in `docs/flashvocab-3-rewrite-plan.md`; its ar
 - Answered quiz choices are disabled against duplicate scores; the correct option stays teal with a text label, while a selected wrong option stays coral with an explicit selected-mistake label. Both retain full opacity and readable theme contrast; unrelated choices fade.
 - Undo clears superseded import/preparation panel feedback along with restoring the saved learning and library state.
 - Undo has a single entry: the toast for five seconds, then the header. Empty-state recovery uses that same entry. Keyboard focus on the expiring toast transfers to the header action. Narrow headers wrap instead of hiding Undo, including below 300px.
-- `docs/validation-2026-09-07/` preserves historical Chrome evidence; `docs/validation-2026-10-20/` and `docs/validation-2026-10-26/` preserve prior redesign evidence. `docs/validation-2026-10-27/` contains the import-first pass: real DOCX table and XLSX uploads, plain-pair paste preview, HTA worksheet rescue, definition-versus-example field classification, 390px/280px layouts, dark mode, CSS 200% zoom, and check output. The 2026-10-27 delivery passed 88 Node tests, 62 UI tests, ESLint, and the production build. `npm run check` plus the current spec's linked acceptance matrix remain the delivery gate.
+- `docs/validation-2026-09-07/` preserves historical Chrome evidence; `docs/validation-2026-10-20/` and `docs/validation-2026-10-26/` preserve prior redesign evidence. `docs/validation-2026-10-27/` contains the import-first pass: real DOCX table and XLSX uploads, plain-pair paste preview, HTA worksheet rescue, definition-versus-example field classification, 390px/280px layouts, dark mode, CSS 200% zoom, and check output. The 2026-10-27 import-first delivery passed 88 Node tests, 62 UI tests, ESLint, and the production build; the following pronunciation-indicator fix kept 88 Node tests and raised the UI suite to 63. `docs/validation-2026-10-27-pronunciation/` records its dark playback state, error notice, 390px and reduced-motion screenshots plus the measured bounding boxes. `npm run check` plus the current spec's linked acceptance matrix remain the delivery gate.
 
 ## Content Format & Naming Conventions
 
@@ -146,6 +147,8 @@ For deeper behavior checks, build and serve the production app, then drive the U
 ## Commit & Pull Request Guidelines
 
 This is a git repository. Use short, imperative commit messages like “Add 5 new words” and keep PRs focused; include a brief summary, the number of entries added or edited, and note any reorderings.
+
+Small fixes and UI adjustments: once `npm run check` passes and the docs and evidence are synced, commit them directly in the same turn without waiting for an explicit request. Keep each such commit focused on one change.
 
 ## Document Navigation
 

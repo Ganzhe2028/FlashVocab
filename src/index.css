@@ -237,7 +237,30 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .icon-button:hover:not(:disabled) { border-color: var(--teal); color: var(--teal); }
 .icon-button:disabled { opacity: 0.35; cursor: not-allowed; }
+.speak-button { position: relative; }
 .speak-button svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.speak-button .speak-wave { transition: opacity 140ms ease; }
+.speak-button::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: 1px solid currentColor;
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+}
+.speak-button.is-speaking { border-color: var(--teal); color: var(--teal); }
+.speak-button.is-speaking .speak-wave-1 { animation: speak-wave-pulse 900ms ease-in-out infinite; }
+.speak-button.is-speaking .speak-wave-2 { animation: speak-wave-pulse 900ms ease-in-out 150ms infinite; }
+.speak-button.is-speaking::after { animation: speak-ring 1400ms ease-out infinite; }
+@keyframes speak-wave-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+@keyframes speak-ring {
+  0% { opacity: 0.55; transform: scale(0.92); }
+  70%, 100% { opacity: 0; transform: scale(1.32); }
+}
 .word-meta {
   display: flex;
   gap: 14px;
@@ -246,6 +269,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   font-size: 0.92rem;
 }
 .copy-feedback { min-height: 20px; margin: 10px 0 0; color: var(--teal); font-size: 0.88rem; }
+.pronunciation-notice { margin: 10px 0 0; color: var(--coral-ink); font-size: 0.86rem; line-height: 1.5; }
 
 .study-prompt { margin-top: 34px; }
 
@@ -902,6 +926,17 @@ textarea {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+  /* Motion is removed, so keep a static halo and tint as the playback cue. */
+  .speak-button.is-speaking {
+    background: var(--teal-soft);
+    border-color: var(--teal);
+    color: var(--teal);
+  }
+  .speak-button.is-speaking::after {
+    opacity: 0.45;
+    transform: scale(1.18);
+  }
+  .speak-button.is-speaking .speak-wave { opacity: 1; }
 }
 
 .panel-practice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

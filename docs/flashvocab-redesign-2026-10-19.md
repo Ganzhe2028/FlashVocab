@@ -464,3 +464,20 @@ E 展示真实生成的微画面、SVG 小图、用法标签和对位说明；im
 - 从导入页新增词表后按 Undo 恢复原学习现场，而不是停在导入页。
 
 验证：`npm run check` 通过 88 项 Node 测试、62 项 UI 测试、ESLint 和生产构建。真实 Chrome 覆盖 DOCX 表格、XLSX、纯中英对照粘贴、AI 补全、HTA worksheet 兜底、字段归类、390px/280px、暗色和 200% CSS 放大；证据见[2026-10-27 验证目录](validation-2026-10-27/)。
+
+
+<a id="pronunciation-indicator-2026-10-27"></a>
+## 发音提示改为图标播放态（2026-10-27）
+
+用户反馈播放单词音频时的提示文字和下面的注音重叠。原因是 `StudyView` 复用了页面级 `.page-notice`：它带 `-20px` 上边距，放在词性与注音行之后会把「正在播放。」顶回上一行，正好压住 `[ih-KWIV-uh-kuh-lee]`。
+
+现在播放状态不再输出可见文字，改由按钮自身表达：
+
+- 点击或自动朗读时，发音按钮在同一次事件内切到 `is-speaking`：按钮变青绿、两条声波路径依次呼吸、外圈扩散一环；结束或报错后立即恢复中性。系统开启「减少动态效果」时，全局媒体查询把动画压到接近 0，按钮改用静态青绿描边、浅青底色与 45% 不透明度的光环继续表示播放中。
+- 播放状态由 `usePronunciation` 的 `isSpeaking` 提供，入队时同步置位；只有最新一次 utterance 的 `end`/`error` 能清除它，被下一词打断的旧 utterance 不会关掉新词的动画。
+- 屏幕阅读器反馈保留为按钮旁的视觉隐藏行：`aria-live="polite"` 的「正在播放美式发音。」，不占可见版面。
+- 找不到英语语音、播放报错、浏览器不支持时仍显示可见文字，但改走新的 `.pronunciation-notice`：位于词性/注音行下方的正常文档流，10px 上边距，珊瑚色；不再复用负边距的 `.page-notice`。
+- `speaking === true` 仍不当作已出声的证据：新增 4 秒 start watchdog，`start` 未按时到达时收起动画并显示播放失败提示。
+- 发音入口的按钮语义不变：SVG 拆成喇叭本体与两条弧线路径，`aria-label` 仍是「播放 X 的美式发音」。
+
+验证：`npm run check` 通过 88 项 Node 测试、63 项 UI 测试、ESLint 和生产构建。生产预览下用带真实 `start`/`end` 时机的 Web Speech mock，在 1236×1002 暗色、390px 窄屏和减少动态效果三个场景检查：播放态没有可见的「正在播放」文字，隐藏状态行只占 1×1 px；错误提示与注音行的边界框不重叠（提示 top 321.6 / 注音 bottom 311.6）；减少动态效果下按钮为青绿（`rgb(88, 184, 170)`），并用浅青底色（`rgb(32, 59, 54)`）与 45% 不透明度静态光环替代动画。截图与边界框记录见[2026-10-27 发音验证目录](validation-2026-10-27-pronunciation/)（[播放态](validation-2026-10-27-pronunciation/speaking-dark.png)、[错误态](validation-2026-10-27-pronunciation/error-dark.png)、[390px](validation-2026-10-27-pronunciation/speaking-390.png)、[减少动态效果](validation-2026-10-27-pronunciation/speaking-reduced-motion.png)）。本次只改播放提示的呈现，未改发声路径，因此没有重做听音检查。

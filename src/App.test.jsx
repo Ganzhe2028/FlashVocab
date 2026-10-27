@@ -863,21 +863,40 @@ describe("FlashVocab 3.0", () => {
     render(<App />);
     const replay = screen.getByRole("button", { name: /播放 Alpha/ });
     fireEvent.click(replay);
-    expect(screen.getByText(/没有找到英语语音/)).toBeTruthy();
+    const missingVoice = screen.getByText(/没有找到英语语音/);
+    expect(missingVoice.className).toBe("pronunciation-notice");
     expect(window.speechSynthesis.speak).not.toHaveBeenCalled();
     getVoices.mockReturnValue([{ lang: "en-GB", name: "British English" }]);
     fireEvent.click(replay);
     let utterance = window.speechSynthesis.speak.mock.calls.at(-1)[0];
     expect(utterance.lang).toBe("en-GB");
     act(() => utterance.onerror({ error: "audio-busy" }));
-    expect(screen.getByText(/发音未能播放/)).toBeTruthy();
+    expect(screen.getByText(/发音未能播放/).className).toBe("pronunciation-notice");
     fireEvent.click(replay);
     utterance = window.speechSynthesis.speak.mock.calls.at(-1)[0];
     act(() => utterance.onstart());
-    expect(screen.getByText("正在播放。")).toBeTruthy();
-    act(() => utterance.onend());
+    expect(replay.classList.contains("is-speaking")).toBe(true);
+    expect(screen.getByText("正在播放美式发音。")).toBeTruthy();
     expect(screen.queryByText("正在播放。")).toBeNull();
+    act(() => utterance.onend());
+    expect(replay.classList.contains("is-speaking")).toBe(false);
+    expect(screen.queryByText("正在播放美式发音。")).toBeNull();
     getVoices.mockReturnValue([{ lang: "en-US", name: "Test US Voice" }]);
+  });
+
+  test("playback without a start event clears the speaker indicator and explains the failure", () => {
+    vi.useFakeTimers();
+    saveAssets();
+    render(<App />);
+    const replay = screen.getByRole("button", { name: /播放 Alpha/ });
+    expect(replay.classList.contains("is-speaking")).toBe(false);
+    fireEvent.click(replay);
+    expect(window.speechSynthesis.speak).toHaveBeenCalledTimes(1);
+    expect(replay.classList.contains("is-speaking")).toBe(true);
+    act(() => vi.advanceTimersByTime(4000));
+    expect(replay.classList.contains("is-speaking")).toBe(false);
+    expect(screen.getByText(/发音未能播放/)).toBeTruthy();
+    vi.useRealTimers();
   });
 
   test("appearance follows live system changes and persists manual choices", () => {

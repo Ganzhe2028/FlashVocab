@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const AMERICAN_ENGLISH = "en-US";
+const START_WATCHDOG_MS = 4000;
+const PLAYBACK_FAILURE_MESSAGE = "发音未能播放，请重试或检查系统语音设置。";
 
 const PREFERRED_AMERICAN_VOICE_NAMES = [
   /^google us english$/i,
@@ -57,8 +59,11 @@ export function usePronunciation() {
   const [isSupported] = useState(browserSupportsPronunciation);
   const [message, setMessage] = useState(() => browserSupportsPronunciation()
     ? "" : "当前浏览器不支持发音，可换用支持语音的浏览器。");
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const voicesRef = useRef([]);
   const activeUtterancesRef = useRef(new Set());
+  const latestUtteranceRef = useRef(null);
+  const startWatchdogsRef = useRef(new Map());
 
   useEffect(() => {
     if (!isSupported) return undefined;
@@ -79,6 +84,37 @@ export function usePronunciation() {
       synthesis.removeEventListener?.("voiceschanged", refreshVoices);
     };
   }, [isSupported]);
+
+  // Only watchdogs are cleared on unmount; the shared browser TTS engine is
+  // never canceled from a cleanup.
+  useEffect(
+    () => () => {
+      for (const watchdog of startWatchdogsRef.current.values()) {
+        clearTimeout(watchdog);
+      }
+      startWatchdogsRef.current.clear();
+    },
+    [],
+  );
+
+  const clearStartWatchdog = useCallback((utterance) => {
+    const watchdog = startWatchdogsRef.current.get(utterance);
+    if (watchdog === undefined) return;
+    clearTimeout(watchdog);
+    startWatchdogsRef.current.delete(utterance);
+  }, []);
+
+  const releaseUtterance = useCallback(
+    (utterance) => {
+      activeUtterancesRef.current.delete(utterance);
+      clearStartWatchdog(utterance);
+      if (latestUtteranceRef.current === utterance) {
+        latestUtteranceRef.current = null;
+        setIsSpeaking(false);
+      }
+    },
+    [clearStartWatchdog],
+  );
 
   const createUtterance = useCallback(
     (text) => {
@@ -104,13 +140,19 @@ export function usePronunciation() {
           utterance.voice = americanVoice;
         }
 
-        const releaseUtterance = () => activeUtterancesRef.current.delete(utterance);
-        utterance.onstart = () => setMessage("正在播放。");
-        utterance.onend = () => { releaseUtterance(); setMessage(""); };
+        utterance.onstart = () => {
+          clearStartWatchdog(utterance);
+        };
+        utterance.onend = () => {
+          const isLatest = latestUtteranceRef.current === utterance;
+          releaseUtterance(utterance);
+          if (isLatest) setMessage("");
+        };
         utterance.onerror = (event) => {
-          releaseUtterance();
-          if (!["interrupted", "canceled"].includes(event?.error)) {
-            setMessage("发音未能播放，请重试或检查系统语音设置。");
+          const isLatest = latestUtteranceRef.current === utterance;
+          releaseUtterance(utterance);
+          if (isLatest && !["interrupted", "canceled"].includes(event?.error)) {
+            setMessage(PLAYBACK_FAILURE_MESSAGE);
           }
         };
         setMessage("");
@@ -120,7 +162,7 @@ export function usePronunciation() {
         return null;
       }
     },
-    [isSupported],
+    [isSupported, clearStartWatchdog, releaseUtterance],
   );
 
   const speak = useCallback(
@@ -134,16 +176,31 @@ export function usePronunciation() {
           synthesis.cancel();
         }
         activeUtterancesRef.current.add(utterance);
+        latestUtteranceRef.current = utterance;
+        setIsSpeaking(true);
+        // `speaking` is not proof that audio started. If no start event
+        // arrives, drop the playing state instead of animating forever.
+        startWatchdogsRef.current.set(
+          utterance,
+          setTimeout(() => {
+            startWatchdogsRef.current.delete(utterance);
+            if (latestUtteranceRef.current !== utterance) return;
+            latestUtteranceRef.current = null;
+            activeUtterancesRef.current.delete(utterance);
+            setIsSpeaking(false);
+            setMessage(PLAYBACK_FAILURE_MESSAGE);
+          }, START_WATCHDOG_MS),
+        );
         synthesis.speak(utterance);
         return true;
       } catch {
-        activeUtterancesRef.current.delete(utterance);
-        setMessage("发音未能播放，请重试或检查系统语音设置。");
+        releaseUtterance(utterance);
+        setMessage(PLAYBACK_FAILURE_MESSAGE);
         return false;
       }
     },
-    [createUtterance],
+    [createUtterance, releaseUtterance],
   );
 
-  return { isSupported, speak, message };
+  return { isSupported, isSpeaking, speak, message };
 }

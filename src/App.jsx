@@ -80,7 +80,12 @@ export default function App() {
   const spellInputRef = useRef(null);
   const headerUndoRef = useRef(null);
   const focusUndoAfterToastRef = useRef(false);
-  const { isSupported: pronunciationSupported, speak, message: pronunciationMessage } = usePronunciation();
+  const {
+    isSupported: pronunciationSupported,
+    isSpeaking: pronunciationSpeaking,
+    speak,
+    message: pronunciationMessage,
+  } = usePronunciation();
   const { themePreference, setThemePreference } = useThemePreference();
   const { quiet, showChrome, hideForLearning } = useQuietChrome({ heldOpen: panelOpen });
 
@@ -391,6 +396,7 @@ export default function App() {
             quickKnownEnabled={state.quickKnownEnabled}
             insightsExpanded={state.insightsExpanded}
             pronunciationSupported={pronunciationSupported}
+            pronunciationSpeaking={pronunciationSpeaking}
             pronunciationMessage={pronunciationMessage}
             copyFeedback={copyFeedback}
             onCopy={copyCurrentWord}

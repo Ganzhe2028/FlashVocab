@@ -1,0 +1,46 @@
+{
+  "respell": "[ih-KWIV-uh-kuh-lee]",
+  "speakingClass": "icon-button speak-button is-speaking",
+  "hiddenStatus": "正在播放美式发音。",
+  "visiblePlayingText": 0,
+  "noticeWhileSpeaking": 0,
+  "srOnlyBox": {
+    "top": 248.125,
+    "bottom": 249.125,
+    "left": 267,
+    "right": 268
+  },
+  "hiddenStatusAfterEnd": "",
+  "error": {
+    "text": "没有找到英语语音。请在系统语音设置中添加英语语音后重试。",
+    "noticeBox": {
+      "top": 321.625,
+      "bottom": 342.265625,
+      "left": 268,
+      "right": 968
+    },
+    "metaBox": {
+      "top": 294.625,
+      "bottom": 311.625,
+      "left": 268,
+      "right": 968
+    },
+    "headingBox": {
+      "top": 216.625,
+      "bottom": 280.625,
+      "left": 268,
+      "right": 684.671875
+    },
+    "overlapsMeta": false,
+    "overlapsHeading": false,
+    "speakingClass": "icon-button speak-button"
+  },
+  "reducedMotion": {
+    "color": "rgb(88, 184, 170)",
+    "borderColor": "rgb(88, 184, 170)",
+    "background": "rgb(32, 59, 54)",
+    "animationDuration": "1e-05s",
+    "ringOpacity": "0.45",
+    "ringTransform": "matrix(1.18, 0, 0, 1.18, 0, 0)"
+  }
+}

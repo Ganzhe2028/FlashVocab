@@ -21,6 +21,7 @@ export default function StudyView({
   quickKnownEnabled,
   insightsExpanded,
   pronunciationSupported,
+  pronunciationSpeaking,
   pronunciationMessage,
   copyFeedback,
   onCopy,
@@ -48,13 +49,20 @@ export default function StudyView({
         </h1>
         <button
           type="button"
-          className="icon-button speak-button"
+          className={`icon-button speak-button${pronunciationSpeaking ? " is-speaking" : ""}`}
           onClick={onPronounce}
           disabled={!pronunciationSupported}
           aria-label={`播放 ${item?.term || "当前单词"} 的美式发音`}
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5ZM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14" /></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+            <path className="speak-wave speak-wave-1" d="M15 8a6 6 0 0 1 0 8" />
+            <path className="speak-wave speak-wave-2" d="M18 5a10 10 0 0 1 0 14" />
+          </svg>
         </button>
+        <span className="sr-only" aria-live="polite">
+          {pronunciationSpeaking ? "正在播放美式发音。" : ""}
+        </span>
       </div>
       <div id="copy-tip" className="copy-tip" role="tooltip">
         单击复制单词 · Shift＋单击复制深度理解请求
@@ -63,9 +71,8 @@ export default function StudyView({
         {item?.pos}
         {item?.respell ? <span>{item.respell}</span> : null}
       </p> : null}
+      {pronunciationMessage ? <p className="pronunciation-notice" role="status">{pronunciationMessage}</p> : null}
       {copyFeedback ? <p className="copy-feedback" role="status">{copyFeedback}</p> : null}
-
-      {pronunciationMessage ? <p className="page-notice" role="status">{pronunciationMessage}</p> : null}
 
       {revealed ? (
         <div className="answer" data-testid="study-answer">
