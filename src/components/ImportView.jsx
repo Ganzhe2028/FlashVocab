@@ -4,9 +4,23 @@ import {
   parseDeckFromTextDetailed,
   readImportFile,
 } from "../utils/deckImport.js";
-import { buildFillPrompt, buildWorksheetPrompt, detectWorksheetMismatch, mergeFilledEntries } from "../utils/importFill.js";
+import {
+  buildFillPrompt,
+  buildWorksheetPrompt,
+  detectWorksheetMismatch,
+  mergeFilledEntries,
+  needsFillMaterial,
+  parseMaterialReply,
+} from "../utils/importFill.js";
 
 const EMPTY_ENTRIES = [];
+const MATERIAL_REPLY_PLACEHOLDER = `abandon | v. | 放弃；抛弃 | to leave somebody or something
+对应词: quit — 主动停止，abandon 更强调彻底丢下
+例句1: They abandon the plan at noon.
+重点1: abandon the plan
+情景: The team stops a project because the money is gone.
+辨析: She stops playing tennis because her knee hurts. | quit | 主动停止。`;
+
 const STEPS = [
   ["input", "放入"],
   ["preview", "核对"],
@@ -49,8 +63,8 @@ export default function ImportView({
   const pasteRef = useRef(null);
 
   const entries = draft?.entries ?? EMPTY_ENTRIES;
-  const missingZh = useMemo(() => entries.filter((entry) => !entry.meaningZh), [entries]);
-  const withZh = entries.length - missingZh.length;
+  const missingMaterial = useMemo(() => entries.filter(needsFillMaterial), [entries]);
+  const withZh = entries.filter((entry) => entry.meaningZh).length;
   const skipped = draft?.skipped?.filter((line) => line.reason !== "heading") ?? [];
   const skippedHeadings = draft?.skipped?.filter((line) => line.reason === "heading") ?? [];
   const activeStep = stage === "preview" ? 1 : 0;
@@ -143,7 +157,7 @@ export default function ImportView({
   const copyFillPrompt = async () => {
     try {
       await navigator.clipboard.writeText(buildFillPrompt(entries));
-      setCopyNotice("已复制。发给 AI 后，把回复粘贴到下面。");
+      setCopyNotice("已复制。发给 AI 后，把整段回复粘贴到下面。");
     } catch {
       setCopyNotice("复制失败，请展开「看看这段话」手动复制。");
     }
@@ -165,19 +179,18 @@ export default function ImportView({
       return;
     }
     try {
-      const parsed = parseDeckFromTextDetailed(assistReply);
-      const normalized = normalizeDeck(parsed.entries);
-      if (!normalized.length) throw new Error("没有在回复里找到词表行。请确认 AI 按「单词 | 词性 | 中文 | 英文」输出。");
+      const normalized = normalizeDeck(parseMaterialReply(assistReply));
+      if (!normalized.length) throw new Error("没有在回复里找到词表。请让 AI 按提示里的格式重新输出。");
       if (detectWorksheetMismatch(normalized)) throw new Error("回复里还带着页码，或者单词和释义没有配好。请让 AI 按格式重发。");
       setDraft({
         entries: normalized,
-        skipped: parsed.skipped,
+        skipped: [],
         worksheetLike: false,
         sourceName: draft?.sourceName ?? "",
       });
       setAssistReply("");
       setAssistCopyNotice("");
-      setFillNotice(`AI 整理了 ${normalized.length} 个词，请核对。`);
+      setFillNotice(`AI 整理了 ${normalized.length} 个词的资料，请核对。`);
     } catch (replacementError) {
       setAssistError(replacementError?.message || "没看懂这份回复。");
     }
@@ -194,9 +207,13 @@ export default function ImportView({
       if (!result.filled) throw new Error("回复里没有匹配到这些词。请确认 AI 保留了原来的单词。");
       setDraft((previous) => ({ ...previous, entries: result.entries }));
       setFillReply("");
-      setFillOpen(false);
       setCopyNotice("");
-      setFillNotice(`补全了 ${result.filled} 个词。`);
+      if (result.remaining) {
+        setFillNotice(`补全了 ${result.filled} 个词；还有 ${result.remaining} 个词没补完，可以再复制一次。`);
+      } else {
+        setFillOpen(false);
+        setFillNotice(`补全了 ${result.filled} 个词的资料，专项练习可以用了。`);
+      }
     } catch (mergeError) {
       setFillError(mergeError?.message || "没看懂这份回复。");
     }
@@ -240,7 +257,7 @@ export default function ImportView({
               </div>
               <details className="fill-prompt-details">
                 <summary>看看这段话</summary>
-                <textarea className="fill-prompt" readOnly rows="6" value={buildWorksheetPrompt()} onFocus={(event) => event.target.select()} aria-label="整理提示词" />
+                <textarea className="fill-prompt" readOnly rows="10" value={buildWorksheetPrompt()} onFocus={(event) => event.target.select()} aria-label="整理提示词" />
               </details>
               <p className="fill-step"><span>2</span>打开 <a className="text-button" href="https://chat.deepseek.com/" target="_blank" rel="noreferrer">DeepSeek</a>，上传这份原文件，再把刚复制的话发过去。</p>
               <p className="fill-step"><span>3</span>把 AI 的回复粘贴回来。</p>
@@ -249,7 +266,7 @@ export default function ImportView({
                 rows="6"
                 value={assistReply}
                 onChange={(event) => setAssistReply(event.target.value)}
-                placeholder={"abandon | v. | 放弃 | to leave something\nbenefit | n. | 好处 | an advantage"}
+                placeholder={MATERIAL_REPLY_PLACEHOLDER}
                 aria-label="AI 词表回复"
               />
               {assistError ? <p className="inline-error" role="alert">{assistError}</p> : null}
@@ -265,15 +282,15 @@ export default function ImportView({
             <span> · {withZh} 个有中文释义</span>
           </p>
 
-          {missingZh.length ? (
+          {missingMaterial.length ? (
             <div className="missing-inline">
-              <span>{missingZh.length} 个词缺中文释义</span>
+              <span>{missingMaterial.length} 个词还没补全资料</span>
               <button
                 type="button"
                 className="text-button"
                 onClick={() => { setFillOpen(true); setFillNotice(""); setCopyNotice(""); }}
               >
-                补上
+                让 AI 补全
               </button>
             </div>
           ) : null}
@@ -282,9 +299,10 @@ export default function ImportView({
           {fillOpen ? (
             <section className="fill-panel" aria-labelledby="fill-panel-title">
               <div className="fill-heading-row">
-                <h2 id="fill-panel-title">补 {missingZh.length} 个词的中文释义</h2>
+                <h2 id="fill-panel-title">让 AI 一次补齐</h2>
                 <button type="button" className="text-button" onClick={() => { setFillOpen(false); setCopyNotice(""); }}>收起</button>
               </div>
+              <p className="fill-hint">会补上中文释义、词性、英文释义、词源、对应词、例句和辨析情景；已有的不会被覆盖。</p>
               <div className="fill-step fill-step-action">
                 <span>1</span>
                 <div className="fill-actions">
@@ -294,17 +312,18 @@ export default function ImportView({
               </div>
               <details className="fill-prompt-details">
                 <summary>看看这段话</summary>
-                <textarea className="fill-prompt" readOnly rows="6" value={buildFillPrompt(entries)} onFocus={(event) => event.target.select()} aria-label="补全提示词" />
+                <textarea className="fill-prompt" readOnly rows="10" value={buildFillPrompt(entries)} onFocus={(event) => event.target.select()} aria-label="补全提示词" />
               </details>
-              <p className="fill-step"><span>2</span>把 AI 的回复粘贴回来。</p>
+              <p className="fill-step"><span>2</span>把 AI 的回复整段粘贴回来。</p>
               <textarea
                 className="fill-reply"
-                rows="5"
+                rows="7"
                 value={fillReply}
                 onChange={(event) => setFillReply(event.target.value)}
-                placeholder={"abandon | v. | 放弃 | to leave something\nbenefit | n. | 好处 | an advantage"}
+                placeholder={MATERIAL_REPLY_PLACEHOLDER}
                 aria-label="AI 回复"
               />
+              <p className="fill-hint">词多时一次可能输出不完：先粘贴已经生成的部分，剩下的还能再补。</p>
               {fillError ? <p className="inline-error" role="alert">{fillError}</p> : null}
               <button type="button" className="primary-action" onClick={applyFill}>识别并补全</button>
             </section>

@@ -528,23 +528,72 @@ describe("FlashVocab 3.0", () => {
     expect(screen.queryByLabelText("例句")).toBeNull();
   });
 
-  test("a word without a Chinese meaning can be completed through one copy-and-paste AI step", () => {
+  test("one copy-and-paste AI reply fills every practice requirement before import", () => {
     render(<App />);
-    previewImport("alpha 第一项\nuntamed");
-    expect(screen.getByText("1 个词缺中文释义")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "补上" }));
+    previewImport("abandon 放弃\nquit 停止");
+    expect(screen.getByText("2 个词还没补全资料")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "让 AI 补全" }));
+    expect(screen.getByRole("heading", { name: "让 AI 一次补齐" })).toBeTruthy();
     fireEvent.click(screen.getByText("看看这段话"));
     const prompt = screen.getByRole("textbox", { name: "补全提示词" }).value;
-    expect(prompt).toContain("untamed");
-    expect(prompt).toContain("中文释义");
+    for (const marker of ["abandon", "quit", "中文释义", "词源", "对应词", "例句1", "重点1", "情景", "辨析"]) {
+      expect(prompt).toContain(marker);
+    }
     expect(prompt).not.toContain("JSON");
+    fireEvent.click(screen.getByRole("button", { name: "复制给 AI 的话" }));
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(expect.stringContaining("辨析"));
     fireEvent.change(screen.getByRole("textbox", { name: "AI 回复" }), {
-      target: { value: "untamed | adj. | 未被驯服的 | wild and not controlled" },
+      target: {
+        value: `abandon | v. | 放弃；抛弃 | to leave somebody or something
+词源: 来自古法语 abandonner，原意「交给别人支配」。
+对应词: quit — quit 是主动停止，abandon 更强调彻底丢下。
+例句1: They abandon the plan at noon.
+重点1: abandon the plan
+例句2: We abandon old habits slowly.
+重点2: abandon old habits
+情景: The team stops a project because the money is gone.
+辨析: She stops playing tennis because her knee hurts. | quit | 主动停止。
+
+quit | v. | 停止；放弃 | to stop doing something
+词源: 来自古法语 quiter，原意「解除义务、放走」。
+对应词: abandon — abandon 是彻底丢下，quit 是主动停止。
+例句1: They quit the team after the argument.
+重点1: quit the team
+例句2: We quit sugar for a month.
+重点2: quit sugar
+情景: A worker leaves a job by choice.
+辨析: A company drops an old product for good. | abandon | 彻底丢下。`,
+      },
     });
     fireEvent.click(screen.getByRole("button", { name: "识别并补全" }));
-    expect(screen.getByText(/补全了 1 个词/)).toBeTruthy();
-    expect(screen.getByText("未被驯服的")).toBeTruthy();
-    expect(screen.queryByText("1 个词缺中文释义")).toBeNull();
+    expect(screen.getByText(/补全了 2 个词的资料，专项练习可以用了/)).toBeTruthy();
+    expect(screen.queryByText(/还没补全资料/)).toBeNull();
+    expect(screen.queryByRole("heading", { name: "让 AI 一次补齐" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /开始背这 2 个词/ }));
+    expect(currentWordButton()).toBeTruthy();
+    for (const [label, heading] of [
+      ["看释义选词", "选最贴切的词。"],
+      ["看情景选词", "根据情景选词。"],
+      ["填搭配", "从词库找回搭配。"],
+      ["辨析近义词", "这次更接近哪个词？"],
+    ]) {
+      openPractice(label);
+      expect(screen.getByRole("heading", { name: heading })).toBeTruthy();
+      expect(screen.getByRole("group", { name: "选择答案" })).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "回到刚才的学习" }));
+    }
+  });
+
+  test("a partial AI reply keeps the fill panel open for the remaining words", () => {
+    render(<App />);
+    previewImport("abandon 放弃\nquit 停止");
+    fireEvent.click(screen.getByRole("button", { name: "让 AI 补全" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "AI 回复" }), {
+      target: { value: "abandon | v. | 放弃 | to leave\n对应词: quit — 主动停止\n例句1: They abandon the plan.\n重点1: abandon the plan" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "识别并补全" }));
+    expect(screen.getByText(/还有 2 个词没补完/)).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "让 AI 一次补齐" })).toBeTruthy();
   });
 
   test("saved decks start a fresh recognition round with layered reading content", () => {

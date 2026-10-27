@@ -1,0 +1,35 @@
+{
+  "fillGuard": {
+    "error": "回复里没有匹配到这些词。请确认 AI 保留了原来的单词。",
+    "rows": [
+      "abandon\n缺释义",
+      "quit\n缺释义"
+    ]
+  },
+  "fillPanel": {
+    "notice": "补全了 2 个词的资料，专项练习可以用了。",
+    "rows": [
+      "abandon 放弃；抛弃",
+      "quit 停止；放弃"
+    ],
+    "missingRowCount": 0,
+    "panelOpen": 0
+  },
+  "worksheetGuard": {
+    "error": "没有在回复里找到词表。请让 AI 按提示里的格式重新输出。",
+    "heading": "这份表要请 AI 读一下。",
+    "stillWorksheetRescue": 1
+  },
+  "worksheet": {
+    "notice": "AI 整理了 4 个词的资料，请核对。",
+    "rows": [
+      "unequivocally 明确地；毫不含糊地",
+      "highbrow 高雅的；文化修养高的",
+      "commotion 骚动；喧闹",
+      "disbelief 难以置信；怀疑"
+    ],
+    "missingRowCount": 0,
+    "importButton": 1
+  },
+  "appConsoleErrors": []
+}

@@ -452,7 +452,7 @@ export const learningReducer = (state, action) => {
       const itemById = new Map(createCardIds(state.sourceDeck).map((id, index) => [id, state.sourceDeck[index]]));
       const queueIds = shuffle(getActiveCardIds(state).filter((cardId) =>
         buildQuestion({ kind, entry: itemById.get(cardId), sourceDeck, random: () => 0.5 })), random);
-      if (!queueIds.length) return { ...state, notice: kind === "scenario" ? "情景题需至少两个不同词，并有包含目标词原形的例句。" : kind === "bank" ? "填搭配需要包含 target 搭配的例句，搭配必须原样出现在句中。" : kind === "contrast" ? "辨析近义词需要分界线情景。可在「词表」里用 DeepSeek 补全，或导入带这类资料的词表。" : "至少需要两个不同的词，且目标词需有释义，才能组选择题。" };
+      if (!queueIds.length) return { ...state, notice: kind === "scenario" ? "情景题需至少两个不同词，并有包含目标词原形的例句。导入时可以让 AI 一次补齐。" : kind === "bank" ? "填搭配需要包含目标词原形的例句和重点搭配。导入时可以让 AI 一次补齐。" : kind === "contrast" ? "辨析近义词需要对应词和分界情景。可在导入时让 AI 一次补齐，或在「词表」里用 DeepSeek 补全，或导入带这类资料的词表。" : "至少需要两个不同的词，且目标词需有释义，才能组选择题。" };
       return {
         ...state,
         mode: "quiz",

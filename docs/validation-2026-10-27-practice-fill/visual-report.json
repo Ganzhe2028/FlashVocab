@@ -1,0 +1,413 @@
+{
+  "url": "http://127.0.0.1:4173/",
+  "generatedAt": "2026-10-27T13:05:03.470Z",
+  "browser": {
+    "name": "Google Chrome (headless)",
+    "executablePath": "/Applications/Chrome.app/Contents/MacOS/Google Chrome",
+    "viewportDefault": {
+      "width": 1440,
+      "height": 900
+    }
+  },
+  "productionBuild": "npm run check -> vite build (dist served by npm run preview -- --port 4173 --strictPort)",
+  "fixtureCaveat": "The AI reply is a local fixture shaped like a DeepSeek answer. No API key is used and no external AI request is made.",
+  "checkCounts": {
+    "nodeTests": 99,
+    "uiTests": 64
+  },
+  "screenshots": [
+    {
+      "name": "desktop-preview.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "colorScheme": "light",
+      "proves": "导入核对页：2 个词还没补全资料 + 唯一的「开始背这 2 个词」主按钮"
+    },
+    {
+      "name": "desktop-fill-panel.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "colorScheme": "light",
+      "proves": "「让 AI 一次补齐」面板：输入框未展开，主按钮仍是导入"
+    },
+    {
+      "name": "desktop-fill-open.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "colorScheme": "light",
+      "proves": "展开的完整提示词（普通文字，含全部四种练习所需字段）"
+    },
+    {
+      "name": "desktop-filled.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "colorScheme": "light",
+      "proves": "补全完成：提示「补全了 2 个词的资料，专项练习可以用了」，缺资料行消失"
+    },
+    {
+      "name": "practice-mcq.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "colorScheme": "light",
+      "proves": "导入后立刻可用的「看释义选词」：题干与选项由补全资料生成，无需 API key"
+    },
+    {
+      "name": "practice-scenario.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "colorScheme": "light",
+      "proves": "导入后立刻可用的「看情景选词」：题干与选项由补全资料生成，无需 API key"
+    },
+    {
+      "name": "practice-bank.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "colorScheme": "light",
+      "proves": "导入后立刻可用的「填搭配」：题干与选项由补全资料生成，无需 API key"
+    },
+    {
+      "name": "practice-contrast.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "colorScheme": "light",
+      "proves": "导入后立刻可用的「辨析近义词」：题干与选项由补全资料生成，无需 API key"
+    },
+    {
+      "name": "desktop-partial.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "colorScheme": "light",
+      "proves": "部分回复：面板保持打开，提示还有 2 个词没补完，缺资料行仍在"
+    },
+    {
+      "name": "worksheet-rescue.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "colorScheme": "light",
+      "proves": "匹配/填空 worksheet：「这份表要请 AI 读一下。」救援面板"
+    },
+    {
+      "name": "worksheet-ready.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "colorScheme": "light",
+      "proves": "worksheet 救援完成：4 个词配对并补齐资料，可直接导入"
+    },
+    {
+      "name": "dark-fill-panel.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "colorScheme": "dark",
+      "proves": "深色模式下的补全面板可读、无溢出错位"
+    },
+    {
+      "name": "mobile-fill-panel.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "light",
+      "proves": "390px 移动端：补全面板与提示词展开后可读，无横向滚动"
+    },
+    {
+      "name": "mobile-filled.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "colorScheme": "light",
+      "proves": "390px 移动端补全完成状态：缺资料行消失"
+    },
+    {
+      "name": "narrow-fill-panel.png",
+      "viewport": {
+        "width": 280,
+        "height": 653
+      },
+      "colorScheme": "light",
+      "proves": "280px 极窄布局：补全面板与提示词仍可用，无横向滚动"
+    },
+    {
+      "name": "zoom200-fill-panel.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "colorScheme": "light",
+      "proves": "1440px 宽 + CSS zoom:2（200% 缩放）：导入视图无横向溢出"
+    },
+    {
+      "name": "retest-english-word-label.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "colorScheme": "light",
+      "proves": "修复后：英文 `Word:` 回复在补全面板补全 2 个词、缺资料行消失、无伪词条"
+    },
+    {
+      "name": "retest-english-word-label-worksheet.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "colorScheme": "light",
+      "proves": "修复后：英文 `Word:` 回复在 worksheet 救援路径得到干净的 4 词预览"
+    },
+    {
+      "name": "retest-english-word-label-worksheet-error.png",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "colorScheme": "light",
+      "proves": "修复后：只有标签行、没有词头的回复显示错误并保留原 worksheet 救援面板"
+    }
+  ],
+  "measurements": {
+    "mobile390": {
+      "clientWidth": 390,
+      "scrollWidth": 390,
+      "bodyClientWidth": 390,
+      "bodyScrollWidth": 390,
+      "innerWidth": 390,
+      "importLeft": 14,
+      "importRight": 376,
+      "importWidth": 362,
+      "hasHorizontalOverflow": false
+    },
+    "narrow280": {
+      "clientWidth": 280,
+      "scrollWidth": 280,
+      "bodyClientWidth": 280,
+      "bodyScrollWidth": 280,
+      "innerWidth": 280,
+      "importLeft": 8,
+      "importRight": 272,
+      "importWidth": 264,
+      "hasHorizontalOverflow": false
+    },
+    "zoom200": {
+      "clientWidth": 1440,
+      "scrollWidth": 1440,
+      "bodyClientWidth": 720,
+      "bodyScrollWidth": 720,
+      "innerWidth": 1440,
+      "importLeft": 40,
+      "importRight": 1400,
+      "importWidth": 1360,
+      "hasHorizontalOverflow": false,
+      "zoom": "2",
+      "visualViewportWidth": 1440
+    }
+  },
+  "practiceDetails": [
+    {
+      "label": "看释义选词",
+      "heading": "选最贴切的词。",
+      "prompt": "The team stops a project because the money is gone.",
+      "options": [
+        "abandon",
+        "quit"
+      ]
+    },
+    {
+      "label": "看情景选词",
+      "heading": "根据情景选词。",
+      "prompt": "We ____ sugar for a month.",
+      "options": [
+        "quit",
+        "abandon"
+      ]
+    },
+    {
+      "label": "填搭配",
+      "heading": "从词库找回搭配。",
+      "prompt": "They ____ at noon.",
+      "options": [
+        "Quit",
+        "Abandon"
+      ]
+    },
+    {
+      "label": "辨析近义词",
+      "heading": "这次更接近哪个词？",
+      "prompt": "A company drops an old product for good.",
+      "options": [
+        "abandon",
+        "quit"
+      ]
+    }
+  ],
+  "results": {
+    "scenarioA": {
+      "previewMissingRow": "2 个词还没补全资料",
+      "fillNotice": "补全了 2 个词的资料，专项练习可以用了",
+      "practiceModes": [
+        "看释义选词",
+        "看情景选词",
+        "填搭配",
+        "辨析近义词"
+      ]
+    },
+    "worksheet": {
+      "notice": "AI 整理了 4 个词的资料，请核对。",
+      "words": 4
+    },
+    "dark": {
+      "theme": "dark"
+    },
+    "mobile": {
+      "filledNotice": "补全了 2 个词的资料，专项练习可以用了"
+    }
+  },
+  "assertions": {
+    "total": 49,
+    "failed": 0,
+    "failedMessages": []
+  },
+  "consoleErrors": [
+    {
+      "where": "desktop",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://127.0.0.1:4173/favicon.ico"
+    }
+  ],
+  "benignConsoleErrors": [
+    {
+      "where": "desktop",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://127.0.0.1:4173/favicon.ico"
+    }
+  ],
+  "appConsoleErrors": [],
+  "pageErrors": [],
+  "externalRequests": [],
+  "retake": {
+    "reason": "Verifier-found MEDIUM defect: English `Word:` labeled replies and malformed-labeled replies leaked fallback pseudo-entries. Fixed by Lead; retested on the final build.",
+    "screenshots": [
+      {
+        "name": "retest-english-word-label.png",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "colorScheme": "light",
+        "proves": "修复后：英文 `Word:` 回复在补全面板补全 2 个词、缺资料行消失、无伪词条"
+      },
+      {
+        "name": "retest-english-word-label-worksheet.png",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "colorScheme": "light",
+        "proves": "修复后：英文 `Word:` 回复在 worksheet 救援路径得到干净的 4 词预览"
+      },
+      {
+        "name": "retest-english-word-label-worksheet-error.png",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "colorScheme": "light",
+        "proves": "修复后：只有标签行、没有词头的回复显示错误并保留原 worksheet 救援面板"
+      }
+    ],
+    "observations": {
+      "fillGuard": {
+        "error": "回复里没有匹配到这些词。请确认 AI 保留了原来的单词。",
+        "rows": [
+          "abandon\n缺释义",
+          "quit\n缺释义"
+        ]
+      },
+      "fillPanel": {
+        "notice": "补全了 2 个词的资料，专项练习可以用了。",
+        "rows": [
+          "abandon 放弃；抛弃",
+          "quit 停止；放弃"
+        ],
+        "missingRowCount": 0,
+        "panelOpen": 0
+      },
+      "worksheetGuard": {
+        "error": "没有在回复里找到词表。请让 AI 按提示里的格式重新输出。",
+        "heading": "这份表要请 AI 读一下。",
+        "stillWorksheetRescue": 1
+      },
+      "worksheet": {
+        "notice": "AI 整理了 4 个词的资料，请核对。",
+        "rows": [
+          "unequivocally 明确地；毫不含糊地",
+          "highbrow 高雅的；文化修养高的",
+          "commotion 骚动；喧闹",
+          "disbelief 难以置信；怀疑"
+        ],
+        "missingRowCount": 0,
+        "importButton": 1
+      }
+    },
+    "appConsoleErrors": [],
+    "buildAssets": {
+      "js": "assets/index-BXRimUmf.js",
+      "css": "assets/index-n4gYUOi4.css"
+    }
+  },
+  "buildAssets": {
+    "js": "assets/index-BXRimUmf.js",
+    "css": "assets/index-n4gYUOi4.css"
+  },
+  "finalBuildNote": "npm run check on the frozen tree rebuilt dist (assets/index-BXRimUmf.js); every screenshot in this report was retaken on that final build via npm run preview -- --port 4173 --strictPort.",
+  "defectHistory": {
+    "severity": "medium",
+    "title": "英文 `Word:` 标签回复 / 无词头的标签回复泄漏伪词条",
+    "foundByVerifier": true,
+    "summary": "初验时英文 `Word:` 开头或只有标签行（POS:/Meaning (ZH):/…）的回复不被识别为词块，回退解析产出 POS / Meaning (ZH) / Word Origin 等伪词条；缺中文释义时会把「彻底丢下。」「主动停止。」写进中文释义，worksheet 救援还会把 12 个伪词条当成词表。",
+    "preFixEvidence": [
+      "defect-english-word-label.png",
+      "defect-english-word-label-worksheet.png",
+      "defect-english-word-label.txt"
+    ],
+    "preFixAdversarial": {
+      "passed": 49,
+      "total": 52
+    },
+    "fixedByLead": true,
+    "retested": true,
+    "postFixAdversarial": {
+      "passed": 56,
+      "total": 56
+    },
+    "retestEvidence": [
+      "retest-english-word-label.png",
+      "retest-english-word-label-worksheet.png",
+      "retest-english-word-label-worksheet-error.png",
+      "retest-english-word-label.txt"
+    ]
+  }
+}

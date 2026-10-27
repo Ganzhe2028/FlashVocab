@@ -220,7 +220,7 @@ export default function ManagePanel({
 
             <details className="panel-details">
               <summary>用 DeepSeek 补全资料（进阶）</summary>
-              <p>只有想补例句和辨析题时才需要。自己的 key 只留在这个页面，刷新就清空。</p>
+              <p>导入时已经可以让 AI 一次补齐；这里是用自己的 key 直接写回词表。key 只留在这个页面，刷新就清空。</p>
               {aiControls}
             </details>
 
@@ -349,7 +349,7 @@ export default function ManagePanel({
 
             <section className="panel-section" aria-labelledby="help-ai-title">
               <h3 id="help-ai-title">AI 补全</h3>
-              <p>词表缺中文释义时，导入预览会给出「补中文释义」：复制那段话给任意 AI，再把回复粘回来就行，不需要懂 JSON。</p>
+              <p>导入核对页会给出「让 AI 补全」：复制那段话给任意 AI，能把中文释义、词性、词源、对应词、例句和辨析情景一次补齐，专项练习导入后就能直接练；回复整段粘回来即可，不需要懂 JSON。</p>
             </section>
           </div>
         ) : null}

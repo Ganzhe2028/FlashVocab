@@ -1,0 +1,21 @@
+{
+  "fillPanel": {
+    "notice": "补全了 2 个词；还有 2 个词没补完，可以再复制一次。",
+    "rows": [
+      "abandon\n彻底丢下。",
+      "quit\n主动停止。"
+    ]
+  },
+  "worksheet": {
+    "heading": "这些词对吗？",
+    "error": "(none)",
+    "summary": "12 个词 · 8 个有中文释义",
+    "rows": [
+      "POS\n缺释义",
+      "Meaning (ZH)\n明确地",
+      "Word Origin\n来自拉丁语。",
+      "Counterpart\n直接说明，不含糊。",
+      "Focus 1\nunequivocally said no"
+    ]
+  }
+}

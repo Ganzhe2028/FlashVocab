@@ -1,0 +1,59 @@
+PASS  fixture import starts with 2 words needing material — count=2 filled=2 remaining=0
+PASS  merge reports filled=2 — filled=2
+PASS  merged deck needs no more fill — [false,false]
+PASS  buildQuestion("mcq") non-null for both imported words — [{"prompt":"The team stops a project because the money is gone.","answer":"abandon","options":["abandon","quit"]},{"prompt":"A worker leaves a job by choice.","answer":"quit","options":["quit","abandon"]}]
+PASS  mcq prompt uses the supplied scenario
+PASS  mcq options carry the counterpart of the answered word — [["abandon","quit"],["quit","abandon"]]
+PASS  buildQuestion("scenario") non-null for both imported words — [{"prompt":"We ____ old habits slowly.","answer":"abandon","options":["abandon","quit"]},{"prompt":"We ____ sugar for a month.","answer":"quit","options":["quit","abandon"]}]
+PASS  scenario prompt masks the target word
+PASS  buildQuestion("bank") non-null for both imported words — [{"prompt":"We ____ slowly.","answer":"abandon","options":["abandon","quit"]},{"prompt":"We ____ for a month.","answer":"quit","options":["abandon","quit"]}]
+PASS  bank prompt blanks the supplied focus
+PASS  bank options include the term
+PASS  buildQuestion("contrast") non-null for both imported words — [{"prompt":"She stops playing tennis because her knee hurts.","answer":"quit","options":["abandon","quit"]},{"prompt":"A company drops an old product for good.","answer":"abandon","options":["quit","abandon"]}]
+PASS  contrast answer belongs to the term/counterpart pair
+PASS  contrast prompt does not contain the answer words
+PASS  labeled block fills meaning (EN) — to leave somebody or something
+PASS  labeled block fills examples — [{"sentence":"They abandon the plan at noon.","focus":"abandon the plan"},{"sentence":"We abandon old habits slowly.","focus":"abandon old habits"}]
+PASS  labeled block fills wordOrigin — 来自古法语 abandonner，原意「交给别人支配」，后来表示「放手、放弃」。
+PASS  labeled block fills relatedWord in `word — explanation` form — quit — quit 是主动停止，abandon 更强调彻底丢下。
+PASS  labeled block fills miniScenario — The team stops a project because the money is gone.
+PASS  labeled block fills contrastScenarios (target + counterpart sides) — [{"scenario":"The team stops a project because the money is gone.","answer":"abandon","explanation":""},{"scenario":"She stops playing tennis because her knee hurts.","answer":"quit","explanation":"主动停止。"}]
+PASS  labeled block keeps the imported Chinese meaning (no silent overwrite) — 放弃
+PASS  English labels POS/Meaning (ZH)/Meaning (EN)/Word Origin are aliased — {"pos":"v.","meaningZh":"放弃；抛弃","meaning":"to leave somebody or something","wordOrigin":"来自古法语 abandonner，原意「交给别人支配」。"}
+PASS  English labels Example/Focus/Counterpart/Scenario/Contrast are aliased — {"relatedWord":"quit — quit 主动停止，abandon 彻底丢下。","miniScenario":"The team stops a project because the money is gone.","contrast":[{"scenario":"The team stops a project because the money is gone.","answer":"abandon","explanation":""},{"scenario":"She stops playing tennis because her knee hurts.","answer":"quit","explanat
+PASS  English-label reply completes both words — filled=2 remaining=0
+PASS  English `Word:` starters parse as blocks (no fallback pseudo-entries) — ["abandon","quit"]
+PASS  English `Word:` reply fills every missing practice field — [{"term":"abandon","meaningZh":"放弃；抛弃","miniScenario":"The team stops a project because the money is gone."},{"term":"quit","meaningZh":"停止；放弃","miniScenario":"A worker leaves a job by choice."}]
+PASS  English `Word:` same-line pipe fields are accepted — {"term":"abandon","syllables":"","respell":"","pos":"v.","meaning":"to leave somebody or something","meaningZh":"放弃；抛弃","wordOrigin":"","relatedWord":"","microScene":"","memorySketch":null,"distractors":[],"usageTags":[],"miniScenario":"","contrastScenarios":[],"examples":[]}
+PASS  bracketed markdown-style [term] block is accepted — [{"term":"abandon","pos":"","meaningZh":"","meaning":"","wordOrigin":"","examples":[]}]
+PASS  labeled lines without a word starter never leak pseudo-entries — parsed=[] filled=0
+PASS  Markdown-table reply merges by term — [["abandon","v.","放弃；抛弃","to leave somebody or something"],["quit","v.","停止；放弃","to stop doing something"]]
+PASS  JSON reply merges by term — [["abandon","v.","放弃；抛弃","to leave somebody or something"],["quit","v.","停止；放弃","to stop doing something"]]
+PASS  numbered pipe reply merges by term — [["abandon","v.","放弃；抛弃","to leave somebody or something"],["quit","v.","停止；放弃","to stop doing something"]]
+PASS  numbered labeled reply (no pipe header) is safely rejected without corrupting fields — [["abandon","","","filled=0"],["quit","","","filled=0"]]
+PASS  truncated reply fills the complete block only — filled=1 remaining=1 firstMeaning=to leave somebody or something
+PASS  truncated reply reports the still-incomplete word — remaining=1 needsFill=true
+PASS  truncated reply leaves the second word untouched — {"term":"quit","meaningZh":"停止","syllables":"","respell":"","pos":"","meaning":"","wordOrigin":"","relatedWord":"","microScene":"","memorySketch":null,"distractors":[],"usageTags":[],"miniScenario":"","contrastScenarios":[],"examples":[]}
+PASS  inflected example `abandoned` is dropped — [{"sentence":"We abandon old habits slowly.","focus":"abandon old habits"}]
+PASS  scenario containing the exact target word is dropped — {"miniScenario":"","needsFill":true}
+PASS  scenario containing the counterpart is dropped — {"miniScenario":""}
+PASS  contrast answer outside the term/counterpart pair is dropped — {"contrast":[]}
+PASS  existing values are not overwritten — {"term":"abandon","meaningZh":"我自己写的中文","meaning":"my own definition","pos":"v.","wordOrigin":"我的词源","relatedWord":"quit — 我自己的区别","examples":[{"sentence":"They abandon the plan.","focus":"abandon the plan"}],"miniScenario":"The team stops a project because the money is gone.","contrastScenarios":[{"scenario":"She stop
+PASS  entry needing nothing is not counted as filled
+PASS  merge matches terms case-insensitively — [["abandon","to leave somebody or something"],["quit","to stop doing something"]]
+PASS  buildFillPrompt contains every block field
+PASS  buildFillPrompt has no JSON / code block
+PASS  buildFillPrompt lists both imported words
+PASS  buildFillPrompt skips words that already have complete material
+PASS  buildFillPrompt carries an existing counterpart into the term hint
+PASS  buildWorksheetPrompt contains every block field and no JSON
+PASS  buildWorksheetPrompt asks only for the original worksheet words
+PASS  parseMaterialReply accepts the old plain piped reply — [{"term":"untamed","pos":"adj.","meaningZh":"未被驯服的","meaning":"wild and not controlled","wordOrigin":"","examples":[]}]
+PASS  parseMaterialReply yields 2 patches with contrast material — [{"term":"abandon","contrast":2},{"term":"quit","contrast":2}]
+PASS  matching worksheet fixture is detected as worksheet-like — [["unequivocally","(54) highbrow (54)"],["commotion","(57) disbelief (57)"]]
+PASS  plain word list is not misdetected as a worksheet
+PASS  English `Word:` worksheet reply yields only real worksheet terms — terms=["unequivocally","highbrow"] guardPass=true
+PASS  labeled worksheet reply without a word starter yields zero entries (visible error path) — []
+
+SUMMARY: 56/56 checks passed, 0 failed
+EXIT:0
