@@ -931,3 +931,5 @@ textarea {
 .assist-panel > .primary-action { justify-self: start; margin-top: 4px; }
 .assist-source { margin: 6px 0 0; color: var(--ink-tertiary); font-size: 0.76rem; overflow-wrap: anywhere; }
 .import-ai-fallback { display: inline-flex; align-items: center; min-height: 36px; margin-top: 8px; font-size: 0.82rem; }
+.fill-step-action { align-items: center; }
+.fill-step-action .fill-actions { min-width: 0; }

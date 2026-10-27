@@ -487,10 +487,10 @@ describe("FlashVocab 3.0", () => {
     expect(screen.getByRole("heading", { name: "这份表要请 AI 读一下。" })).toBeTruthy();
     expect(screen.getByText(/单词和释义分开放/)).toBeTruthy();
     const steps = [...document.querySelectorAll(".assist-panel .fill-step")].map((step) => step.textContent);
-    expect(steps[0]).toContain("复制这段话");
+    expect(steps[0]).toContain("复制给 AI 的话");
     expect(steps[1]).toContain("DeepSeek");
     expect(steps[2]).toContain("粘贴回来");
-    fireEvent.click(screen.getByText("查看要复制的内容"));
+    fireEvent.click(screen.getByText("看看这段话"));
     expect(screen.getByRole("textbox", { name: "整理提示词" }).value).toContain("上传的文件");
     fireEvent.change(screen.getByRole("textbox", { name: "AI 词表回复" }), {
       target: { value: "unequivocally | adv. | 明确地 | in a way that leaves no doubt\nhighbrow | adj. | 高雅的 | interested in serious culture" },
@@ -507,7 +507,7 @@ describe("FlashVocab 3.0", () => {
     previewImport("alpha 第一项\nuntamed");
     expect(screen.getByText("1 个词缺中文释义")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "补上" }));
-    fireEvent.click(screen.getByText("查看要复制的内容"));
+    fireEvent.click(screen.getByText("看看这段话"));
     const prompt = screen.getByRole("textbox", { name: "补全提示词" }).value;
     expect(prompt).toContain("untamed");
     expect(prompt).toContain("中文释义");

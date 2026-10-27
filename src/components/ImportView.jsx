@@ -143,18 +143,18 @@ export default function ImportView({
   const copyFillPrompt = async () => {
     try {
       await navigator.clipboard.writeText(buildFillPrompt(entries));
-      setCopyNotice("已复制。把 AI 的回复粘贴到下面。");
+      setCopyNotice("已复制。发给 AI 后，把回复粘贴到下面。");
     } catch {
-      setCopyNotice("复制失败，请展开下面的「查看要复制的内容」手动复制。");
+      setCopyNotice("复制失败，请展开「看看这段话」手动复制。");
     }
   };
 
   const copyWorksheetPrompt = async () => {
     try {
       await navigator.clipboard.writeText(buildWorksheetPrompt());
-      setAssistCopyNotice("已复制。下一步打开 DeepSeek 发送。");
+      setAssistCopyNotice("已复制。接下来去 DeepSeek 上传原文件。");
     } catch {
-      setAssistCopyNotice("复制失败，请展开下面的「查看要复制的内容」手动复制。");
+      setAssistCopyNotice("复制失败，请展开「看看这段话」手动复制。");
     }
   };
 
@@ -231,16 +231,18 @@ export default function ImportView({
             {draft.sourceName ? <p className="assist-source">{draft.sourceName}</p> : null}
 
             <div className="assist-panel">
-              <p className="fill-step"><span>1</span>复制这段话。</p>
-              <div className="fill-actions">
-                <button type="button" className="secondary-action" onClick={copyWorksheetPrompt}>复制这段话</button>
-                {assistCopyNotice ? <span className="fill-note" role="status">{assistCopyNotice}</span> : null}
+              <div className="fill-step fill-step-action">
+                <span>1</span>
+                <div className="fill-actions">
+                  <button type="button" className="secondary-action" onClick={copyWorksheetPrompt}>复制给 AI 的话</button>
+                  {assistCopyNotice ? <span className="fill-note" role="status">{assistCopyNotice}</span> : null}
+                </div>
               </div>
               <details className="fill-prompt-details">
-                <summary>查看要复制的内容</summary>
+                <summary>看看这段话</summary>
                 <textarea className="fill-prompt" readOnly rows="6" value={buildWorksheetPrompt()} onFocus={(event) => event.target.select()} aria-label="整理提示词" />
               </details>
-              <p className="fill-step"><span>2</span>打开 <a className="text-button" href="https://chat.deepseek.com/" target="_blank" rel="noreferrer">DeepSeek</a>，把这份原文件和刚复制的话一起发过去。</p>
+              <p className="fill-step"><span>2</span>打开 <a className="text-button" href="https://chat.deepseek.com/" target="_blank" rel="noreferrer">DeepSeek</a>，上传这份原文件，再把刚复制的话发过去。</p>
               <p className="fill-step"><span>3</span>把 AI 的回复粘贴回来。</p>
               <textarea
                 className="fill-reply"
@@ -283,13 +285,15 @@ export default function ImportView({
                 <h2 id="fill-panel-title">补 {missingZh.length} 个词的中文释义</h2>
                 <button type="button" className="text-button" onClick={() => { setFillOpen(false); setCopyNotice(""); }}>收起</button>
               </div>
-              <p className="fill-step"><span>1</span>把这段话复制给 AI。</p>
-              <div className="fill-actions">
-                <button type="button" className="secondary-action" onClick={copyFillPrompt}>复制这段话</button>
-                {copyNotice ? <span className="fill-note" role="status">{copyNotice}</span> : null}
+              <div className="fill-step fill-step-action">
+                <span>1</span>
+                <div className="fill-actions">
+                  <button type="button" className="secondary-action" onClick={copyFillPrompt}>复制给 AI 的话</button>
+                  {copyNotice ? <span className="fill-note" role="status">{copyNotice}</span> : null}
+                </div>
               </div>
               <details className="fill-prompt-details">
-                <summary>查看要复制的内容</summary>
+                <summary>看看这段话</summary>
                 <textarea className="fill-prompt" readOnly rows="6" value={buildFillPrompt(entries)} onFocus={(event) => event.target.select()} aria-label="补全提示词" />
               </details>
               <p className="fill-step"><span>2</span>把 AI 的回复粘贴回来。</p>
