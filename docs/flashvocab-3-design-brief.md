@@ -1,6 +1,6 @@
 # 闪词 3.0 重构设计底稿
 
-> 2026-09-07：已按 [从零重写计划](flashvocab-3-rewrite-plan.md) 在独立分支完成本地实现与验收。现行行为以执行计划及其执行结果为准；本文件保留产品初心与历史来源，旧布局和旧自动分流不再是当前实现。
+> 2026-09-07：已按 [从零重写计划](flashvocab-3-rewrite-plan.md) 在独立分支完成本地实现与验收。2026-10-27 的首次使用、导入和设置以[导入优先改版](flashvocab-import-first-2026-10-27.md)为准；本文件保留产品初心与历史来源，旧布局和旧自动分流不再是当前实现。
 
 > 状态：历史设计来源；3.0 重写已完成
 > 日期：2026-08-30  
@@ -418,18 +418,20 @@
 
 ## 附录：2.5 现状证据
 
+原始截图未随当前仓库保存，以下保留当时的标注主题和文件名。
+
 用户标注：
 
-- [翻开后的阅读动线问题](imgs/design-audit-2026-08-30/user-01-reading-path.png)
-- [学习过程中常驻信息过多](imgs/design-audit-2026-08-30/user-02-visual-noise.png)
-- [无返场词时提示过小、流程割裂](imgs/design-audit-2026-08-30/user-03-empty-return.png)
-- [深度提示词入口与复制反馈缺少上下文](imgs/design-audit-2026-08-30/user-04-deep-prompt.jpg)
-- [系统默认决策与手动改选设想](imgs/design-audit-2026-08-30/user-05-transition-choice.jpg)
+- 翻开后的阅读动线问题（`user-01-reading-path.png`）
+- 学习过程中常驻信息过多（`user-02-visual-noise.png`）
+- 无返场词时提示过小、流程割裂（`user-03-empty-return.png`）
+- 深度提示词入口与复制反馈缺少上下文（`user-04-deep-prompt.jpg`）
+- 系统默认决策与手动改选设想（`user-05-transition-choice.jpg`）
 
 本次真实流程审视：
 
-- [辨识未翻](imgs/design-audit-2026-08-30/01-study-front.jpg)
-- [辨识已翻](imgs/design-audit-2026-08-30/02-study-revealed.jpg)
-- [轮末分支](imgs/design-audit-2026-08-30/03-round-transition.jpg)
-- [拼写输入](imgs/design-audit-2026-08-30/04-spelling.jpg)
-- [熟悉返场开启后的信息密度](imgs/design-audit-2026-08-30/05-familiar-rating.jpg)
+- 辨识未翻（`01-study-front.jpg`）
+- 辨识已翻（`02-study-revealed.jpg`）
+- 轮末分支（`03-round-transition.jpg`）
+- 拼写输入（`04-spelling.jpg`）
+- 熟悉返场开启后的信息密度（`05-familiar-rating.jpg`）

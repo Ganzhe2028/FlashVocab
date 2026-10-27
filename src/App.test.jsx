@@ -100,7 +100,7 @@ const enableAutomaticPronunciation = () => {
 
 const enableSpelling = () => {
   openSettings();
-  fireEvent.click(screen.getByRole("radio", { name: /认词，再拼全部词/ }));
+  fireEvent.click(screen.getByRole("radio", { name: /刷词\+拼写全部/ }));
   closePanel();
 };
 
@@ -1014,6 +1014,14 @@ describe("FlashVocab 3.0", () => {
     fireEvent.click(screen.getByRole("button", { name: "帮助" }));
     expect(screen.getByRole("dialog", { name: "操作速查" })).toBeTruthy();
     expect(screen.getByText("键盘")).toBeTruthy();
+    expect(screen.getByText("按 Q 后可 M 改判为不认识")).toBeTruthy();
+    closePanel();
+    openSettings();
+    fireEvent.click(screen.getByText("进阶"));
+    fireEvent.click(screen.getByRole("switch", { name: /认识的词直接前进/ }));
+    closePanel();
+    fireEvent.click(screen.getByRole("button", { name: "帮助" }));
+    expect(screen.getByText(/Q 直接到下一词，不再显示 M/)).toBeTruthy();
   });
 
   test("the panel contains Tab focus instead of sending it behind the overlay", () => {

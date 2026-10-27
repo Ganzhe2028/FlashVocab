@@ -1,6 +1,6 @@
 # 闪词 3.0 完整 User Flow
 
-> 2026-09-07：新重写已经完成，现行行为合同与验收结果统一见 [执行计划](flashvocab-3-rewrite-plan.md)。下文保留旧流程作为历史来源，不再代表当前产品流程。
+> 2026-09-07：新重写已经完成，行为合同与历史验收见 [执行计划](flashvocab-3-rewrite-plan.md)。2026-10-27 的首次使用、导入和设置以[导入优先改版](flashvocab-import-first-2026-10-27.md)为准；下文保留旧流程作为历史来源，不再代表当前产品流程。
 
 > 状态：历史逻辑来源；3.0 重写已完成
 > 日期：2026-08-30  
@@ -509,8 +509,8 @@ User Flow 对齐完成的标准不是流程图“看起来完整”，而是以�
 ## 附录：来源与可编辑图
 
 - [闪词 3.0 重构设计底稿](flashvocab-3-design-brief.md)
-- [产品设计方法核心图](imgs/user-flow-sources/general-concept-graph.png)
-- [闪词产品逻辑核心图](imgs/user-flow-sources/flashvocab2-logic.png)
+- 产品设计方法核心图（原图未随当前仓库保存）
+- 闪词产品逻辑核心图（原图未随当前仓库保存）
 - [可编辑 FigJam：闪词 3.0 完整 User Flow](https://www.figma.com/board/opENWBAXDlHYoPrVyzZQMM)
 
 FigJam 内包含此前的总体流程与五张分图；本轮批注只更新文字逻辑，FigJam 暂未同步。Markdown 文档是当前有效版本，D1 确认并进入下一轮图形设计时再统一更新流程图。

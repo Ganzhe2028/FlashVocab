@@ -10,9 +10,11 @@
 
 `docs/flashvocab-import-first-2026-10-27.md` records the current first-use contract. It supersedes earlier copy and behavior for the one-minute guide, contextual first-card prompts, import-time DeepSeek preparation, the old header/panel navigation, and scenario learning as the first screen of a new wave. The approved import path is a three-step wizard with one primary action per step: (1) choose file or paste, (2) confirm the recognized words, (3) start learning. It supports direct Word/Excel/CSV/text recognition, a visible preview, and an optional copy-paste AI fill step that produces plain lines rather than learner-facing JSON.
 
+Current first-use, import, settings, and header behavior are defined by that document. `docs/flashvocab-3-*`, `docs/flashvocab-next-user-flow-*`, `docs/goal-*`, and `docs/uiux-review-*` are historical sources; they do not override current behavior.
+
 ## FlashVocab 3.0 Current Implementation (2026-10-27)
 
-The completed rewrite is defined by `docs/flashvocab-3-rewrite-plan.md`. The design brief and user-flow document preserve historical design context; do not restore removed 2.x behavior such as the `rest` choice screen, familiar-mode switch, return cap, shuffle switch, route system, or persistent learning snapshot.
+The completed rewrite is recorded in `docs/flashvocab-3-rewrite-plan.md`; its architecture and learning contract remain authoritative except where the current spec or this file overrides. The design brief and user-flow document preserve historical design context; do not restore removed 2.x behavior such as the `rest` choice screen, familiar-mode switch, return cap, shuffle switch, route system, or persistent learning snapshot.
 
 ### Architecture and source ownership
 
@@ -73,7 +75,7 @@ The completed rewrite is defined by `docs/flashvocab-3-rewrite-plan.md`. The des
 - Answered quiz choices are disabled against duplicate scores; the correct option stays teal with a text label, while a selected wrong option stays coral with an explicit selected-mistake label. Both retain full opacity and readable theme contrast; unrelated choices fade.
 - Undo clears superseded import/preparation panel feedback along with restoring the saved learning and library state.
 - Undo has a single entry: the toast for five seconds, then the header. Empty-state recovery uses that same entry. Keyboard focus on the expiring toast transfers to the header action. Narrow headers wrap instead of hiding Undo, including below 300px.
-- `docs/validation-2026-09-07/` preserves historical Chrome evidence; `docs/validation-2026-10-20/` and `docs/validation-2026-10-26/` preserve prior redesign evidence. `docs/validation-2026-10-27/` contains the import-first pass: real DOCX table and XLSX uploads, plain-pair paste preview, 390px/280px layouts, dark mode, CSS 200% zoom, and check output. The 2026-10-27 delivery passed 88 Node tests, 62 UI tests, ESLint, and the production build. `npm run check` plus the current spec's linked acceptance matrix remain the delivery gate.
+- `docs/validation-2026-09-07/` preserves historical Chrome evidence; `docs/validation-2026-10-20/` and `docs/validation-2026-10-26/` preserve prior redesign evidence. `docs/validation-2026-10-27/` contains the import-first pass: real DOCX table and XLSX uploads, plain-pair paste preview, HTA worksheet rescue, definition-versus-example field classification, 390px/280px layouts, dark mode, CSS 200% zoom, and check output. The 2026-10-27 delivery passed 88 Node tests, 62 UI tests, ESLint, and the production build. `npm run check` plus the current spec's linked acceptance matrix remain the delivery gate.
 
 ## Content Format & Naming Conventions
 

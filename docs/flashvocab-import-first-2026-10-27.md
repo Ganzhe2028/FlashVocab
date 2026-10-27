@@ -120,9 +120,9 @@ AI 回复的 `英文释义` 经常是多词短语，比如 `treating a holy thin
 旧设置页的问题是：开关、说明、拼写单选和外观混在一列里，用户得先理解「辨识字直接前进」「休整」这些概念，才能知道自己在选什么。现在：
 
 - 第一块「练习方式」用三张结果导向的选择卡：
-  - 只认词
-  - 认词，再拼没认出的词
-  - 认词，再拼全部词
+  - 纯刷词
+  - 刷词+拼写错词
+  - 刷词+拼写全部
 - 每张卡只说明会发生什么，不再解释内部轮次。
 - 「发音」独立成一块，使用真正的 toggle，并只保留一条行为说明。
 - 「外观」保持三段选择。
@@ -162,7 +162,7 @@ AI 回复的 `英文释义` 经常是多词短语，比如 `treating a holy thin
 - 粘贴 `abandon 放弃 / benefit 好处；利益 / take off 起飞 / translucent 半透明的 / resilient`：正确识别 5 个词，缺 1 个中文释义；补全流程可用；[补全面板](validation-2026-10-27/desktop-fill.png)、[展开要复制的文字](validation-2026-10-27/desktop-fill-open.png)、[补全后](validation-2026-10-27/desktop-filled.png)、[开始学习](validation-2026-10-27/desktop-study.png)、[390px 补全](validation-2026-10-27/mobile-fill.png)。
 - 词表管理：每组词保留一个低干扰的「改名」入口，改名可撤销；见 [词表](validation-2026-10-27/desktop-deck.png)、[改名输入](validation-2026-10-27/desktop-rename.png)、[改名后](validation-2026-10-27/desktop-deck-renamed.png)。
 - 桌面亮色：设置、帮助见 [设置](validation-2026-10-27/desktop-settings.png)、[帮助](validation-2026-10-27/desktop-help.png)。
-- 暗色：学习页见 [暗色学习](validation-2026-10-27/dark-study.png)。
+- 暗色：核对页与学习页见 [暗色 DOCX 核对](validation-2026-10-27/dark-docx-preview.png)、[暗色学习](validation-2026-10-27/dark-study.png)。
 - 390px：第 1/2 步、学习、设置、词表均无横向溢出；见 [移动学习](validation-2026-10-27/mobile-study.png)、[移动设置](validation-2026-10-27/mobile-settings.png)、[移动词表](validation-2026-10-27/mobile-deck.png)。
 - 280px：第 1/2 步 `clientWidth = scrollWidth = 280`。
 - 200% CSS 放大：第 1/2 步 `clientWidth = scrollWidth = 1440`；[放大设置](validation-2026-10-27/zoom200-settings.png)。
@@ -176,9 +176,9 @@ AI 回复的 `英文释义` 经常是多词短语，比如 `treating a holy thin
 
 ## 涉及文件
 
-- `src/components/ImportView.jsx`：新导入页、预览、AI 补全入口。
-- `src/utils/deckImport.js`：DOCX/XLSX 提取、宽松列表解析、跳过行报告。
-- `src/utils/importFill.js`：生成普通文字补全提示词，按词合并 AI 回复。
+- `src/components/ImportView.jsx`：三步向导、来源选择、识别预览、缺释义补全、worksheet AI 救援、文件级失败兜底。
+- `src/utils/deckImport.js`：DOCX/XLSX 提取、宽松列表解析、跳过行报告、英文释义/例句归类、旧词表字段修复。
+- `src/utils/importFill.js`：生成普通文字补全提示词、检测匹配/填空 worksheet、生成 worksheet 整理提示词、按词合并 AI 回复。
 - `src/components/ManagePanel.jsx`：词表 / 设置 / 帮助三段式面板，专项练习，三张练习方式卡。
 - `src/App.jsx`：新顶部入口、导入与 Undo 接线、移除引导卡与导入时 AI。
 - `src/learningAlgorithm.js`：新词表从认词开始；从导入页 Undo 恢复原学习现场。
