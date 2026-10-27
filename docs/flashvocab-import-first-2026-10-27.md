@@ -96,6 +96,16 @@
 
 Word 的表格提取在 `extractDocxText` 内完成：表格每一行转换为 tab 分隔的一行，避免单元格被拆散；普通段落保持逐行文本。Excel 用原生 ZIP + `sharedStrings.xml` + 第一个有内容的 `sheet*.xml` 读取，不新增运行时依赖。
 
+## 英文释义和例句的归类
+
+AI 回复的 `英文释义` 经常是多词短语，比如 `treating a holy thing or place without respect`，没有句号、首字母小写。旧解析把它当成了「例句」，结果学习卡上中文释义在、英文释义却显示「未提供释义」，下面还多出一句假例句。
+
+现在按单元格内容区分：
+
+- 只有「首字母大写、并且以 `.` / `?` / `!` / `。` / `？` / `！` 结尾」的英文单元格才进 `examples`；
+- 其余英文定义进 `meaning`；
+- 加载旧词表时，如果 `meaning` 为空、只有一个无 focus 的小写定义例句，会自动把它移回 `meaning`，不需要重新导入。
+
 ## 缺中文释义时：一次复制，一次粘贴
 
 如果核对页里有词缺中文释义，会出现一行「N 个词缺中文释义 · 补上」。展开后只有两步：
@@ -139,7 +149,7 @@ Word 的表格提取在 `extractDocxText` 内完成：表格每一行转换为 t
 
 ## 验证
 
-自动检查：`npm run check` 通过，86 项 Node 测试、60 项 UI 测试、ESLint 和 Vite 生产构建全绿。日志见 [check.log](validation-2026-10-27/check.log)。
+自动检查：`npm run check` 通过，88 项 Node 测试、62 项 UI 测试、ESLint 和 Vite 生产构建全绿。日志见 [check.log](validation-2026-10-27/check.log)。
 
 真实 Chrome 生产构建验证：
 
@@ -147,6 +157,7 @@ Word 的表格提取在 `extractDocxText` 内完成：表格每一行转换为 t
 - 第 1 步「粘贴」：切换后只出现输入框和「识别单词」。[桌面](validation-2026-10-27/desktop-paste.png)、[移动](validation-2026-10-27/mobile-paste.png)。
 - 第 2 步「核对」：一行摘要、缺释义行、前五个词、一个主按钮、左上角返回。[亮色](validation-2026-10-27/desktop-preview.png)、[390px](validation-2026-10-27/mobile-preview.png)、[280px](validation-2026-10-27/narrow-preview.png)、[200%](validation-2026-10-27/zoom200-preview.png)。
 - 教师风格 DOCX 表格：5 个词、5 个有中文释义、含 `take off` 短语；[预览截图](validation-2026-10-27/docx-preview.png)。XLSX 同样 5 个词、5 个有中文释义；[预览截图](validation-2026-10-27/xlsx-preview.png)。
+- 字段归类：AI 释义进入英文释义而不是例句，见 [修正后的学习卡](validation-2026-10-27/definition-field-fixed.png)。
 - 真实 HTA Chapter 4 worksheet：不再显示错误词义，而是进入 [AI 整理面板](validation-2026-10-27/hta-worksheet-rescue.png)、[390px 同一屏](validation-2026-10-27/mobile-hta-rescue.png)；粘贴一段模拟 AI 回复后进入 [正常核对](validation-2026-10-27/hta-ai-preview.png)。这里验证的是交接和替换流程，不代表 DeepSeek 对该文件的真实作答。
 - 粘贴 `abandon 放弃 / benefit 好处；利益 / take off 起飞 / translucent 半透明的 / resilient`：正确识别 5 个词，缺 1 个中文释义；补全流程可用；[补全面板](validation-2026-10-27/desktop-fill.png)、[展开要复制的文字](validation-2026-10-27/desktop-fill-open.png)、[补全后](validation-2026-10-27/desktop-filled.png)、[开始学习](validation-2026-10-27/desktop-study.png)、[390px 补全](validation-2026-10-27/mobile-fill.png)。
 - 词表管理：每组词保留一个低干扰的「改名」入口，改名可撤销；见 [词表](validation-2026-10-27/desktop-deck.png)、[改名输入](validation-2026-10-27/desktop-rename.png)、[改名后](validation-2026-10-27/desktop-deck-renamed.png)。

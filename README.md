@@ -73,4 +73,4 @@ JSON 导入的未知字段、源顺序和全部例句均保留。JSON / Markdown
 
 `src/App.jsx` 组合状态并处理存储、剪贴板、下载、同步发音和补全；`learningAlgorithm.js` 管理评分、队列、休整与 Undo；`ImportView` 负责文件/粘贴、识别预览和 AI 补全入口；`mastery.js`、`waveModel.js`、`questionBuilder.js`、`aiPreparation.js`、`memorySketch.js` 分别管理掌握度、词表、组题、补全和图示验证。组件位于 `src/components/`，副作用 hooks 位于 `src/hooks/`，存储验证位于 `src/storage/`，导入解析与导出位于 `src/utils/deckImport.js`，补全提示词合并位于 `src/utils/importFill.js`，内置词表位于 `src/data/baseDeck.js`。
 
-`npm run check` 执行 ESLint、Node 逻辑/解析/存储测试、Vitest/jsdom UI 行为测试和生产构建。2026-10-27 导入优先改版后为 86 项逻辑、60 项 UI 测试全绿；真实 Chrome 已验证教师风格的 DOCX 表格、XLSX、纯中英对照粘贴、缺释义补全、390px / 280px 窄屏、暗色和 200% CSS 放大，证据在 [`docs/validation-2026-10-27/`](docs/validation-2026-10-27/)。更早的 P0–P2、UIUX 与 2026-10-26 展示回退记录保留为历史。
+`npm run check` 执行 ESLint、Node 逻辑/解析/存储测试、Vitest/jsdom UI 行为测试和生产构建。2026-10-27 导入优先改版后为 88 项逻辑、62 项 UI 测试全绿；真实 Chrome 已验证教师风格的 DOCX 表格、XLSX、纯中英对照粘贴、缺释义补全、390px / 280px 窄屏、暗色和 200% CSS 放大，证据在 [`docs/validation-2026-10-27/`](docs/validation-2026-10-27/)。更早的 P0–P2、UIUX 与 2026-10-26 展示回退记录保留为历史。

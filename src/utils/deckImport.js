@@ -314,9 +314,8 @@ const isSentenceLike = (line) => {
 };
 
 const looksLikeExampleCell = (line) => {
-  if (isSentenceLike(line)) return true;
   const words = line.match(WORD_RE) ?? [];
-  return words.length >= 3 && /^[A-Z]/.test(line) && /[.!?。！？]\s*$/.test(line);
+  return words.length >= 3 && /^["'“”]?[A-Z]/.test(line) && /[.!?。！？]\s*$/.test(line);
 };
 
 const isPosOnly = (cell) => {
@@ -910,13 +909,21 @@ const normalizeEntry = (entry) => {
     }
   }
 
+  let meaning = toText(entry?.meaning ?? entry?.definition);
+  let normalizedExamples = examples;
+  if (!meaning && examples.length === 1 && !examples[0].focus &&
+    /^[a-z]/.test(examples[0].sentence) && !/[.!?。！？]\s*$/.test(examples[0].sentence)) {
+    meaning = examples[0].sentence;
+    normalizedExamples = [];
+  }
+
   return {
     ...sourceEntry,
     term: toText(entry?.term ?? entry?.word ?? entry?.name),
     syllables: toText(entry?.syllables),
     respell: toText(entry?.respell),
     pos: toText(entry?.pos),
-    meaning: toText(entry?.meaning ?? entry?.definition),
+    meaning,
     meaningZh: toText(
       entry?.meaningZh ??
         entry?.meaning_zh ??
@@ -935,7 +942,7 @@ const normalizeEntry = (entry) => {
     usageTags: toList(entry?.usageTags ?? entry?.usage_tags).map(toText).filter(Boolean),
     miniScenario: toText(entry?.miniScenario ?? entry?.mini_scenario),
     contrastScenarios: toList(entry?.contrastScenarios ?? entry?.contrast_scenarios).filter((variant) => variant && typeof variant === "object" && !Array.isArray(variant)),
-    examples,
+    examples: normalizedExamples,
   };
 };
 

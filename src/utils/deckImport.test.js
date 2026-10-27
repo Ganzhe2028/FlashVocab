@@ -301,3 +301,29 @@ test("unrecognized prose still fails with a concrete example", () => {
   assert.throws(() => parseDeckFromText("not a deck"), /没有认出英文单词/);
   assert.throws(() => parseDeckFromText("Some generated output:"), /没有认出英文单词/);
 });
+
+test("AI pipe rows keep a multiword English definition in meaning, not examples", () => {
+  const deck = normalizeDeck(parseDeckFromText(`sacrilegious | adj. | 亵渎神圣的 | treating a holy thing or place without respect
+restrain | v. | 制止；抑制 | to stop somebody/something from doing something, especially by using`));
+  assert.equal(deck[0].meaning, "treating a holy thing or place without respect");
+  assert.deepEqual(deck[0].examples, []);
+  assert.equal(deck[1].meaning, "to stop somebody/something from doing something, especially by using");
+  assert.deepEqual(deck[1].examples, []);
+});
+
+test("legacy entries with a lone lowercase definition example are repaired on load", () => {
+  const deck = normalizeDeck([{
+    term: "sacrilegious",
+    meaningZh: "亵渎神圣的",
+    examples: [{ sentence: "treating a holy thing or place without respect", focus: "" }],
+  }]);
+  assert.equal(deck[0].meaning, "treating a holy thing or place without respect");
+  assert.deepEqual(deck[0].examples, []);
+
+  const realExample = normalizeDeck([{
+    term: "abandon",
+    examples: [{ sentence: "He abandoned the plan.", focus: "" }],
+  }]);
+  assert.equal(realExample[0].meaning, "");
+  assert.deepEqual(realExample[0].examples, [{ sentence: "He abandoned the plan.", focus: "" }]);
+});

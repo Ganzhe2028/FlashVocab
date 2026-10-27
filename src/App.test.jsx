@@ -502,6 +502,32 @@ describe("FlashVocab 3.0", () => {
     expect(screen.queryByText("highbrow (54)")).toBeNull();
   });
 
+  test("AI pipe definitions are shown as the English meaning, not as an example", () => {
+    render(<App />);
+    importViaPaste("sacrilegious | adj. | 亵渎神圣的 | treating a holy thing or place without respect\nrestrain | v. | 制止；抑制 | to stop somebody from doing something, especially by using");
+    const term = currentWordButton().textContent.trim().toLocaleLowerCase();
+    press("e", "KeyE");
+    const expected = term === "sacrilegious"
+      ? "treating a holy thing or place without respect"
+      : "to stop somebody from doing something, especially by using";
+    expect(document.querySelector(".meaning-en").textContent).toBe(expected);
+    expect(screen.queryByText("未提供释义")).toBeNull();
+    expect(screen.queryByLabelText("例句")).toBeNull();
+  });
+
+  test("a saved deck with a lone definition example is repaired on load", () => {
+    saveAssets([{
+      term: "Alpha",
+      meaningZh: "第一项",
+      examples: [{ sentence: "treating a holy thing or place without respect", focus: "" }],
+    }]);
+    render(<App />);
+    press("e", "KeyE");
+    expect(document.querySelector(".meaning-en").textContent).toBe("treating a holy thing or place without respect");
+    expect(screen.queryByText("未提供释义")).toBeNull();
+    expect(screen.queryByLabelText("例句")).toBeNull();
+  });
+
   test("a word without a Chinese meaning can be completed through one copy-and-paste AI step", () => {
     render(<App />);
     previewImport("alpha 第一项\nuntamed");
