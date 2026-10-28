@@ -2,6 +2,12 @@
 
 > MUST DO：Things that must be done: Every time there is a modification or update, the corresponding document content must also be updated. Every time a task begins, one needs to re-read the document.
 
+### Documentation surface
+
+- `README.md` is the user-facing product intro. Keep it readable by someone who has never opened the app: no internal vocabulary (wave, cold store, reducer), and keep it in step with shipped first-use copy.
+- `docs/TECHNICAL.md` is the implementation reference (architecture, data model, learning algorithm, import pipeline, question building, pronunciation, testing, deployment). Update the affected section whenever a contract changes, and update its test baseline whenever `npm run check` totals change.
+- `docs/screenshots/` holds the three README screenshots (`import.png`, `study.png`, `practice.png`): 1280×800 at 2× from a production build with a clean demo deck. Re-capture them when the first-use, recognition, or practice screens change.
+
 ### Active redesign spec (2026-10-19)
 
 `docs/flashvocab-redesign-2026-10-19.md` defines the next-stage direction (wave lifecycle, judgment-driven exposure, question-type matrix, mastery model). Implementation work follows that spec; when behavior ships, update both that document and this file per the MUST DO rule. Delivered changes are tracked in that document's implementation section; otherwise the 3.0 contract below remains authoritative.
