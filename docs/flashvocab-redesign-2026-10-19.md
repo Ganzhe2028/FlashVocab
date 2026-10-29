@@ -483,3 +483,8 @@ E 展示真实生成的微画面、SVG 小图、用法标签和对位说明；im
 - 发音入口的按钮语义不变：SVG 拆成喇叭本体与两条弧线路径，`aria-label` 仍是「播放 X 的美式发音」。
 
 验证：`npm run check` 通过 88 项 Node 测试、63 项 UI 测试、ESLint 和生产构建。生产预览下用带真实 `start`/`end` 时机的 Web Speech mock，在 1236×1002 暗色、390px 窄屏和减少动态效果三个场景检查：播放态没有可见的「正在播放」文字，隐藏状态行只占 1×1 px；错误提示与注音行的边界框不重叠（提示 top 321.6 / 注音 bottom 311.6）；减少动态效果下按钮为青绿（`rgb(88, 184, 170)`），并用浅青底色（`rgb(32, 59, 54)`）与 45% 不透明度静态光环替代动画。截图与边界框记录见[2026-10-27 发音验证目录](validation-2026-10-27-pronunciation/)（[播放态](validation-2026-10-27-pronunciation/speaking-dark.png)、[错误态](validation-2026-10-27-pronunciation/error-dark.png)、[390px](validation-2026-10-27-pronunciation/speaking-390.png)、[减少动态效果](validation-2026-10-27-pronunciation/speaking-reduced-motion.png)）。本次只改播放提示的呈现，未改发声路径，因此没有重做听音检查。
+
+
+## 2026-10-29：专项练习允许明确回答不知道
+
+「看释义选词」「看情景选词」新增「我不知道」，点击或数字键 5 选择。少于四个词选项时仍固定用 5。按一次错误记入掌握度并显示正确答案，N 继续；重复点击或重复按键不再计分。该选项不参加单词洗牌；填搭配与辨析近义词维持原快捷键。

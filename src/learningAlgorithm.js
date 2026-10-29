@@ -1,4 +1,4 @@
-import { buildQuestion } from "./questionBuilder.js";
+import { allowsUnknownAnswer, buildQuestion, UNKNOWN_ANSWER } from "./questionBuilder.js";
 import { compareMastery, getMastery, isGraduated, masteryPriority, recordMastery, summarizeMastery } from "./mastery.js";
 import { createWave, getEntryWaveId, LEGACY_WAVE_ID, normalizeWaves } from "./waveModel.js";
 
@@ -467,8 +467,10 @@ export const learningReducer = (state, action) => {
           };
     }
     case "ANSWER_QUIZ": {
-      if (state.mode !== "quiz" || state.quiz.finished || state.quiz.selected !== null || !state.quiz.question.options.includes(action.answer)) return state;
+      if (state.mode !== "quiz" || state.quiz.finished || state.quiz.selected !== null) return state;
       const quiz = state.quiz;
+      const unknown = action.answer === UNKNOWN_ANSWER && allowsUnknownAnswer(quiz.kind);
+      if (!unknown && !quiz.question.options.includes(action.answer)) return state;
       const mastery = recordMastery(state.mastery, quiz.queueIds[quiz.index], action.answer === quiz.question.answer, action.now ?? Date.now());
       return { ...state, mastery, quiz: {
         ...quiz, selected: action.answer,

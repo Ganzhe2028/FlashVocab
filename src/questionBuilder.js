@@ -1,5 +1,9 @@
 const key = (value) => String(value ?? "").trim().toLocaleLowerCase();
 
+// A boolean cannot collide with an imported word (all word options are strings).
+export const UNKNOWN_ANSWER = false;
+export const allowsUnknownAnswer = (kind) => kind === "mcq" || kind === "scenario";
+
 const shuffled = (values, random) => {
   const result = [...values];
   for (let index = result.length - 1; index > 0; index -= 1) {

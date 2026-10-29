@@ -79,6 +79,40 @@ test("preparation navigation retains the spelling queue, input, score, and Undo 
   });
 });
 
+for (const kind of ["mcq", "scenario"]) {
+  test(`${kind} unknown answers score once as mistakes and finish normally`, () => {
+    const sourceDeck = deck.map((entry) => ({ ...entry, examples: [{ sentence: `${entry.term} is here.`, focus: entry.term }] }));
+    const ids = createCardIds(sourceDeck);
+    let state = createInitialState({ assets: { sourceDeck }, random: almostOne });
+    state = { ...state, mastery: Object.fromEntries(ids.map((id) => [id, { streak: 2, mistakes: 0, fuzzy: 0, lastSeen: 1 }])) };
+    state = learningReducer(state, { type: "START_QUIZ", kind, random: almostOne });
+    for (let index = 0; index < 2; index += 1) {
+      const cardId = state.quiz.queueIds[index];
+      state = learningReducer(state, { type: "ANSWER_QUIZ", answer: false, now: 100 });
+      assert.equal(state.quiz.selected, false);
+      assert.equal(state.quiz.results[index].correct, false);
+      assert.equal(state.mastery[cardId].mistakes, 1);
+      assert.equal(state.mastery[cardId].streak, 0);
+      assert.equal(learningReducer(state, { type: "ANSWER_QUIZ", answer: false }), state);
+      assert.equal(learningReducer(state, { type: "ANSWER_QUIZ", answer: state.quiz.question.answer }), state);
+      state = learningReducer(state, { type: "NEXT_QUIZ", random: almostOne });
+    }
+    assert.equal(state.quiz.finished, true);
+    assert.equal(state.quiz.results.filter((result) => result.correct).length, 0);
+    assert.equal(learningReducer(state, { type: "END_QUIZ" }).mode, "study");
+  });
+}
+
+test("unknown answers are rejected for word-bank and contrast questions", () => {
+  const sourceDeck = deck.map((entry) => ({ ...entry, relatedWord: "other — other word", miniScenario: "A different item.", examples: [{ sentence: `${entry.term} is here.`, focus: entry.term }] }));
+  for (const kind of ["bank", "contrast"]) {
+    const initial = createInitialState({ assets: { sourceDeck }, random: almostOne });
+    const state = learningReducer(initial, { type: "START_QUIZ", kind, random: almostOne });
+    assert.equal(state.mode, "quiz");
+    assert.equal(learningReducer(state, { type: "ANSWER_QUIZ", answer: false }), state);
+  }
+});
+
 test("live quiz scores one selection per question and returns to the retained learning scene", () => {
   const original = createInitialState({ assets: { sourceDeck: deck }, random: almostOne });
   let state = learningReducer(original, { type: "START_QUIZ", random: almostOne });

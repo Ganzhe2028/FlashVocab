@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { allowsUnknownAnswer, UNKNOWN_ANSWER } from "../questionBuilder.js";
 
 const INTERACTIVE_SELECTOR =
   'button, input, textarea, select, [contenteditable="true"], [role="button"]';
@@ -46,7 +47,10 @@ export function useAppKeyboard({
       if (mode === "quiz") {
         if (quiz.finished) return;
         const choice = Number(event.key) - 1;
-        if (quiz.selected === null && /^[1-9]$/.test(event.key) && quiz.question.options[choice]) {
+        if (quiz.selected === null && event.key === "5" && allowsUnknownAnswer(quiz.kind)) {
+          event.preventDefault();
+          onAnswerQuiz(UNKNOWN_ANSWER);
+        } else if (quiz.selected === null && /^[1-9]$/.test(event.key) && quiz.question.options[choice]) {
           event.preventDefault();
           onAnswerQuiz(quiz.question.options[choice]);
         } else if (quiz.selected !== null && event.code === "KeyN") {

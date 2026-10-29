@@ -343,7 +343,8 @@ export default function ManagePanel({
                 <div><dt>认词</dt><dd>Q 认识 · E 不认识 · N 下一个 · ← 回看 · Delete 移出</dd></div>
                 <div><dt>答案页</dt><dd>{quickKnownEnabled ? "开启直接前进后，Q 直接到下一词，不再显示 M" : "按 Q 后可 M 改判为不认识"}</dd></div>
                 <div><dt>拼写</dt><dd>Enter 提交 · 空 Enter 看答案 · Esc 暂停</dd></div>
-                <div><dt>选择题</dt><dd>1–9 选择 · N 下一题</dd></div>
+                <div><dt>释义 / 情景</dt><dd>1–4 选词 · 5 我不知道 · N 下一题</dd></div>
+                <div><dt>其他练习</dt><dd>1–9 选择 · N 下一题</dd></div>
               </dl>
             </section>
 

@@ -220,9 +220,14 @@ describe("FlashVocab 3.0", () => {
     expect(screen.getByText(/前九项可按 1–9/)).toBeTruthy();
     press("0", "Digit0");
     expect(document.querySelector(".question-feedback")).toBeNull();
+    expect(screen.queryByRole("button", { name: /我不知道/ })).toBeNull();
     fireEvent.click(choices[9]);
     expect(document.querySelector(".question-feedback")).toBeTruthy();
     expect(choices[9].disabled).toBe(true);
+    press("n", "KeyN");
+    const fifth = within(screen.getByRole("group", { name: "选择答案" })).getAllByRole("button")[4];
+    press("5", "Digit5");
+    expect(fifth.className).toMatch(/is-correct|is-incorrect/);
   });
   test("quick-known skips only recognized cards and speaks the next card synchronously", () => {
     saveAssets([alpha, beta]);
@@ -371,6 +376,34 @@ describe("FlashVocab 3.0", () => {
       ).toBeTruthy();
     },
   );
+  test.each(["看释义选词", "看情景选词"].flatMap((label) =>
+    ["click", "keyboard"].flatMap((method) => [2, 4].map((size) => [label, method, size]))))(
+    "%s supports unknown via %s with %i word options and always labels it 5",
+    (label, method, size) => {
+      const entries = [alpha, beta, { ...alpha, term: "Gamma", examples: [{ sentence: "Gamma is here.", focus: "Gamma" }] }, { ...beta, term: "Delta", examples: [{ sentence: "Delta is here.", focus: "Delta" }] }].slice(0, size);
+      saveAssets(entries);
+      render(<App />);
+      openPractice(label);
+      const unknown = screen.getByRole("button", { name: "我不知道 5" });
+      expect(within(screen.getByRole("group", { name: "选择答案" })).getAllByRole("button")).toHaveLength(size + 1);
+      if (method === "keyboard") press("5", "Digit5");
+      else fireEvent.click(unknown);
+      expect(unknown.classList.contains("is-incorrect")).toBe(true);
+      expect(unknown.disabled).toBe(true);
+      expect(screen.getByText("已选")).toBeTruthy();
+      expect(screen.getByText("正确答案")).toBeTruthy();
+      expect(screen.getByRole("status").textContent).toContain("正确答案：");
+      const mistakes = () => Object.values(JSON.parse(window.localStorage.getItem(MASTERY_STORAGE_KEY)).mastery).reduce((sum, item) => sum + item.mistakes, 0);
+      expect(mistakes()).toBe(1);
+      press("5", "Digit5");
+      fireEvent.click(unknown);
+      expect(mistakes()).toBe(1);
+      press("n", "KeyN");
+      expect(screen.queryByText("已选")).toBeNull();
+      expect(screen.getByRole("button", { name: "我不知道 5" }).disabled).toBe(false);
+    },
+  );
+
   test.each([true, false])(
     "quiz feedback identifies the correct answer and selected mistake (correct=%s)",
     (correct) => {

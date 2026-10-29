@@ -1,3 +1,5 @@
+import { allowsUnknownAnswer, UNKNOWN_ANSWER } from "../questionBuilder.js";
+
 export default function QuestionView({ quiz, onAnswer, onNext, onEnd, onRestart }) {
   if (quiz.finished) {
     const correct = quiz.results.filter((result) => result.correct).length;
@@ -35,6 +37,20 @@ export default function QuestionView({ quiz, onAnswer, onNext, onEnd, onRestart 
             {index < 9 ? <kbd>{index + 1}</kbd> : null}
           </span></button>
         ))}
+        {allowsUnknownAnswer(quiz.kind) ? (
+          <button
+            type="button"
+            className={`choice-action${quiz.selected === UNKNOWN_ANSWER ? " is-incorrect" : ""}`}
+            disabled={answered}
+            onClick={() => onAnswer(UNKNOWN_ANSWER)}
+          >
+            <span>我不知道</span>
+            <span className="option-meta">
+              {quiz.selected === UNKNOWN_ANSWER ? <small>已选</small> : null}
+              <kbd>5</kbd>
+            </span>
+          </button>
+        ) : null}
       </div>
       {answered ? (
         <div className="question-feedback" role="status">
