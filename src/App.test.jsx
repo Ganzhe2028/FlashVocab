@@ -187,9 +187,29 @@ describe("FlashVocab 3.0", () => {
     press("q", "KeyQ");
     expect(screen.getByRole("heading", { name: "这一轮练完了。" })).toBeTruthy();
   });
-  test("a plain pasted word list is recognized, previewed, and starts learning without JSON", () => {
+  test("file import only accepts JSON and does not save before confirmation", async () => {
     render(<App />);
-    previewImport("delta 德尔塔\nomega 欧米伽");
+    const fileInput = document.querySelector('input[type="file"]');
+    fireEvent.change(fileInput, { target: { files: [{ name: "words.md", text: async () => "alpha 第一项" }] } });
+    expect((await screen.findByRole("alert")).textContent).toContain("只支持 .json");
+    fireEvent.change(fileInput, { target: { files: [{ name: "words.json", text: async () => JSON.stringify([alpha, beta]) }] } });
+    await screen.findByRole("heading", { name: "这些词对吗？" });
+    expect(JSON.parse(window.localStorage.getItem(DECK_STORAGE_KEY)).sourceDeck).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: "开始背这 2 个词" }));
+    expect(JSON.parse(window.localStorage.getItem(DECK_STORAGE_KEY)).sourceDeck).toHaveLength(2);
+  });
+
+  test("a bad second JSON entry cannot silently import the valid first entry", () => {
+    render(<App />);
+    previewImport(JSON.stringify([alpha, { meaningZh: "缺单词" }]));
+    expect(screen.getByRole("alert").textContent).toContain("第 2 个词条");
+    expect(JSON.parse(window.localStorage.getItem(DECK_STORAGE_KEY)).sourceDeck).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: /开始背这/ })).toBeNull();
+  });
+
+  test("a fixed JSON word list previews and starts learning", () => {
+    render(<App />);
+    previewImport(JSON.stringify([{"term":"delta","meaningZh":"德尔塔"},{"term":"omega","meaningZh":"欧米伽"}]));
     expect(screen.getByRole("heading", { name: "这些词对吗？" })).toBeTruthy();
     const steps = screen.getByRole("list", { name: "导入步骤" });
     expect(within(steps).getByText("核对").closest("li").getAttribute("aria-current")).toBe("step");
@@ -484,8 +504,9 @@ describe("FlashVocab 3.0", () => {
   test("a matching worksheet routes to the AI rescue and replaces the broken preview", () => {
     render(<App />);
     previewImport("unequivocally (54) highbrow (54)\ncommotion (57) disbelief (57)");
-    expect(screen.getByRole("heading", { name: "这份表要请 AI 读一下。" })).toBeTruthy();
-    expect(screen.getByText(/单词和释义分开放/)).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toContain("JSON 格式不正确");
+    fireEvent.click(screen.getByRole("button", { name: "把其他格式转成 JSON" }));
+    expect(screen.getByRole("heading", { name: "先转成 JSON 词表。" })).toBeTruthy();
     const steps = [...document.querySelectorAll(".assist-panel .fill-step")].map((step) => step.textContent);
     expect(steps[0]).toContain("复制给 AI 的话");
     expect(steps[1]).toContain("DeepSeek");
@@ -493,7 +514,7 @@ describe("FlashVocab 3.0", () => {
     fireEvent.click(screen.getByText("看看这段话"));
     expect(screen.getByRole("textbox", { name: "整理提示词" }).value).toContain("上传的文件");
     fireEvent.change(screen.getByRole("textbox", { name: "AI 词表回复" }), {
-      target: { value: "unequivocally | adv. | 明确地 | in a way that leaves no doubt\nhighbrow | adj. | 高雅的 | interested in serious culture" },
+      target: { value: JSON.stringify([{"term":"unequivocally","pos":"adv.","meaningZh":"明确地","meaning":"in a way that leaves no doubt","wordOrigin":"","examples":[]},{"term":"highbrow","pos":"adj.","meaningZh":"高雅的","meaning":"interested in serious culture","wordOrigin":"","examples":[]}]) },
     });
     fireEvent.click(screen.getByRole("button", { name: "生成词表" }));
     expect(screen.getByRole("heading", { name: "这些词对吗？" })).toBeTruthy();
@@ -502,9 +523,9 @@ describe("FlashVocab 3.0", () => {
     expect(screen.queryByText("highbrow (54)")).toBeNull();
   });
 
-  test("AI pipe definitions are shown as the English meaning, not as an example", () => {
+  test("JSON definitions are shown as the English meaning, not as an example", () => {
     render(<App />);
-    importViaPaste("sacrilegious | adj. | 亵渎神圣的 | treating a holy thing or place without respect\nrestrain | v. | 制止；抑制 | to stop somebody from doing something, especially by using");
+    importViaPaste(JSON.stringify([{"term":"sacrilegious","pos":"adj.","meaningZh":"亵渎神圣的","meaning":"treating a holy thing or place without respect"},{"term":"restrain","pos":"v.","meaningZh":"制止；抑制","meaning":"to stop somebody from doing something, especially by using"}]));
     const term = currentWordButton().textContent.trim().toLocaleLowerCase();
     press("e", "KeyE");
     const expected = term === "sacrilegious"
@@ -530,39 +551,21 @@ describe("FlashVocab 3.0", () => {
 
   test("one copy-and-paste AI reply fills every practice requirement before import", () => {
     render(<App />);
-    previewImport("abandon 放弃\nquit 停止");
+    previewImport(JSON.stringify([{"term":"abandon","meaningZh":"放弃"},{"term":"quit","meaningZh":"停止"}]));
     expect(screen.getByText("2 个词还没补全资料")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "让 AI 补全" }));
     expect(screen.getByRole("heading", { name: "让 AI 一次补齐" })).toBeTruthy();
     fireEvent.click(screen.getByText("看看这段话"));
     const prompt = screen.getByRole("textbox", { name: "补全提示词" }).value;
-    for (const marker of ["abandon", "quit", "中文释义", "词源", "对应词", "例句1", "重点1", "情景", "辨析"]) {
+    for (const marker of ["abandon", "quit", "中文释义", "词源", "对应词", "sentence", "focus", "情景", "辨析"]) {
       expect(prompt).toContain(marker);
     }
-    expect(prompt).not.toContain("JSON");
+    expect(prompt).toContain("JSON");
     fireEvent.click(screen.getByRole("button", { name: "复制给 AI 的话" }));
     expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(expect.stringContaining("辨析"));
     fireEvent.change(screen.getByRole("textbox", { name: "AI 回复" }), {
       target: {
-        value: `abandon | v. | 放弃；抛弃 | to leave somebody or something
-词源: 来自古法语 abandonner，原意「交给别人支配」。
-对应词: quit — quit 是主动停止，abandon 更强调彻底丢下。
-例句1: They abandon the plan at noon.
-重点1: abandon the plan
-例句2: We abandon old habits slowly.
-重点2: abandon old habits
-情景: The team stops a project because the money is gone.
-辨析: She stops playing tennis because her knee hurts. | quit | 主动停止。
-
-quit | v. | 停止；放弃 | to stop doing something
-词源: 来自古法语 quiter，原意「解除义务、放走」。
-对应词: abandon — abandon 是彻底丢下，quit 是主动停止。
-例句1: They quit the team after the argument.
-重点1: quit the team
-例句2: We quit sugar for a month.
-重点2: quit sugar
-情景: A worker leaves a job by choice.
-辨析: A company drops an old product for good. | abandon | 彻底丢下。`,
+        value: JSON.stringify([{"term":"abandon","pos":"v.","meaningZh":"放弃；抛弃","meaning":"to leave somebody or something","wordOrigin":"来自古法语 abandonner，原意「交给别人支配」。","relatedWord":"quit — quit 是主动停止，abandon 更强调彻底丢下。","examples":[{"sentence":"They abandon the plan at noon.","focus":"abandon the plan"},{"sentence":"We abandon old habits slowly.","focus":"abandon old habits"}],"miniScenario":"The team stops a project because the money is gone.","contrastScenarios":[{"scenario":"The team stops a project because the money is gone.","answer":"abandon","explanation":""},{"scenario":"She stops playing tennis because her knee hurts.","answer":"quit","explanation":"主动停止。"}]},{"term":"quit","pos":"v.","meaningZh":"停止；放弃","meaning":"to stop doing something","wordOrigin":"来自古法语 quiter，原意「解除义务、放走」。","relatedWord":"abandon — abandon 是彻底丢下，quit 是主动停止。","examples":[{"sentence":"They quit the team after the argument.","focus":"quit the team"},{"sentence":"We quit sugar for a month.","focus":"quit sugar"}],"miniScenario":"A worker leaves a job by choice.","contrastScenarios":[{"scenario":"A worker leaves a job by choice.","answer":"quit","explanation":""},{"scenario":"A company drops an old product for good.","answer":"abandon","explanation":"彻底丢下。"}]}]),
       },
     });
     fireEvent.click(screen.getByRole("button", { name: "识别并补全" }));
@@ -586,10 +589,10 @@ quit | v. | 停止；放弃 | to stop doing something
 
   test("a partial AI reply keeps the fill panel open for the remaining words", () => {
     render(<App />);
-    previewImport("abandon 放弃\nquit 停止");
+    previewImport(JSON.stringify([{"term":"abandon","meaningZh":"放弃"},{"term":"quit","meaningZh":"停止"}]));
     fireEvent.click(screen.getByRole("button", { name: "让 AI 补全" }));
     fireEvent.change(screen.getByRole("textbox", { name: "AI 回复" }), {
-      target: { value: "abandon | v. | 放弃 | to leave\n对应词: quit — 主动停止\n例句1: They abandon the plan.\n重点1: abandon the plan" },
+      target: { value: JSON.stringify([{"term":"abandon","pos":"v.","meaningZh":"放弃","meaning":"to leave","wordOrigin":"","relatedWord":"quit — 主动停止","examples":[{"sentence":"They abandon the plan.","focus":"abandon the plan"}]}]) },
     });
     fireEvent.click(screen.getByRole("button", { name: "识别并补全" }));
     expect(screen.getByText(/还有 2 个词没补完/)).toBeTruthy();
@@ -711,7 +714,7 @@ quit | v. | 停止；放弃 | to stop doing something
 
     fireEvent.change(paste, { target: { value: "not a deck" } });
     fireEvent.click(screen.getByRole("button", { name: "识别单词" }));
-    expect(screen.getByRole("alert").textContent).toContain("没有认出英文单词");
+    expect(screen.getByRole("alert").textContent).toContain("JSON 格式不正确");
     expect(document.querySelector(".import-view")).toBeTruthy();
 
     fireEvent.change(paste, { target: { value: JSON.stringify([{ ...beta, extraField: "preserved" }]) } });

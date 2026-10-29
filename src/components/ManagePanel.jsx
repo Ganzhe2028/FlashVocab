@@ -333,7 +333,7 @@ export default function ManagePanel({
           <div className="panel-content">
             <section className="panel-section panel-section-first" aria-labelledby="help-import-title">
               <h3 id="help-import-title">导入</h3>
-              <p>整份 Word、Excel、CSV 或文本都可以直接拖进导入页。粘贴时每行一个词，词后面跟中文就行；编号、音标、表格列也会自动识别。</p>
+              <p>导入只接受 JSON 文件或纯 JSON 数组，页面可下载固定模板。Word、Excel、Markdown 等材料先点「把其他格式转成 JSON」，用提示词转换后再导入。</p>
               <p>如果某一行没被认出，导入预览会单独列出来，回到上一步改一下原文即可。</p>
             </section>
 
@@ -349,7 +349,7 @@ export default function ManagePanel({
 
             <section className="panel-section" aria-labelledby="help-ai-title">
               <h3 id="help-ai-title">AI 补全</h3>
-              <p>导入核对页会给出「让 AI 补全」：复制那段话给任意 AI，能把中文释义、词性、词源、对应词、例句和辨析情景一次补齐，专项练习导入后就能直接练；回复整段粘回来即可，不需要懂 JSON。</p>
+              <p>导入核对页会给出「让 AI 补全」：复制那段话给任意 AI，能把中文释义、词性、词源、对应词、例句和辨析情景一次补齐，专项练习导入后就能直接练；只粘贴完整 JSON 数组，不带代码围栏；格式错误会指出位置。</p>
             </section>
           </div>
         ) : null}

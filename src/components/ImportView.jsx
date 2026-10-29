@@ -1,25 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   normalizeDeck,
-  parseDeckFromTextDetailed,
-  readImportFile,
 } from "../utils/deckImport.js";
 import {
   buildFillPrompt,
   buildWorksheetPrompt,
-  detectWorksheetMismatch,
   mergeFilledEntries,
   needsFillMaterial,
   parseMaterialReply,
 } from "../utils/importFill.js";
 
+import { parseJsonDeck, JSON_TEMPLATE } from "../utils/jsonDeck.js";
+
 const EMPTY_ENTRIES = [];
-const MATERIAL_REPLY_PLACEHOLDER = `abandon | v. | 放弃；抛弃 | to leave somebody or something
-对应词: quit — 主动停止，abandon 更强调彻底丢下
-例句1: They abandon the plan at noon.
-重点1: abandon the plan
-情景: The team stops a project because the money is gone.
-辨析: She stops playing tennis because her knee hurts. | quit | 主动停止。`;
+const MATERIAL_REPLY_PLACEHOLDER = JSON.stringify(JSON_TEMPLATE, null, 2);
 
 const STEPS = [
   ["input", "放入"],
@@ -79,13 +73,13 @@ export default function ImportView({
 
   const acceptText = (text, label = "") => {
     try {
-      const parsed = parseDeckFromTextDetailed(text);
+      const parsed = { entries: parseJsonDeck(text), format: "json", skipped: [] };
       const normalized = normalizeDeck(parsed.entries);
       if (!normalized.length) throw new Error("没有认出可用的单词，请检查词表内容。");
       setDraft({
         ...parsed,
         entries: normalized,
-        worksheetLike: detectWorksheetMismatch(normalized),
+        worksheetLike: false,
         sourceName: label,
       });
       setSourceText(text);
@@ -109,7 +103,8 @@ export default function ImportView({
     setFailedFile("");
     setParsing(true);
     try {
-      acceptText(await readImportFile(file), file.name);
+      if (!file.name.toLowerCase().endsWith(".json")) throw new Error("只支持 .json 词表。请先用下方提示词把原材料转成 JSON。");
+      acceptText(await file.text(), file.name);
     } catch (fileError) {
       setError(fileError?.message || "无法读取这个文件。");
       setFailedFile(file.name);
@@ -133,8 +128,8 @@ export default function ImportView({
   };
 
   const openFailedFileAssist = () => {
-    if (!failedFile) return;
-    setDraft({ entries: [], skipped: [], worksheetLike: true, sourceName: failedFile });
+
+    setDraft({ entries: [], skipped: [], worksheetLike: true, sourceName: failedFile || "待转换的材料" });
     setError("");
     setAssistReply("");
     setAssistError("");
@@ -157,7 +152,7 @@ export default function ImportView({
   const copyFillPrompt = async () => {
     try {
       await navigator.clipboard.writeText(buildFillPrompt(entries));
-      setCopyNotice("已复制。发给 AI 后，把整段回复粘贴到下面。");
+      setCopyNotice("已复制。发给 AI 后，把完整 JSON 数组粘贴到下面。");
     } catch {
       setCopyNotice("复制失败，请展开「看看这段话」手动复制。");
     }
@@ -181,7 +176,6 @@ export default function ImportView({
     try {
       const normalized = normalizeDeck(parseMaterialReply(assistReply));
       if (!normalized.length) throw new Error("没有在回复里找到词表。请让 AI 按提示里的格式重新输出。");
-      if (detectWorksheetMismatch(normalized)) throw new Error("回复里还带着页码，或者单词和释义没有配好。请让 AI 按格式重发。");
       setDraft({
         entries: normalized,
         skipped: [],
@@ -239,11 +233,11 @@ export default function ImportView({
         draft?.worksheetLike ? (
           <div className="import-step-body">
             <button type="button" className="text-button import-back" onClick={backToInput}>← 换一份</button>
-            <h1 id="import-title" ref={headingRef} tabIndex="-1">这份表要请 AI 读一下。</h1>
+            <h1 id="import-title" ref={headingRef} tabIndex="-1">先转成 JSON 词表。</h1>
             <p className="import-summary">
               {entries.length
                 ? "它像是匹配/填空题：单词和释义分开放，闪词猜不出谁配谁。"
-                : "这份文件闪词读不出来，但 AI 可以。"}
+                : "把原文件或文字交给 AI，按模板转成 JSON 后再导入。"}
             </p>
             {draft.sourceName ? <p className="assist-source">{draft.sourceName}</p> : null}
 
@@ -260,7 +254,7 @@ export default function ImportView({
                 <textarea className="fill-prompt" readOnly rows="10" value={buildWorksheetPrompt()} onFocus={(event) => event.target.select()} aria-label="整理提示词" />
               </details>
               <p className="fill-step"><span>2</span>打开 <a className="text-button" href="https://chat.deepseek.com/" target="_blank" rel="noreferrer">DeepSeek</a>，上传这份原文件，再把刚复制的话发过去。</p>
-              <p className="fill-step"><span>3</span>把 AI 的回复粘贴回来。</p>
+              <p className="fill-step"><span>3</span>把 AI 返回的 JSON 数组粘贴回来。</p>
               <textarea
                 className="fill-reply"
                 rows="6"
@@ -314,7 +308,7 @@ export default function ImportView({
                 <summary>看看这段话</summary>
                 <textarea className="fill-prompt" readOnly rows="10" value={buildFillPrompt(entries)} onFocus={(event) => event.target.select()} aria-label="补全提示词" />
               </details>
-              <p className="fill-step"><span>2</span>把 AI 的回复整段粘贴回来。</p>
+              <p className="fill-step"><span>2</span>只粘贴 AI 返回的 JSON 数组，不带代码围栏。</p>
               <textarea
                 className="fill-reply"
                 rows="7"
@@ -323,7 +317,7 @@ export default function ImportView({
                 placeholder={MATERIAL_REPLY_PLACEHOLDER}
                 aria-label="AI 回复"
               />
-              <p className="fill-hint">词多时一次可能输出不完：先粘贴已经生成的部分，剩下的还能再补。</p>
+              <p className="fill-hint">词多可分批补全，但每批必须是完整 JSON 数组；截断的回复不会导入。</p>
               {fillError ? <p className="inline-error" role="alert">{fillError}</p> : null}
               <button type="button" className="primary-action" onClick={applyFill}>识别并补全</button>
             </section>
@@ -391,24 +385,24 @@ export default function ImportView({
             >
               <input
                 type="file"
-                accept=".docx,.xlsx,.doc,.xls,.csv,.txt,.md,.markdown,.json"
+                accept=".json,application/json"
                 disabled={parsing}
                 onChange={(event) => { handleFile(event.target.files?.[0]); event.target.value = ""; }}
               />
               <span className="drop-icon"><FileIcon /></span>
               <strong>{parsing ? "正在识别…" : dragActive ? "松手，开始识别" : "上传文件"}</strong>
               <span>{parsing ? "马上就好" : "点击选择，或拖到这里"}</span>
-              <span className="drop-formats">Word · Excel · CSV · 文本</span>
+              <span className="drop-formats">只支持 JSON 词表</span>
               <span className="sr-only" role="status">{parsing ? "正在识别文件" : ""}</span>
             </label>
           ) : (
             <div className="paste-panel">
-              <p className="paste-hint">一行一个词，中文写在后面。</p>
+              <p className="paste-hint">只粘贴 JSON 数组，不带代码围栏或说明文字。</p>
               <textarea
                 ref={pasteRef}
                 value={sourceText}
                 onChange={(event) => setSourceText(event.target.value)}
-                placeholder={"abandon 放弃\nbenefit 好处"}
+                placeholder={MATERIAL_REPLY_PLACEHOLDER}
                 aria-label="单词表内容"
               />
               <button
@@ -428,9 +422,10 @@ export default function ImportView({
           )}
 
           {error ? <p className="inline-error" role="alert">{error}</p> : null}
-          {failedFile ? (
+          <p className="import-privacy"><a download="flashvocab-template.json" href={`data:application/json;charset=utf-8,${encodeURIComponent(MATERIAL_REPLY_PLACEHOLDER)}`}>下载 JSON 模板</a></p>
+          {stage === "input" ? (
             <button type="button" className="text-button import-ai-fallback" onClick={openFailedFileAssist}>
-              把这份文件交给 AI 整理
+              把其他格式转成 JSON
             </button>
           ) : null}
 

@@ -56,6 +56,7 @@ src/
     masteryStorage.js     掌握度的持久化与校验
   utils/
     deckImport.js         文件解包、文本解析、导出
+    jsonDeck.js           固定 JSON 校验和模板
     importFill.js         导入时补全的提示词、解析、合并、校验、worksheet 检测
   data/baseDeck.js        内置 24 词示例词表
   prompts/                复制给 AI 的提示词模板（深度理解）
@@ -146,39 +147,11 @@ AGENTS.md                 开发约定与当前行为契约（每次任务开始
 
 ## 6. 导入管线
 
-`src/utils/deckImport.js` 分两层：**文件层**决定文本从哪来，**文本层**决定怎么变成卡片。
+正式导入统一调用 `src/utils/jsonDeck.js` 的 `parseJsonDeck()`。上传只接受 `.json` 文件并调用 `file.text()`；粘贴和 AI 转换结果走同一校验。JSON 必须是非空数组，每项 term 是非空字符串，meaning / meaningZh 至少一个非空。模板由同模块的 `JSON_TEMPLATE` 提供下载并用于提示词，字段名固定，不接受别名、包装对象、代码围栏或说明文字。
 
-### 文件层：`readImportFile()`
+可选文本字段必须是字符串，examples 必须是 sentence/focus 对象数组且 focus 在 sentence 中原样出现（允许空 focus）；distractors/usageTags 是字符串数组；contrastScenarios 是 scenario/answer/explanation 对象数组。未知自定义字段保留。校验整份通过才进入预览，一条有错就整份拒绝并指出序号和字段，不静默跳词。预览不保存，明确开始才提交。
 
-| 输入 | 处理 |
-| --- | --- |
-| `.docx` | 自写 ZIP 中央目录解析（store / deflate，`DecompressionStream('deflate-raw')` 兜底 `'deflate'`），读 `word/document.xml`；表格每行转成 tab 分隔的一行，普通段落逐行 |
-| `.xlsx` | 同一套 ZIP 解析，读 `xl/sharedStrings.xml` + 第一个有内容的 `xl/worksheets/sheetN.xml`；列号由单元格 ref 换算 |
-| `.csv` / `.txt` / `.md` / `.json` | 直接 `file.text()` |
-| `.doc` / `.xls` / `.pdf` / 图片 | 明确报错并给出替代做法，不做不可靠的 OCR 或旧格式猜测 |
-
-不引入解压库是为了保持零运行时依赖，代价是不支持 ZIP64 与加密 Office 文件。
-
-### 文本层：`parseDeckFromTextDetailed()`
-
-按顺序尝试，前一步有结果就停：
-
-1. **Markdown 词条块**（`[Word]` + `- Meaning (EN):` / `- Sentence 1:` …）
-2. **带表头的 CSV / 表格**
-3. **JSON**（数组或 `{ entries }`，含代码块包裹）
-4. **分隔符表格**（tab / 竖线 / 多空格）
-5. **宽松列表**（`abandon 放弃`、`1. abandon v. 放弃`、`abandon /əˈbændən/`、`take off 起飞`、中文在前、英中分行）
-6. 都不成立则抛错，并回显第一行内容作为线索
-
-宽松解析同时返回 `skipped`（跳过的标题行、姓名日期行、页码行、完整句子行），核对页用它显示「N 行没识别」。
-
-### 英文释义 vs 例句
-
-只有「首字母大写且带 `.` `?` `!` `。` `？` `！` 结尾」的英文单元格才进 `examples`，其余英文短语进 `meaning`。加载旧词表时，如果 `meaning` 为空且只有一个无 `focus` 的小写定义例句，会把它移回 `meaning`。
-
-### worksheet 检测
-
-`detectWorksheetMismatch()` 在一次解析后判定这份文件不是「一行一个词」：出现 `(54)` 这类页码、释义被当成单词、单词位置是释义长句等。命中后不展示误导性预览，第 2 步切换成 AI 救援面板。文件级解析失败也走同一条退路。
+`deckImport.js` 保留历史文本/Office 工具和旧存储 normalization，不再供界面直接猜测导入格式。已有资产的兼容读取不变；旧数据中误作单个例句的英文定义仍会修复。非 JSON 材料可通过显式 AI 转换入口生成固定 JSON 后预览，不做 worksheet 猜测。
 
 ## 7. 导入时的 AI 补全
 
@@ -187,11 +160,11 @@ AGENTS.md                 开发约定与当前行为契约（每次任务开始
 | 函数 | 职责 |
 | --- | --- |
 | `needsFillMaterial(entry)` | 判断一个词是否缺「中文 / 英文释义、可出题的例句、对应词、辨析材料」 |
-| `buildFillPrompt(entries)` | 只列缺资料的词，输出普通文字块（竖线首行 + 词源 + 对应词 + 两组原形例句/重点 + 情景 + 辨析） |
+| `buildFillPrompt(entries)` | 只列缺资料的词，输出固定 JSON 数组（词义、词源、对应词、两组原形例句/重点、情景、辨析） |
 | `buildWorksheetPrompt()` | worksheet 路径：先要求 AI 完成配对，再按同一套字段输出 |
-| `parseMaterialReply(text)` | 支持竖线行、英文标签块（`Word:` / `Term:`）、`[term]` / `【term】` 块头、旧表格、旧 JSON |
+| `parseMaterialReply(text)` | 调用 parseJsonDeck，同正式导入使用一套严格 JSON 校验 |
 | `mergeFilledEntries()` | 按词（大小写不敏感）只填缺失字段，不覆盖已有内容 |
-| `detectWorksheetMismatch()` | 见上一节 |
+| `detectWorksheetMismatch()` | 历史检测工具；当前导入界面不再猜测 |
 
 合并校验（任一不通过就丢弃该词该字段，不写入）：
 
@@ -200,7 +173,7 @@ AGENTS.md                 开发约定与当前行为契约（每次任务开始
 - 辨析答案必须属于目标词和它的 `relatedWord`；
 - 只有字段标签、没有任何词条起头的回复视为格式错误，防止把 `POS:`、`Meaning (ZH):` 写成伪单词。
 
-返回值 `{ filled, remaining }`：部分回复可以接受，面板保持打开并允许再次复制补齐剩余词；全部补齐后面板收起。
+返回值 `{ filled, remaining }`：完整 JSON 数组内的部分词条批次可以接受；语法截断则整份拒绝，面板保持打开并允许再次复制补齐剩余词；全部补齐后面板收起。
 
 ## 8. 可选的 DeepSeek 进阶补全
 
@@ -247,7 +220,7 @@ npm run build       Vite 生产构建
 npm run check       以上四步串联，交付门槛
 ```
 
-当前基线：**99 项 Node 测试、64 项 UI 测试、ESLint、生产构建全绿**（2026-10-27 复核）。
+当前基线：**94 项 Node 测试、66 项 UI 测试、ESLint、生产构建全绿**（2026-10-29 复核；旧多格式 AI 回复测试已替换为 JSON 校验和原子失败测试）。
 
 测试与模块同目录（`*.test.js` / `*.test.jsx`），UI 环境配置在 `src/test/setup.js`。逻辑测试注入固定 `random` 和固定时间，不依赖真实随机数。
 
