@@ -29,7 +29,7 @@ export function SummaryView({ summary, onContinue, onPrepare, onQuiz }) {
       <section className="summary-practice" aria-labelledby="summary-practice-title">
         <h2 id="summary-practice-title">练一练</h2>
         <div className="summary-practice-grid">
-          {[["mcq", "看释义选词", "给中文，选英文"], ["scenario", "看情景选词", "给句子，选最合适的词"], ["bank", "填搭配", "句中缺一个搭配"], ["contrast", "辨析近义词", "两个近义词二选一"]].map(([kind, label, hint]) => (
+          {[["mcq", "看释义选词", "给定义，选对应词"], ["scenario", "看情景选词", "给句子，选最合适的词"], ["bank", "填搭配", "句中缺一个搭配"], ["contrast", "辨析近义词", "两个近义词二选一"]].map(([kind, label, hint]) => (
             <button key={kind} className="secondary-action summary-practice-button" type="button" aria-labelledby={`summary-${kind}-label`} aria-describedby={`summary-${kind}-hint`} onClick={() => onQuiz(kind)}>
               <strong id={`summary-${kind}-label`}>{label}</strong>
               <span id={`summary-${kind}-hint`}>{hint}</span>
