@@ -7,6 +7,7 @@
 - 新增静态 `/guide/` 使用说明页：适用场景、三步导入、JSON 词表格式、键位、错词加练、专项练习、数据存放和 7 条 FAQ，带独立 canonical、Breadcrumb 与 FAQPage 结构化数据，页面不依赖 JavaScript。
 - 应用界面、学习行为和存储都没有改动；`npm run check` 仍为 97 项 Node、74 项 UI、ESLint 与生产构建全绿。生产构建的抓取文件、结构化数据、1280/390 明暗 Chrome 截图见 [验证记录](docs/validation-2026-10-31/)。
 - 需要站点所有者操作的部分：Google Search Console 验证、提交 sitemap、请求编入；本机无法直接确认 Google 收录状态（搜索页对自动请求要求人机验证）。
+- 推送 `3799ab1` 后 Vercel 自动生成生产部署（`dpl_2jiH84PfnRDsgAiVp3YwAhzMGCdn`，2026-10-31 22:51:43），线上 title、`/robots.txt`、`/sitemap.xml`、`/guide/`、`/og.png` 均按新版本返回。
 
 ## 2026-10-30 — 专项练习增加「我不知道」
 

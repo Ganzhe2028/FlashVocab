@@ -79,4 +79,23 @@
 
 ## 线上复查
 
-（部署后补：首页 title、`/robots.txt`、`/sitemap.xml`、`/guide/`、`/og.png` 的状态码和内容。）
+推送 `3799ab1` 后 Vercel 自动部署，项目 `new-vocab-singlehtml` 于 2026-10-31 22:51:43（+08:00）生成生产部署 `dpl_2jiH84PfnRDsgAiVp3YwAhzMGCdn`，约 17 秒后 `bdc.isaacbao.cn` 返回新版本：
+
+| 路径 | 状态 | Content-Type | 字节 |
+| --- | --- | --- | --- |
+| `/` | 200 | text/html; charset=utf-8 | 6795 |
+| `/robots.txt` | 200 | text/plain; charset=utf-8 | 69 |
+| `/sitemap.xml` | 200 | application/xml | 298 |
+| `/guide/` | 200 | text/html; charset=utf-8 | 23210 |
+| `/guide` | 200 | text/html; charset=utf-8 | 23210 |
+| `/favicon.svg` | 200 | image/svg+xml | 227 |
+| `/og.png` | 200 | image/png | 69948 |
+| `/icon-192.png` | 200 | image/png | 7943 |
+| `/icon-512.png` | 200 | image/png | 25245 |
+| `/apple-touch-icon.png` | 200 | image/png | 6943 |
+| `/guide/images/import.png` | 200 | image/png | 30029 |
+| `/guide/images/study.png` | 200 | image/png | 56764 |
+
+线上首页 head 已生效：`<title>闪词 FlashVocab｜把单词表丢进来，三分钟开始背单词</title>`、新的 description、`canonical=https://bdc.isaacbao.cn/`，HTML 里有 1 个 JSON-LD 块；`/guide/` 的 title、canonical、`WebPage`/`BreadcrumbList`/`FAQPage` 与 7 条 `<details>` 都在，`/robots.txt` 和 `/sitemap.xml` 内容与仓库一致。
+
+线上 headless Chrome 渲染首页得到 27 行文本，三步向导正常挂载。与本地 python 静态服务器的差异：Vercel 对 `/guide` 也直接返回 200（不再 301 到 `/guide/`），canonical 固定带斜杠版本，重复 URL 由 canonical 收敛。
