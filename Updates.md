@@ -1,5 +1,13 @@
 # Updates
 
+## 2026-10-31 — Google 收录基线：结构化数据、sitemap 与静态说明页
+
+- 首页 `index.html` 补全 SEO head：title/description、canonical、robots、Open Graph/Twitter、图标、主题色，以及 `WebSite` + `Organization` + `WebApplication` 的 JSON-LD；无 JavaScript 时显示一段简要说明和进入方式。
+- 新增 `public/robots.txt`、`public/sitemap.xml`、闪电 favicon（SVG + 192/512 PNG + apple-touch-icon）和 1200×630 的 `og.png`。
+- 新增静态 `/guide/` 使用说明页：适用场景、三步导入、JSON 词表格式、键位、错词加练、专项练习、数据存放和 7 条 FAQ，带独立 canonical、Breadcrumb 与 FAQPage 结构化数据，页面不依赖 JavaScript。
+- 应用界面、学习行为和存储都没有改动；`npm run check` 仍为 97 项 Node、74 项 UI、ESLint 与生产构建全绿。生产构建的抓取文件、结构化数据、1280/390 明暗 Chrome 截图见 [验证记录](docs/validation-2026-10-31/)。
+- 需要站点所有者操作的部分：Google Search Console 验证、提交 sitemap、请求编入；本机无法直接确认 Google 收录状态（搜索页对自动请求要求人机验证）。
+
 ## 2026-10-30 — 专项练习增加「我不知道」
 
 - 看释义选词、看情景选词新增「我不知道」，点选或按数字键 5；记一次答错并显示正确答案，按 N 继续。词数不足四个时也固定用 5，其他题型不变。

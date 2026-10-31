@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>闪词怎么用：把老师发的单词表变成三分钟练习｜闪词 FlashVocab</title>
+    <meta name="description" content="闪词使用说明：适合哪些场景、怎么导入 JSON 词表、键盘快捷键、错词加练和专项练习怎么用，以及词表数据保存在哪里。" />
+    <link rel="canonical" href="https://bdc.isaacbao.cn/guide/" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <meta name="theme-color" content="#f7f2e9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121918" media="(prefers-color-scheme: dark)" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="闪词 FlashVocab" />
+    <meta property="og:title" content="闪词怎么用：把老师发的单词表变成三分钟练习" />
+    <meta property="og:description" content="从导入词表到认词、拼写和专项练习，一份写给第一次用闪词的人的说明。" />
+    <meta property="og:url" content="https://bdc.isaacbao.cn/guide/" />
+    <meta property="og:image" content="https://bdc.isaacbao.cn/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="闪词：把单词表丢进来，三分钟开始背单词" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="闪词怎么用：把老师发的单词表变成三分钟练习" />
+    <meta name="twitter:description" content="从导入词表到认词、拼写和专项练习，一份写给第一次用闪词的人的说明。" />
+    <meta name="twitter:image" content="https://bdc.isaacbao.cn/og.png" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/icon-192.png" sizes="192x192" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebPage",
+            "@id": "https://bdc.isaacbao.cn/guide/#webpage",
+            "url": "https://bdc.isaacbao.cn/guide/",
+            "name": "闪词怎么用：把老师发的单词表变成三分钟练习",
+            "description": "闪词使用说明：适合哪些场景、怎么导入 JSON 词表、键盘快捷键、错词加练和专项练习怎么用，以及词表数据保存在哪里。",
+            "inLanguage": "zh-CN",
+            "isPartOf": { "@id": "https://bdc.isaacbao.cn/#website" }
+          },
+          {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "闪词", "item": "https://bdc.isaacbao.cn/" },
+              { "@type": "ListItem", "position": 2, "name": "使用说明", "item": "https://bdc.isaacbao.cn/guide/" }
+            ]
+          },
+          {
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "闪词免费吗？",
+                "acceptedAnswer": { "@type": "Answer", "text": "免费。闪词是纯静态网页，没有账号体系，也没有需要付费解锁的功能。" }
+              },
+              {
+                "@type": "Question",
+                "name": "用闪词要注册或者装 App 吗？",
+                "acceptedAnswer": { "@type": "Answer", "text": "都不用。打开网页就能导入词表开始背，词表和进度只保存在当前浏览器。" }
+              },
+              {
+                "@type": "Question",
+                "name": "我的词表会被上传吗？",
+                "acceptedAnswer": { "@type": "Answer", "text": "不会。词表、移出记录和掌握度都保存在这台设备的浏览器本地存储里，没有服务器存档。页面里复制提示词交给 AI 的补全完全由你手动操作，闪词不会自动上传；进阶补全需要你自己填 DeepSeek API key，只有你发起请求时才会把缺失的字段发给 DeepSeek。" }
+              },
+              {
+                "@type": "Question",
+                "name": "支持 Word、Excel、PDF 吗？",
+                "acceptedAnswer": { "@type": "Answer", "text": "闪词的导入只接受 .json 文件或纯 JSON 数组。Word、Excel、Markdown、PDF 等材料先用页面里的「把其他格式转成 JSON」复制提示词，交给任意 AI 转成 JSON 数组，再粘贴回来导入。" }
+              },
+              {
+                "@type": "Question",
+                "name": "手机上能用吗？",
+                "acceptedAnswer": { "@type": "Answer", "text": "能用，页面适配窄屏。闪词以键盘操作为主，手机上没有外接键盘时，用页面上的按钮也可以完成认词、拼写和练习。" }
+              },
+              {
+                "@type": "Question",
+                "name": "换电脑或清理浏览器数据后词表还在吗？",
+                "acceptedAnswer": { "@type": "Answer", "text": "不在。数据只在当前浏览器里，换设备、换浏览器或清理站点数据都会丢失。词表面板提供 JSON 导出，重要词表建议导出一份备份。" }
+              },
+              {
+                "@type": "Question",
+                "name": "能导出词表吗？",
+                "acceptedAnswer": { "@type": "Answer", "text": "能。词表面板可以导出 JSON，导出的文件可以直接再导入闪词，也可以留作备份。" }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
+    <style>
+      :root {
+        --ink: #193936;
+        --ink-secondary: #455b56;
+        --muted: #61706b;
+        --paper: #f7f2e9;
+        --paper-strong: #fffdf8;
+        --teal: #117d72;
+        --teal-dark: #0c625a;
+        --line: #d9d2c5;
+        --line-soft: #ece6dc;
+        --code-bg: #efe9dd;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ink: #e5ece8;
+          --ink-secondary: #bdc9c4;
+          --muted: #9ba9a4;
+          --paper: #121918;
+          --paper-strong: #18211f;
+          --teal: #58b8aa;
+          --teal-dark: #7bc9bd;
+          --line: #34423e;
+          --line-soft: #2b3734;
+          --code-bg: #22302c;
+        }
+      }
+      * { box-sizing: border-box; }
+      html { background: var(--paper); color: var(--ink); }
+      body {
+        margin: 0;
+        padding: 0 24px 72px;
+        color: var(--ink);
+        background: var(--paper);
+        font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        font-size: 17px;
+        line-height: 1.8;
+        -webkit-font-smoothing: antialiased;
+      }
+      a { color: var(--teal-dark); text-underline-offset: 4px; }
+      a:hover { color: var(--teal); }
+      .skip-link {
+        position: absolute;
+        left: -9999px;
+        top: 0;
+        padding: 10px 16px;
+        background: var(--teal);
+        color: #fff;
+        border-radius: 0 0 8px 0;
+        z-index: 10;
+      }
+      .skip-link:focus { left: 0; }
+      .site-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        max-width: 46rem;
+        margin: 0 auto;
+        padding: 24px 0 18px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.15rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        color: var(--ink);
+        text-decoration: none;
+      }
+      .brand svg { width: 28px; height: 28px; display: block; }
+      .cta {
+        display: inline-block;
+        padding: 9px 18px;
+        border-radius: 999px;
+        background: var(--teal);
+        color: #fff;
+        font-size: 0.95rem;
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .cta:hover { background: var(--teal-dark); color: #fff; }
+      main { max-width: 46rem; margin: 0 auto; }
+      .eyebrow {
+        margin: 44px 0 10px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        color: var(--teal-dark);
+      }
+      h1 {
+        margin: 0 0 18px;
+        font-size: clamp(1.7rem, 4.6vw, 2.3rem);
+        line-height: 1.28;
+        letter-spacing: 0.01em;
+      }
+      .lead {
+        margin: 0 0 26px;
+        font-size: 1.08rem;
+        color: var(--ink-secondary);
+      }
+      .toc {
+        margin: 0 0 12px;
+        padding: 18px 22px;
+        border: 1px solid var(--line-soft);
+        border-radius: 12px;
+        background: var(--paper-strong);
+      }
+      .toc p { margin: 0 0 8px; font-size: 0.86rem; font-weight: 600; color: var(--muted); }
+      .toc ol { margin: 0; padding-left: 1.25rem; }
+      .toc li { margin: 3px 0; }
+      .toc a { text-decoration: none; }
+      .toc a:hover { text-decoration: underline; }
+      h2 {
+        margin: 48px 0 14px;
+        padding-top: 22px;
+        border-top: 1px solid var(--line-soft);
+        font-size: 1.34rem;
+        line-height: 1.4;
+      }
+      h3 { margin: 26px 0 8px; font-size: 1.05rem; }
+      p { margin: 0 0 14px; }
+      ul, ol { margin: 0 0 16px; padding-left: 1.3rem; }
+      li { margin: 5px 0; }
+      strong { font-weight: 650; }
+      code {
+        padding: 1px 6px;
+        border-radius: 5px;
+        background: var(--code-bg);
+        font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+        font-size: 0.9em;
+      }
+      .callout {
+        margin: 0 0 18px;
+        padding: 14px 18px;
+        border-left: 3px solid var(--teal);
+        border-radius: 0 8px 8px 0;
+        background: var(--paper-strong);
+        color: var(--ink-secondary);
+      }
+      .callout p:last-child { margin-bottom: 0; }
+      figure { margin: 22px 0 26px; }
+      figure img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--paper-strong);
+      }
+      figcaption { margin-top: 8px; font-size: 0.86rem; color: var(--muted); }
+      table {
+        width: 100%;
+        margin: 0 0 20px;
+        border-collapse: collapse;
+        font-size: 0.96rem;
+      }
+      caption { caption-side: bottom; margin-top: 8px; font-size: 0.84rem; color: var(--muted); text-align: left; }
+      th, td { padding: 9px 12px; border-bottom: 1px solid var(--line-soft); text-align: left; vertical-align: top; }
+      th { font-weight: 600; color: var(--ink-secondary); white-space: nowrap; }
+      kbd {
+        display: inline-block;
+        min-width: 1.7em;
+        padding: 0 6px;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        background: var(--paper-strong);
+        font-family: inherit;
+        font-size: 0.86em;
+        text-align: center;
+      }
+      details {
+        margin: 0 0 10px;
+        padding: 14px 18px;
+        border: 1px solid var(--line-soft);
+        border-radius: 10px;
+        background: var(--paper-strong);
+      }
+      details[open] { padding-bottom: 16px; }
+      summary { cursor: pointer; font-weight: 600; }
+      details p { margin: 10px 0 0; color: var(--ink-secondary); }
+      details p:last-child { margin-bottom: 0; }
+      footer {
+        max-width: 46rem;
+        margin: 56px auto 0;
+        padding-top: 22px;
+        border-top: 1px solid var(--line-soft);
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+      footer p { margin: 0 0 6px; }
+      @media (max-width: 600px) {
+        body { padding: 0 18px 56px; font-size: 16px; }
+        .site-header { padding: 18px 0 14px; }
+        h2 { margin-top: 38px; }
+        th, td { padding: 8px 8px; }
+        th { white-space: normal; }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到正文</a>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="返回闪词首页">
+        <svg viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#117d72" /><path d="M62 8 L28 56 H50 L40 92 L74 42 H52 Z" fill="#fffdf8" /></svg>
+        闪词
+      </a>
+      <a class="cta" href="/">开始背单词</a>
+    </header>
+
+    <main id="main">
+      <p class="eyebrow">使用说明</p>
+      <h1>闪词怎么用：把老师发的单词表变成三分钟练习</h1>
+      <p class="lead">闪词是一个在浏览器里背单词的网页，为「老师今天发了单词表，明天就考」这种场景做的。下面这份说明讲清楚它在哪些情况下好用、词表怎么放进来、背的时候按什么键，以及数据存在哪里。</p>
+
+      <nav class="toc" aria-label="本页目录">
+        <p>本页目录</p>
+        <ol>
+          <li><a href="#why">闪词适合什么场景</a></li>
+          <li><a href="#import">三步把词表放进来</a></li>
+          <li><a href="#format">词表格式：一个 JSON 数组</a></li>
+          <li><a href="#keys">背的时候手不用离开键盘</a></li>
+          <li><a href="#review">答错的词会自己回来</a></li>
+          <li><a href="#practice">结算页和四种专项练习</a></li>
+          <li><a href="#waves">多份词表怎么管</a></li>
+          <li><a href="#data">数据存在哪里</a></li>
+          <li><a href="#faq">常见问题</a></li>
+        </ol>
+      </nav>
+
+      <h2 id="why">闪词适合什么场景</h2>
+      <p>临时小测通常长这样：老师发一份 Word 或 Excel，二三十个词，明天上课默写，考完这一组基本就不再碰。用完整的学习 App 背太重，用纸背又记不住哪些词错过。</p>
+      <p>闪词只做这一件事：你把这份词表放进去，它排好一次能背完的练习；考完把这一组收起来，期末再一起复习。适合这些情况：</p>
+      <ul>
+        <li>课堂临时小测、默写，词表只有二三十个词。</li>
+        <li>每学期积累了好几份词表，想按词表分组复习。</li>
+        <li>不想注册账号、不想装 App，打开网页就想开始。</li>
+        <li>习惯用键盘过词，一个词两三个键。</li>
+      </ul>
+
+      <h2 id="import">三步把词表放进来</h2>
+      <p>第一次打开闪词是三步向导，每一步只做一个决定。</p>
+      <figure>
+        <img src="/guide/images/import.png" alt="闪词首次打开的三步向导：放入、核对、开始" width="960" height="600" loading="lazy" />
+        <figcaption>首次打开：放入 → 核对 → 开始。</figcaption>
+      </figure>
+      <h3>1 放入</h3>
+      <p>选「文件」或「粘贴」：文件必须是 <code>.json</code>，粘贴必须是纯 JSON 数组。页面上可以下载 JSON 模板；如果手上的材料是 Word、Excel、Markdown 或 PDF，点「把其他格式转成 JSON」，复制提示词交给任意 AI 转换，再把结果粘回来。</p>
+      <h3>2 核对</h3>
+      <p>先看一眼识别结果：多少个词、多少个有中文释义、前五个词长什么样。有词缺资料时，这一页会多出一行「N 个词还没补全资料 · 让 AI 补全」。补全是可选项，不补也能直接开始背。</p>
+      <h3>3 开始</h3>
+      <p>确认后点「开始背这 N 个词」，直接进入认词，不用再点一次确认。</p>
+
+      <h2 id="format">词表格式：一个 JSON 数组</h2>
+      <p>闪词的导入边界只接受一个纯 JSON 数组，不带代码围栏、说明文字或包装对象。每个词条必须有 <code>term</code>，并且 <code>meaning</code>（英文释义）和 <code>meaningZh</code>（中文释义）至少填一个。</p>
+      <p>可选的字段包括词性、音节、注音、词源、对应词、例句和练习情景。例句写成 <code>{ "sentence": "...", "focus": "..." }</code>，其中 <code>focus</code> 必须原样出现在 <code>sentence</code> 里，它决定认词页高亮哪个搭配。</p>
+      <div class="callout">
+        <p>字段名必须用模板里的写法：<code>term</code>、<code>meaning</code>、<code>meaningZh</code> 等。写成 <code>word</code>、<code>definition</code> 这类别名会被拒绝，并指出是第几个词条。格式错误时整批不导入，不会悄悄丢词。</p>
+      </div>
+      <p>页面提供固定模板和「把其他格式转成 JSON」的提示词，照着填或者交给 AI 转都可以。模板下载、字段校验和提示词都在导入页第 1 步。</p>
+
+      <h2 id="keys">背的时候手不用离开键盘</h2>
+      <figure>
+        <img src="/guide/images/study.png" alt="认词页：中文释义用大字在上，英文释义和例句在下" width="960" height="600" loading="lazy" />
+        <figcaption>认词只问一件事：这个词你认不认识。按 Q 或 E 都会展开答案。</figcaption>
+      </figure>
+      <p>认词页只问一件事：这个词你认不认识。按 <kbd>Q</kbd> 或 <kbd>E</kbd> 都会展开答案——中文释义用大字在上，英英释义用小字在下，再下面是例句，词源和对应概念折叠着，想看再点。先判断再看答案，比一上来就读释义有效。</p>
+      <table>
+        <caption>认词和拼写阶段的常用键位。</caption>
+        <thead>
+          <tr><th scope="col">按键</th><th scope="col">作用</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><kbd>Q</kbd></td><td>认识</td></tr>
+          <tr><td><kbd>E</kbd></td><td>不认识</td></tr>
+          <tr><td><kbd>N</kbd></td><td>看答案之后：下一个</td></tr>
+          <tr><td><kbd>M</kbd></td><td>选错了，把这次判断改判成不认识</td></tr>
+          <tr><td><kbd>←</kbd></td><td>回看上一个词</td></tr>
+          <tr><td><kbd>Delete</kbd> / <kbd>Backspace</kbd></td><td>把这个词移出当前词表</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>暂停拼写</td></tr>
+        </tbody>
+      </table>
+      <p>拼写阶段用真实的输入框：提交空答案或答错会记一次不认识并清空输入，需要重新打对。练习阶段用数字键选答案，<kbd>N</kbd> 进入下一题。</p>
+
+      <h2 id="review">答错的词会自己回来</h2>
+      <ul>
+        <li>第一遍标「不认识」的词，这一轮里会<strong>多考两次</strong>，通常隔三张卡再出现。</li>
+        <li>同一个词<strong>连续两轮都答对</strong>，会<strong>歇一整轮</strong>（下一轮先不出现），再下一轮回来；回来还答对就继续歇，答错就回到正常队列。</li>
+        <li><strong>连续三次</strong>独立答对，这个词毕业，从认词里消失。毕业的词还能在词表里找回来。</li>
+      </ul>
+      <p>每一轮结束会有一张结算页，分开统计你第一次判断里认识和不认识的词，以及掌握度的分布。结算页可以直接继续下一轮，也可以进入专项练习。</p>
+
+      <h2 id="practice">结算页和四种专项练习</h2>
+      <p>专项练习从结算页或词表面板的「专项练习」进入，共有四种：</p>
+      <ul>
+        <li><strong>看释义选词：</strong>给出中文或英文释义，从几个词里选出对应的那个。</li>
+        <li><strong>看情景选词：</strong>给一句英文情景，选出最合适的词。</li>
+        <li><strong>填搭配：</strong>补全例句里的重点搭配。</li>
+        <li><strong>辨析近义词：</strong>在容易混的一对词里，按情景选出正确的那个。</li>
+      </ul>
+      <p>题目在进入时才生成，选项每次重新打乱。词表缺某类材料时，对应的练习会提示还缺什么，而不是出一张空题。</p>
+
+      <h2 id="waves">多份词表怎么管</h2>
+      <p>每次导入一张词表就是一个分组，旧的词表会先收起来，随时能在词表面板里切回来。词表面板还能改名、收起当前词表、把之前所有词表一起放出来做学期复习。导入新词表不会覆盖已有的词和掌握度。</p>
+
+      <h2 id="data">数据存在哪里</h2>
+      <p>词表、移出记录、掌握度和外观偏好都保存在当前浏览器的本地存储里，没有账号，也没有服务器存档。这意味着：</p>
+      <ul>
+        <li>换设备、换浏览器或清理站点数据，词表会丢，建议在词表面板导出 JSON 备份。</li>
+        <li>同一个人在不同浏览器里是两份独立的数据。</li>
+        <li>不开闪词的 AI 补全时，词表不会离开这台设备。</li>
+      </ul>
+
+      <h2 id="faq">常见问题</h2>
+      <details>
+        <summary>闪词免费吗？</summary>
+        <p>免费。闪词是纯静态网页，没有账号体系，也没有需要付费解锁的功能。</p>
+      </details>
+      <details>
+        <summary>用闪词要注册或者装 App 吗？</summary>
+        <p>都不用。打开网页就能导入词表开始背，词表和进度只保存在当前浏览器。</p>
+      </details>
+      <details>
+        <summary>我的词表会被上传吗？</summary>
+        <p>不会。词表、移出记录和掌握度都保存在这台设备的浏览器本地存储里，没有服务器存档。页面里复制提示词交给 AI 的补全完全由你手动操作，闪词不会自动上传；进阶补全需要你自己填 DeepSeek API key，只有你发起请求时才会把缺失的字段发给 DeepSeek。</p>
+      </details>
+      <details>
+        <summary>支持 Word、Excel、PDF 吗？</summary>
+        <p>闪词的导入只接受 <code>.json</code> 文件或纯 JSON 数组。Word、Excel、Markdown、PDF 等材料先用页面里的「把其他格式转成 JSON」复制提示词，交给任意 AI 转成 JSON 数组，再粘贴回来导入。</p>
+      </details>
+      <details>
+        <summary>手机上能用吗？</summary>
+        <p>能用，页面适配窄屏。闪词以键盘操作为主，手机上没有外接键盘时，用页面上的按钮也可以完成认词、拼写和练习。</p>
+      </details>
+      <details>
+        <summary>换电脑或清理浏览器数据后词表还在吗？</summary>
+        <p>不在。数据只在当前浏览器里，换设备、换浏览器或清理站点数据都会丢失。词表面板提供 JSON 导出，重要词表建议导出一份备份。</p>
+      </details>
+      <details>
+        <summary>能导出词表吗？</summary>
+        <p>能。词表面板可以导出 JSON，导出的文件可以直接再导入闪词，也可以留作备份。</p>
+      </details>
+
+      <p style="margin-top: 40px;"><a class="cta" href="/">打开闪词，开始背单词</a></p>
+    </main>
+
+    <footer>
+      <p>闪词 FlashVocab · <a href="/">在线使用</a> · <a href="https://github.com/Ganzhe2028/FlashVocab">GitHub 仓库</a></p>
+      <p>词表和进度只保存在本机浏览器，不用注册，不用安装。</p>
+    </footer>
+  </body>
+</html>

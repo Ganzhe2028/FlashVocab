@@ -25,6 +25,7 @@
 - 引擎要求：Node `^20.19.0 || >=22.12.0`（Vite 8 的要求）。本机默认 `node` 可能偏旧，用 Homebrew 的 `node@22` 跑构建更稳。
 - 构建产物在 `dist/`，**已纳入版本控制**，发布前需 `npm run build` 后一起提交。
 - 线上：<https://bdc.isaacbao.cn>（静态托管，无后端）。
+- 首页 `index.html` 同时是静态 SEO 外壳：title、description、canonical、Open Graph/Twitter、图标、`WebSite`/`Organization`/`WebApplication` JSON-LD 和 `<noscript>` 兜底都在这里；`public/` 下的 `robots.txt`、`sitemap.xml`、图标、`og.png` 与静态 `/guide/` 说明页由 Vite 原样复制进 `dist/`。
 
 ## 2. 目录结构
 
@@ -60,6 +61,13 @@ src/
     importFill.js         导入时补全的提示词、解析、合并、校验、worksheet 检测
   data/baseDeck.js        内置 24 词示例词表
   prompts/                复制给 AI 的提示词模板（深度理解）
+public/
+  robots.txt              允许抓取并指向 sitemap
+  sitemap.xml             首页与 /guide/ 的站点地图
+  favicon.svg             闪电标记图标（另有 192/512 PNG 与 apple-touch-icon）
+  og.png                  1200×630 社交分享图
+  guide/index.html        静态使用说明页（自带样式、canonical、FAQ 结构化数据）
+  guide/images/           说明页复用的两张界面截图
 docs/                     规格、设计、以及每次改版的验证证据
 vocab.md                  内置词表的人工可读版本
 Updates.md                面向用户和开发者的版本变更
@@ -220,13 +228,13 @@ npm run build       Vite 生产构建
 npm run check       以上四步串联，交付门槛
 ```
 
-当前基线：**97 项 Node 测试、74 项 UI 测试、ESLint、生产构建全绿**（自动检查于 2026-10-30 通过；同日完成「我不知道」的 [Chrome 验证](validation-2026-10-30-unknown/README.md)）。
+当前基线：**97 项 Node 测试、74 项 UI 测试、ESLint、生产构建全绿**（2026-10-30 完成「我不知道」的 [Chrome 验证](validation-2026-10-30-unknown/README.md)；2026-10-31 SEO 改动后复核仍为 97 项 Node + 74 项 UI，并完成生产构建与 Chrome 检查）。
 
 测试与模块同目录（`*.test.js` / `*.test.jsx`），UI 环境配置在 `src/test/setup.js`。逻辑测试注入固定 `random` 和固定时间，不依赖真实随机数。
 
 `.github/workflows/ci.yml`：push 与 PR 触发，ubuntu-latest + Node 22，`npm ci` 后跑 `npm run check`。
 
-行为改动光跑测试不够：涉及布局、发音、导入的改动要在真实 Chrome 里跑生产构建验证，并把截图和日志放进 `docs/validation-<date>/`。已有证据目录：`validation-2026-09-07`、`validation-2026-10-20`、`validation-2026-10-26`、`validation-2026-10-27`、`validation-2026-10-27-pronunciation`、`validation-2026-10-27-practice-fill`。
+行为改动光跑测试不够：涉及布局、发音、导入的改动要在真实 Chrome 里跑生产构建验证，并把截图和日志放进 `docs/validation-<date>/`。已有证据目录：`validation-2026-09-07`、`validation-2026-10-20`、`validation-2026-10-26`、`validation-2026-10-27`、`validation-2026-10-27-pronunciation`、`validation-2026-10-27-practice-fill`、`validation-2026-10-29`、`validation-2026-10-30-unknown`、`validation-2026-10-31`。
 
 ## 12. 构建、部署与维护
 
@@ -234,6 +242,18 @@ npm run check       以上四步串联，交付门槛
 - 线上是纯静态托管 `bdc.isaacbao.cn`，没有服务端，也没有环境变量；`index.html` 内联一段读取 `flashvocab-theme-v1` 的脚本，在首帧前定好主题，避免闪白。
 - 文档纪律（见 [AGENTS.md](../AGENTS.md)）：任何行为改动都要同步更新对应规格文档、`Updates.md` 与本文件的测试基线；带着过时的数字提交等于制造假证据。
 - 文档里有编号摘要时，每个编号都要锚到对应详述段落。
+
+### 12.1 搜索收录（Google SEO）
+
+静态 SEO 面由三部分组成：首页 `index.html` 的 head、`public/` 下的抓取文件、以及独立的 `/guide/` 说明页。
+
+- **首页 head**：`title` 用「闪词 FlashVocab｜把单词表丢进来，三分钟开始背单词」，`description` 说清场景和「只保存在本机」；`canonical` 固定 `https://bdc.isaacbao.cn/`；`robots` 为 `index, follow` 并放开大图预览；OG/Twitter 共用 `/og.png`。JSON-LD 用 `@graph` 声明 `WebSite`、`Organization`、`WebApplication`，`@id` 分别是 `https://bdc.isaacbao.cn/#website`、`#publisher`、`#app`，改结构时保持这些锚点稳定，别让实体引用断掉。
+- **抓取文件**：`robots.txt` 允许全部抓取并声明 sitemap；`sitemap.xml` 只列首页与 `/guide/`。改动首页或说明页内容后同步 bump `lastmod`（当前 2026-10-31），不要加不存在或有重定向的 URL。
+- **`/guide/` 说明页**：纯静态 HTML，不依赖 JS；有独立的 title/description/canonical/OG、`WebPage` + `BreadcrumbList` + `FAQPage` JSON-LD，正文覆盖适用场景、导入、词表格式、键位、复习、专项练习、数据存放和 FAQ。页面文案必须与当前行为一致；功能变化时先改说明页，再 bump sitemap。站内链接指回首页，线上按目录索引提供（`/guide/`，`/guide` 由托管平台 301 到带斜杠版本）。
+- **图标与分享图**：`favicon.svg` 与 192/512 PNG 是闪电标记，`og.png` 是 1200×630 的社交卡；品牌或 slogan 变化时重新生成，并同步 OG 的 `og:image:width/height`。
+- **搜索引擎收录**：代码只负责可抓取与结构化数据；Google Search Console 的域名验证、提交 sitemap、请求编入需要站点所有者操作。验证 token 的 `google-site-verification` meta 标签尚未加入仓库，验证后按需补到 `index.html`。
+
+本地验证：`npm run build` 后 `python3 -m http.server 4173 --directory dist`，确认 `/`、`/robots.txt`、`/sitemap.xml`、`/guide/`、`/favicon.svg`、`/og.png` 返回 200 且类型正确；再用 Chrome 检查 1280/390 宽度、明暗两种模式没有横向溢出、图片加载正常、控制台无报错。真实 Chrome 证据在 [validation-2026-10-31](validation-2026-10-31/README.md)。
 
 ## 13. 常见改动的落点
 
@@ -245,4 +265,5 @@ npm run check       以上四步串联，交付门槛
 | 改 AI 补全的提示词或解析 | `utils/importFill.js`，校验规则是硬约束，放松前先想清楚会不会写入坏数据 |
 | 加一种题型 | `questionBuilder.js` 加构造器 + `QuestionView` 加渲染 + 结算页入口 |
 | 改文案 / 布局 | 组件 + `index.css`，注意 390px、280px、200% 放大和减少动态效果四种状态 |
+| 改 SEO / 收录相关 | `index.html` 的 head、`public/` 的 `robots.txt`/`sitemap.xml`/`guide/`，按 12.1 本地验证；功能变化时同步说明页与 sitemap `lastmod` |
 | 换存储结构 | `storage/*` 与 `AGENTS.md` 的持久化段；必须写迁移，并且不能改卡片 ID 的签名 |
