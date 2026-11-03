@@ -68,7 +68,7 @@
               {
                 "@type": "Question",
                 "name": "支持 Word、Excel、PDF 吗？",
-                "acceptedAnswer": { "@type": "Answer", "text": "闪词的导入只接受 .json 文件或纯 JSON 数组。Word、Excel、Markdown、PDF 等材料先用页面里的「把其他格式转成 JSON」复制提示词，交给任意 AI 转成 JSON 数组，再粘贴回来导入。" }
+                "acceptedAnswer": { "@type": "Answer", "text": "闪词的导入只接受 .json 文件或纯 JSON 数组。Word、Excel、Markdown、PDF 等材料先用页面里的「复制转换提示词」复制提示词，交给任意 AI 转成 JSON 数组，再粘贴回来导入。" }
               },
               {
                 "@type": "Question",
@@ -339,7 +339,7 @@
         <figcaption>首次打开：放入 → 核对 → 开始。</figcaption>
       </figure>
       <h3>1 放入</h3>
-      <p>选「文件」或「粘贴」：文件必须是 <code>.json</code>，粘贴必须是纯 JSON 数组。页面上可以下载 JSON 模板；如果手上的材料是 Word、Excel、Markdown 或 PDF，点「把其他格式转成 JSON」，复制提示词交给任意 AI 转换，再把结果粘回来。</p>
+      <p>选「文件」或「粘贴」：文件必须是 <code>.json</code>，粘贴必须是纯 JSON 数组。页面上可以下载 JSON 模板。如果手上的材料是 Word、Excel、Markdown 或 PDF，直接点页面上的「复制转换提示词」，把提示词和你的词表文件或文字一起发给 DeepSeek 或 ChatGPT；再切回闪词的「粘贴」，把 AI 返回的 JSON 放进输入框并点「识别单词」。发送材料和复制结果都由你手动完成。</p>
       <h3>2 核对</h3>
       <p>先看一眼识别结果：多少个词、多少个有中文释义、前五个词长什么样。有词缺资料时，这一页会多出一行「N 个词还没补全资料 · 让 AI 补全」。补全是可选项，不补也能直接开始背。</p>
       <h3>3 开始</h3>
@@ -351,7 +351,7 @@
       <div class="callout">
         <p>字段名必须用模板里的写法：<code>term</code>、<code>meaning</code>、<code>meaningZh</code> 等。写成 <code>word</code>、<code>definition</code> 这类别名会被拒绝，并指出是第几个词条。格式错误时整批不导入，不会悄悄丢词。</p>
       </div>
-      <p>页面提供固定模板和「把其他格式转成 JSON」的提示词，照着填或者交给 AI 转都可以。模板下载、字段校验和提示词都在导入页第 1 步。</p>
+      <p>页面提供固定模板和「复制转换提示词」的提示词，照着填或者交给 AI 转都可以。模板下载、字段校验和提示词都在导入页第 1 步。</p>
 
       <h2 id="keys">背的时候手不用离开键盘</h2>
       <figure>
@@ -420,7 +420,7 @@
       </details>
       <details>
         <summary>支持 Word、Excel、PDF 吗？</summary>
-        <p>闪词的导入只接受 <code>.json</code> 文件或纯 JSON 数组。Word、Excel、Markdown、PDF 等材料先用页面里的「把其他格式转成 JSON」复制提示词，交给任意 AI 转成 JSON 数组，再粘贴回来导入。</p>
+        <p>闪词的导入只接受 <code>.json</code> 文件或纯 JSON 数组。Word、Excel、Markdown、PDF 等材料先用页面里的「复制转换提示词」复制提示词，交给任意 AI 转成 JSON 数组，再粘贴回来导入。</p>
       </details>
       <details>
         <summary>手机上能用吗？</summary>

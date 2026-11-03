@@ -161,9 +161,9 @@ export default function ImportView({
   const copyWorksheetPrompt = async () => {
     try {
       await navigator.clipboard.writeText(buildWorksheetPrompt());
-      setAssistCopyNotice("已复制。接下来去 DeepSeek 上传原文件。");
+      setAssistCopyNotice("已复制。把它和你的词表一起发给 DeepSeek 或 ChatGPT。");
     } catch {
-      setAssistCopyNotice("复制失败，请展开「看看这段话」手动复制。");
+      setAssistCopyNotice("复制失败，请展开提示词手动复制。");
     }
   };
 
@@ -423,11 +423,36 @@ export default function ImportView({
 
           {error ? <p className="inline-error" role="alert">{error}</p> : null}
           <p className="import-privacy"><a download="flashvocab-template.json" href={`data:application/json;charset=utf-8,${encodeURIComponent(MATERIAL_REPLY_PLACEHOLDER)}`}>下载 JSON 模板</a></p>
-          {stage === "input" ? (
-            <button type="button" className="text-button import-ai-fallback" onClick={openFailedFileAssist}>
-              把其他格式转成 JSON
-            </button>
-          ) : null}
+
+          <section className="conversion-guide" aria-labelledby="conversion-guide-title">
+            <h2 id="conversion-guide-title">词表还不是 JSON？让 AI 帮你转换</h2>
+            <ol className="conversion-steps">
+              <li className="fill-step fill-step-action">
+                <span>1</span>
+                <div className="fill-actions">
+                  <button type="button" className="secondary-action" onClick={copyWorksheetPrompt}>复制转换提示词</button>
+                  {assistCopyNotice ? <span className="fill-note" role="status">{assistCopyNotice}</span> : null}
+                </div>
+              </li>
+              <li className="fill-step">
+                <span>2</span>
+                <p>把你的词表和提示词一起发给 <a className="text-button" href="https://chat.deepseek.com/" target="_blank" rel="noreferrer">DeepSeek</a> 或 <a className="text-button" href="https://chatgpt.com/" target="_blank" rel="noreferrer">ChatGPT</a>。</p>
+              </li>
+              <li className="fill-step">
+                <span>3</span>
+                <p>把 AI 返回的 JSON 粘贴到上方「粘贴」框，再点「识别单词」。</p>
+              </li>
+            </ol>
+            <details className="fill-prompt-details">
+              <summary>看看提示词</summary>
+              <textarea className="fill-prompt" readOnly rows="10" value={buildWorksheetPrompt()} onFocus={(event) => event.target.select()} aria-label="整理提示词" />
+            </details>
+            {failedFile ? (
+              <button type="button" className="text-button import-ai-fallback" onClick={openFailedFileAssist}>
+                也可以在这里粘贴 AI 回复
+              </button>
+            ) : null}
+          </section>
 
           {!hasWaves ? (
             <button type="button" className="text-button import-sample" disabled={parsing} onClick={onSample}>

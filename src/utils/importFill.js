@@ -111,7 +111,7 @@ ${MATERIAL_RULES}
 ${targets.map(promptTerm).join("\n")}`;
 };
 
-export const buildWorksheetPrompt = () => `我在做一份英语词汇 worksheet。请阅读我上传的文件，先根据词库、词性、释义把每个单词和对应释义配对，再为每个词补全学习卡和专项练习需要的资料。
+export const buildWorksheetPrompt = () => `我在整理一份英语词汇表。请阅读我随这条提示词一起提供的词表文件或文字，先根据词库、词性、释义把每个单词和对应释义配对，再为每个词补全学习卡和专项练习需要的资料。
 如果原表是填空或匹配题，请先配对好单词和释义。原表有中文释义就沿用，没有就翻译成简短中文。
 严格按这个 JSON 数组格式输出：
 

@@ -161,6 +161,8 @@ AGENTS.md                 开发约定与当前行为契约（每次任务开始
 
 `deckImport.js` 保留历史文本/Office 工具和旧存储 normalization，不再供界面直接猜测导入格式。已有资产的兼容读取不变；旧数据中误作单个例句的英文定义仍会修复。非 JSON 材料可通过显式 AI 转换入口生成固定 JSON 后预览，不做 worksheet 猜测。
 
+导入第 1 步直接展示 AI 转换交接，不把入口藏进下一屏：用户点「复制转换提示词」复制 `buildWorksheetPrompt()`，把自己的词表文件或文字连同提示词发给 DeepSeek 或 ChatGPT，再切到「粘贴」提交返回的 JSON。提示词同时覆盖文件与文字材料，不要求应用上传源文件，也不需要 API key。折叠的「看看提示词」用于手动复制；文件读取失败时仍保留页内粘贴 AI 回复的备用面板。
+
 ## 7. 导入时的 AI 补全
 
 `src/utils/importFill.js`，纯前端、不联网——它只生成可复制的文字，并接收用户粘回来的文字。
@@ -248,7 +250,7 @@ npm run check       以上四步串联，交付门槛
 静态 SEO 面由三部分组成：首页 `index.html` 的 head、`public/` 下的抓取文件、以及独立的 `/guide/` 说明页。
 
 - **首页 head**：`title` 用「闪词 FlashVocab｜把单词表丢进来，三分钟开始背单词」，`description` 说清场景和「只保存在本机」；`canonical` 固定 `https://bdc.isaacbao.cn/`；`robots` 为 `index, follow` 并放开大图预览；OG/Twitter 共用 `/og.png`。JSON-LD 用 `@graph` 声明 `WebSite`、`Organization`、`WebApplication`，`@id` 分别是 `https://bdc.isaacbao.cn/#website`、`#publisher`、`#app`，改结构时保持这些锚点稳定，别让实体引用断掉。
-- **抓取文件**：`robots.txt` 允许全部抓取并声明 sitemap；`sitemap.xml` 只列首页与 `/guide/`。改动首页或说明页内容后同步 bump `lastmod`（当前 2026-10-31），不要加不存在或有重定向的 URL。
+- **抓取文件**：`robots.txt` 允许全部抓取并声明 sitemap；`sitemap.xml` 只列首页与 `/guide/`。改动首页或说明页内容后同步 bump `lastmod`（当前 2026-11-03），不要加不存在或有重定向的 URL。
 - **`/guide/` 说明页**：纯静态 HTML，不依赖 JS；有独立的 title/description/canonical/OG、`WebPage` + `BreadcrumbList` + `FAQPage` JSON-LD，正文覆盖适用场景、导入、词表格式、键位、复习、专项练习、数据存放和 FAQ。页面文案必须与当前行为一致；功能变化时先改说明页，再 bump sitemap。站内链接指回首页；线上 `/guide/` 与 `/guide` 都直接返回说明页（Vercel 静态托管），canonical 固定为带斜杠的 `https://bdc.isaacbao.cn/guide/`。
 - **图标与分享图**：`favicon.svg` 与 192/512 PNG 是闪电标记，`og.png` 是 1200×630 的社交卡；品牌或 slogan 变化时重新生成，并同步 OG 的 `og:image:width/height`。
 - **搜索引擎收录**：代码只负责可抓取与结构化数据；Google Search Console 的域名验证、提交 sitemap、请求编入需要站点所有者操作。验证 token 的 `google-site-verification` meta 标签尚未加入仓库，验证后按需补到 `index.html`。

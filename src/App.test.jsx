@@ -747,55 +747,43 @@ describe("FlashVocab 3.0", () => {
     expect(screen.getByRole("textbox", { name: "单词表内容" })).toBeTruthy();
   });
 
-  test("a matching worksheet routes to the AI rescue and replaces the broken preview", () => {
+  test("adding a list shows the AI conversion handoff and accepts the returned JSON", async () => {
+    saveAssets();
     render(<App />);
-    previewImport(
-      "unequivocally (54) highbrow (54)\ncommotion (57) disbelief (57)",
-    );
-    expect(screen.getByRole("alert").textContent).toContain("JSON 格式不正确");
-    fireEvent.click(
-      screen.getByRole("button", { name: "把其他格式转成 JSON" }),
-    );
+    openImport();
+    expect(screen.getByRole("heading", { name: "再加一组词。" })).toBeTruthy();
     expect(
-      screen.getByRole("heading", { name: "先转成 JSON 词表。" }),
+      screen.getByRole("heading", { name: "词表还不是 JSON？让 AI 帮你转换" }),
     ).toBeTruthy();
     const steps = [
-      ...document.querySelectorAll(".assist-panel .fill-step"),
+      ...document.querySelectorAll(".conversion-steps li"),
     ].map((step) => step.textContent);
-    expect(steps[0]).toContain("复制给 AI 的话");
-    expect(steps[1]).toContain("DeepSeek");
-    expect(steps[2]).toContain("粘贴回来");
-    fireEvent.click(screen.getByText("看看这段话"));
-    expect(screen.getByRole("textbox", { name: "整理提示词" }).value).toContain(
-      "上传的文件",
+    expect(steps[0]).toContain("复制转换提示词");
+    expect(steps[1]).toContain("你的词表和提示词一起发给");
+    expect(steps[2]).toContain("粘贴到上方「粘贴」框");
+    expect(screen.getByRole("link", { name: "DeepSeek" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "ChatGPT" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "复制转换提示词" }));
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(
+      expect.stringContaining("词表文件或文字"),
     );
-    fireEvent.change(screen.getByRole("textbox", { name: "AI 词表回复" }), {
+    expect(await screen.findByText(/已复制。把它和你的词表一起发给/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "粘贴" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "单词表内容" }), {
       target: {
         value: JSON.stringify([
-          {
-            term: "unequivocally",
-            pos: "adv.",
-            meaningZh: "明确地",
-            meaning: "in a way that leaves no doubt",
-            wordOrigin: "",
-            examples: [],
-          },
-          {
-            term: "highbrow",
-            pos: "adj.",
-            meaningZh: "高雅的",
-            meaning: "interested in serious culture",
-            wordOrigin: "",
-            examples: [],
-          },
+          { term: "unequivocally", meaningZh: "明确地" },
+          { term: "highbrow", meaningZh: "高雅的" },
         ]),
       },
     });
-    fireEvent.click(screen.getByRole("button", { name: "生成词表" }));
+    fireEvent.click(screen.getByRole("button", { name: "识别单词" }));
     expect(screen.getByRole("heading", { name: "这些词对吗？" })).toBeTruthy();
-    expect(screen.getByText(/AI 整理了 2 个词/)).toBeTruthy();
     expect(screen.getByText(/2 个有中文释义/)).toBeTruthy();
-    expect(screen.queryByText("highbrow (54)")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "开始背这 2 个词" }));
+    expect(currentWordButton()).not.toBeNull();
   });
 
   test("JSON definitions are shown as the English meaning, not as an example", () => {

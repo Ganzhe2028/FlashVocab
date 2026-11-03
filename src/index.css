@@ -658,6 +658,19 @@ textarea {
 .paste-panel .primary-action { justify-self: start; }
 .import-sample { display: inline-flex; align-items: center; min-height: 36px; margin-top: 24px; font-size: 0.82rem; }
 .import-privacy { margin: 20px 0 0; color: var(--ink-tertiary); font-size: 0.74rem; }
+.conversion-guide {
+  width: min(100%, 620px);
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.conversion-guide h2 { margin: 0; color: var(--ink); font-size: 0.95rem; letter-spacing: -0.01em; }
+.conversion-steps { display: grid; gap: 10px; margin: 14px 0 10px; padding: 0; list-style: none; }
+.conversion-steps .fill-step { align-items: flex-start; margin: 0; }
+.conversion-steps .fill-step-action { align-items: center; }
+.conversion-steps p { margin: 0; }
+.conversion-steps .text-button { min-height: 0; padding: 0; font: inherit; vertical-align: baseline; }
+.conversion-guide .fill-prompt-details { margin-left: 30px; }
 
 .import-summary { margin: 14px 0 0; color: var(--muted); font-size: 0.9rem; }
 .import-summary strong { color: var(--ink); font-weight: 700; }
