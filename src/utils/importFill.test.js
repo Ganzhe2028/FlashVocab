@@ -51,6 +51,11 @@ test("both prompts require the same fixed JSON schema", () => {
   for (const prompt of [buildFillPrompt([{ term: "resilient" }]), buildWorksheetPrompt()]) {
     for (const field of ["term", "meaningZh", "meaning", "examples", "focus", "miniScenario", "contrastScenarios"]) assert.ok(prompt.includes(field));
     assert.match(prompt, /不要代码围栏/);
+    assert.match(prompt, /sentence 和 focus 必须原样包含 term 的精确字符串/);
+    assert.match(prompt, /Fans boo\.\.\./);
+    assert.match(prompt, /We have a blast\.\.\./);
+    assert.match(prompt, /answer 只能是 term 或 relatedWord 的英文词/);
+    assert.match(prompt, /Her kindness and beauty enamor everyone she meets\./);
   }
   assert.match(buildFillPrompt([{ ...completeEntry, examples: [] }]), /abandon（已有对应词：quit，请沿用）/);
   assert.ok(!buildFillPrompt([completeEntry]).endsWith("abandon"));

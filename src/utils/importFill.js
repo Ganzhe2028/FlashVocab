@@ -89,8 +89,9 @@ const MATERIAL_FORMAT = JSON.stringify(JSON_TEMPLATE, null, 2);
 const MATERIAL_RULES = `要求：
 - 只输出一个完整 JSON 数组，不要代码围栏、说明、表格、竖线行或包装对象。字段名和类型严格按模板。
 - term 保持原样；meaningZh 为中文释义，meaning 为简短英文释义，pos 为词性，wordOrigin 为可靠中文词源，不确定留空。
-- relatedWord 是对应词及中文区别；括号给了对应词的，辨析答案就用它。
-- examples 提供两组原形例句；sentence 是例句，focus 是其中原样出现的重点（含原单词）。
+- relatedWord 只写一个对应词及中文区别。contrastScenarios.answer 只能是 term 或 relatedWord 的英文词，不得引入第三个答案词。
+- examples 提供两组例句。sentence 和 focus 必须原样包含 term 的精确字符串；focus 是包含该字符串的连续重点。
+- 不得只用过去式、过去分词、现在分词或第三人称单数替代 term：term 为 Boo 就写 Fans boo...，不要 booed；term 为 Have a blast 就写 We have a blast...，不要 had a blast。即使目标词常以变形出现，也要改写成包含 term 原形的自然句子，不能牺牲语法；term 为 Enamor 可写 Her kindness and beauty enamor everyone she meets.
 - miniScenario 是适用目标词的英文情景；contrastScenarios 每项包含 scenario、answer、explanation，提供对应词的辨析情景。情景不出现答案词。
 - 不要漏词或新增词条；保留原有词义和资料。分批时每批也必须是完整 JSON 数组。`;
 

@@ -171,7 +171,7 @@ AGENTS.md                 开发约定与当前行为契约（每次任务开始
 | --- | --- |
 | `needsFillMaterial(entry)` | 判断一个词是否缺「中文 / 英文释义、可出题的例句、对应词、辨析材料」 |
 | `buildFillPrompt(entries)` | 只列缺资料的词，输出固定 JSON 数组（词义、词源、对应词、两组原形例句/重点、情景、辨析） |
-| `buildWorksheetPrompt()` | worksheet 路径：先要求 AI 完成配对，再按同一套字段输出 |
+| `buildWorksheetPrompt()` | 支持文件或文字材料：先要求 AI 完成配对，再按同一套字段输出；sentence/focus 必须包含 term 的精确字符串，并给出 Boo、Have a blast、Enamor 示例，防止只写变形或牺牲语法；辨析 answer 只能属于 term/relatedWord 这一对 |
 | `parseMaterialReply(text)` | 调用 parseJsonDeck，同正式导入使用一套严格 JSON 校验 |
 | `mergeFilledEntries()` | 按词（大小写不敏感）只填缺失字段，不覆盖已有内容 |
 | `detectWorksheetMismatch()` | 历史检测工具；当前导入界面不再猜测 |

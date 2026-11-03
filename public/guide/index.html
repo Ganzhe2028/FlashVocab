@@ -347,7 +347,7 @@
 
       <h2 id="format">词表格式：一个 JSON 数组</h2>
       <p>闪词的导入边界只接受一个纯 JSON 数组，不带代码围栏、说明文字或包装对象。每个词条必须有 <code>term</code>，并且 <code>meaning</code>（英文释义）和 <code>meaningZh</code>（中文释义）至少填一个。</p>
-      <p>可选的字段包括词性、音节、注音、词源、对应词、例句和练习情景。例句写成 <code>{ "sentence": "...", "focus": "..." }</code>，其中 <code>focus</code> 必须原样出现在 <code>sentence</code> 里，它决定认词页高亮哪个搭配。</p>
+      <p>可选的字段包括词性、音节、注音、词源、对应词、例句和练习情景。例句写成 <code>{ "sentence": "...", "focus": "..." }</code>，其中 <code>focus</code> 必须原样出现在 <code>sentence</code> 里，它决定认词页高亮哪个搭配。AI 转换提示词还会要求例句与重点包含词条的精确原形字符串，辨析答案只能属于目标词和对应词这一对。</p>
       <div class="callout">
         <p>字段名必须用模板里的写法：<code>term</code>、<code>meaning</code>、<code>meaningZh</code> 等。写成 <code>word</code>、<code>definition</code> 这类别名会被拒绝，并指出是第几个词条。格式错误时整批不导入，不会悄悄丢词。</p>
       </div>

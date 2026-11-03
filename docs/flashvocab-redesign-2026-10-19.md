@@ -494,3 +494,5 @@ E 展示真实生成的微画面、SVG 小图、用法标签和对位说明；im
 首次导入和学习中途「添加新词表」的第 1 步都直接显示「复制转换提示词」，不再把关键动作藏在下一屏。三步文案固定为：复制提示词；把自己的词表文件或文字和提示词一起发给 DeepSeek 或 ChatGPT；把返回的 JSON 粘贴到闪词的「粘贴」框并识别。`buildWorksheetPrompt()` 同步支持文件和文字材料，JSON 校验与开始学习流程不变。
 
 验证：`npm run check` 通过 97 项 Node 测试、74 项 UI 测试、ESLint 和生产构建。真实 Chrome 生产预览覆盖首次导入和学习中途添加词表，实测提示词复制内容、JSON 粘贴、核对和开始学习；390px 下 `documentWidth = viewportWidth = 390`。浏览器扩展的合成点击受系统剪贴板权限限制时，页面会显示手动复制降级提示；授予页面内捕获后验证了实际复制文本与成功反馈。桌面首屏截图已更新，窄屏证据见 [添加词表 390px](validation-2026-11-03/add-list-mobile.png)，检查日志见 [check.log](validation-2026-11-03/check.log)。
+
+Chapter 5 真实 worksheet 验收使用 `HTA Chapter 5 Vocabulary Worksheet Student Copy.docx`。首轮 25 词全部返回并导入，但 Have a blast、Enamor、Pitch、Boo、Culminate 只写变形例句，核对页显示 5 个缺资料；强化精确原形字符串与自然语法后，第二轮只剩 Dire 的辨析 answer 误用第三词 trivial。最终提示词同时要求 answer 只能属于 term/relatedWord，第三轮同一文件、新 DeepSeek 对话返回 25 词、0 个缺资料，生产核对页显示 25/25 中文释义并成功进入 1/25 认词。证据见 [DOCX 提示](validation-2026-11-03/chapter5-docx-notice.png) 和 [最终核对页](validation-2026-11-03/chapter5-final-preview.png)。
