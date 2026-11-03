@@ -422,7 +422,7 @@ export default function ImportView({
           )}
 
           {error ? <p className="inline-error" role="alert">{error}</p> : null}
-          <p className="import-privacy"><a download="flashvocab-template.json" href={`data:application/json;charset=utf-8,${encodeURIComponent(MATERIAL_REPLY_PLACEHOLDER)}`}>下载 JSON 模板</a></p>
+          {/* <p className="import-privacy"><a download="flashvocab-template.json" href={`data:application/json;charset=utf-8,${encodeURIComponent(MATERIAL_REPLY_PLACEHOLDER)}`}>下载 JSON 模板</a></p> */}
 
           <section className="conversion-guide" aria-labelledby="conversion-guide-title">
             <h2 id="conversion-guide-title">词表还不是 JSON？让 AI 帮你转换</h2>
