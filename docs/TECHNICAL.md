@@ -155,7 +155,7 @@ AGENTS.md                 开发约定与当前行为契约（每次任务开始
 
 ## 6. 导入管线
 
-正式导入统一调用 `src/utils/jsonDeck.js` 的 `parseJsonDeck()`。上传只接受 `.json` 文件并调用 `file.text()`；粘贴和 AI 转换结果走同一校验。JSON 必须是非空数组，每项 term 是非空字符串，meaning / meaningZh 至少一个非空。同模块的 `JSON_TEMPLATE` 用于提示词与占位示例，字段名固定，不接受别名、包装对象、代码围栏或说明文字。
+正式导入统一调用 `src/utils/jsonDeck.js` 的 `parseJsonDeck()`。上传只接受 `.json` 文件并调用 `file.text()`；粘贴和 AI 转换结果走同一校验。JSON 必须是非空数组，每项 term 是非空字符串，meaning / meaningZh 至少一个非空。解析前会先拆掉**一层**最外层代码块：AI 回复常用 ` ```json ` 包住数组，粘贴整段即可；代码块外仍夹带说明文字会被拒绝。同模块的 `JSON_TEMPLATE` 用于提示词与占位示例，字段名固定，不接受别名或包装对象。
 
 可选文本字段必须是字符串，examples 必须是 sentence/focus 对象数组且 focus 在 sentence 中原样出现（允许空 focus）；distractors/usageTags 是字符串数组；contrastScenarios 是 scenario/answer/explanation 对象数组。未知自定义字段保留。校验整份通过才进入预览，一条有错就整份拒绝并指出序号和字段，不静默跳词。预览不保存，明确开始才提交。
 
@@ -170,7 +170,7 @@ AGENTS.md                 开发约定与当前行为契约（每次任务开始
 | 函数 | 职责 |
 | --- | --- |
 | `needsFillMaterial(entry)` | 判断一个词是否缺「中文 / 英文释义、可出题的例句、对应词、辨析材料」 |
-| `buildFillPrompt(entries)` | 只列缺资料的词，输出固定 JSON 数组（词义、词源、对应词、两组原形例句/重点、情景、辨析） |
+| `buildFillPrompt(entries)` | 只列缺资料的词，要求 AI 把固定 JSON 数组放进一层代码块输出（词义、词源、对应词、两组原形例句/重点、情景、辨析） |
 | `buildWorksheetPrompt()` | 支持文件或文字材料：先要求 AI 完成配对，再按同一套字段输出；sentence/focus 必须包含 term 的精确字符串，并给出 Boo、Have a blast、Enamor 示例，防止只写变形或牺牲语法；辨析 answer 只能属于 term/relatedWord 这一对 |
 | `parseMaterialReply(text)` | 调用 parseJsonDeck，同正式导入使用一套严格 JSON 校验 |
 | `mergeFilledEntries()` | 按词（大小写不敏感）只填缺失字段，不覆盖已有内容 |
@@ -230,7 +230,7 @@ npm run build       Vite 生产构建
 npm run check       以上四步串联，交付门槛
 ```
 
-当前基线：**97 项 Node 测试、74 项 UI 测试、ESLint、生产构建全绿**（2026-10-30 完成「我不知道」的 [Chrome 验证](validation-2026-10-30-unknown/README.md)；2026-10-31 SEO 改动后复核仍为 97 项 Node + 74 项 UI，并完成生产构建与 Chrome 检查）。
+当前基线：**98 项 Node 测试、75 项 UI 测试、ESLint、生产构建全绿**（2026-10-30 完成「我不知道」的 [Chrome 验证](validation-2026-10-30-unknown/README.md)；2026-11-03 复制的 AI 提示词改为要求代码块包裹、`parseJsonDeck()` 拆掉一层外层代码块，复核为 98 项 Node + 75 项 UI，见 [Chrome 验证](validation-2026-11-03-code-block/README.md)）。
 
 测试与模块同目录（`*.test.js` / `*.test.jsx`），UI 环境配置在 `src/test/setup.js`。逻辑测试注入固定 `random` 和固定时间，不依赖真实随机数。
 

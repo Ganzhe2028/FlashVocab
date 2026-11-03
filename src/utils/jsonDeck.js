@@ -1,11 +1,20 @@
 import { normalizeMemorySketch } from "../memorySketch.js";
 
 // The import boundary accepts one canonical JSON array; legacy parsing is material-only.
+// AI replies usually wrap the array in a single ```json block, so one outer fence is unwrapped first.
+const OUTER_FENCE_RE = /^```[^\n]*\n([\s\S]*?)```$/;
+
+const unwrapOuterFence = (rawText) => {
+  const trimmed = rawText.replace(/^\uFEFF/, "").trim();
+  const fenced = trimmed.match(OUTER_FENCE_RE);
+  return fenced ? fenced[1].trim() : trimmed;
+};
+
 export const parseJsonDeck = (rawText) => {
   if (typeof rawText !== "string" || !rawText.trim()) throw new Error("请提供非空 JSON 词表。");
   let deck;
-  try { deck = JSON.parse(rawText.replace(/^\uFEFF/, "").trim()); }
-  catch { throw new Error("JSON 格式不正确。只粘贴 JSON 数组，不要包含代码围栏、说明文字或多余逗号。"); }
+  try { deck = JSON.parse(unwrapOuterFence(rawText)); }
+  catch { throw new Error("JSON 格式不正确。粘贴 JSON 数组即可，外面带代码块也行，但不要夹带说明文字或多余逗号。"); }
   if (!Array.isArray(deck) || !deck.length) throw new Error("词表必须是非空 JSON 数组，以 [ 开始、] 结束。");
   const isObject = (value) => value && typeof value === "object" && !Array.isArray(value);
   const isText = (value) => typeof value === "string" && value.trim();

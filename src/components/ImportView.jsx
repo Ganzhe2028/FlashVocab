@@ -309,7 +309,7 @@ export default function ImportView({
                 <summary>看看这段话</summary>
                 <textarea className="fill-prompt" readOnly rows="10" value={buildFillPrompt(entries)} onFocus={(event) => event.target.select()} aria-label="补全提示词" />
               </details>
-              <p className="fill-step"><span>2</span>只粘贴 AI 返回的 JSON 数组，不带代码围栏。</p>
+              <p className="fill-step"><span>2</span>把 AI 返回的整段回复粘进来，带代码块也行。</p>
               <textarea
                 className="fill-reply"
                 rows="7"
@@ -432,7 +432,7 @@ export default function ImportView({
             </label>
           ) : (
             <div className="paste-panel">
-              <p className="paste-hint">只粘贴 JSON 数组，不带代码围栏或说明文字。</p>
+              <p className="paste-hint">粘贴 JSON 数组；外面带代码块也行，但别混入说明文字。</p>
               <textarea
                 ref={pasteRef}
                 value={sourceText}

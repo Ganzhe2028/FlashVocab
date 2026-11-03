@@ -797,6 +797,18 @@ describe("FlashVocab 3.0", () => {
     expect(currentWordButton()).not.toBeNull();
   });
 
+  test("a fenced AI reply imports like a bare JSON array", () => {
+    render(<App />);
+    importViaPaste(
+      "```json\n" + JSON.stringify([
+        { term: "lucid", meaningZh: "清醒的" },
+        { term: "sturdy", meaningZh: "结实的" },
+      ]) + "\n```",
+    );
+    expect(currentWordButton()).not.toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   test("JSON definitions are shown as the English meaning, not as an example", () => {
     render(<App />);
     importViaPaste(

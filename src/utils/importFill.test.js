@@ -50,7 +50,8 @@ const reply = (entries) => JSON.stringify(entries);
 test("both prompts require the same fixed JSON schema", () => {
   for (const prompt of [buildFillPrompt([{ term: "resilient" }]), buildWorksheetPrompt()]) {
     for (const field of ["term", "meaningZh", "meaning", "examples", "focus", "miniScenario", "contrastScenarios"]) assert.ok(prompt.includes(field));
-    assert.match(prompt, /不要代码围栏/);
+    assert.match(prompt, /代码块里输出/);
+    assert.match(prompt, /不要裸输出 JSON/);
     assert.match(prompt, /sentence 和 focus 必须原样包含 term 的精确字符串/);
     assert.match(prompt, /Fans boo\.\.\./);
     assert.match(prompt, /We have a blast\.\.\./);

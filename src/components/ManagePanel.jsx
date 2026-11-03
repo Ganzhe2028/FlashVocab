@@ -350,7 +350,7 @@ export default function ManagePanel({
 
             <section className="panel-section" aria-labelledby="help-ai-title">
               <h3 id="help-ai-title">AI 补全</h3>
-              <p>导入核对页会给出「让 AI 补全」：复制那段话给任意 AI，能把中文释义、词性、词源、对应词、例句和辨析情景一次补齐，专项练习导入后就能直接练；只粘贴完整 JSON 数组，不带代码围栏；格式错误会指出位置。</p>
+              <p>导入核对页会给出「让 AI 补全」：复制那段话给任意 AI，能把中文释义、词性、词源、对应词、例句和辨析情景一次补齐，专项练习导入后就能直接练；AI 回复整段粘回来即可，代码块会自动拆掉；格式错误会指出位置。</p>
             </section>
           </div>
         ) : null}

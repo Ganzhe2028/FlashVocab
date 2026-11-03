@@ -12,10 +12,22 @@ test("fixed JSON template and normalized export round-trip without losing data",
 });
 
 test("rejects guessing, wrappers, truncated arrays and partial valid results", () => {
-  for (const input of ["vacant", "vacant 空的", "[Vacant]\n- Meaning (EN): empty", "term,meaning\nvacant,empty", '{"cards":[{"term":"vacant","meaning":"empty"}]}', '```json\n[{"term":"vacant","meaning":"empty"}]\n```', '[{"term":"vacant","meaning":"empty"},', '[]', '[null]', '["vacant"]']) {
+  for (const input of ["vacant", "vacant 空的", "[Vacant]\n- Meaning (EN): empty", "term,meaning\nvacant,empty", '{"cards":[{"term":"vacant","meaning":"empty"}]}', '```json\n[{"term":"vacant","meaning":"empty"}]\n```\n\n说明：以上是词表。', '[{"term":"vacant","meaning":"empty"},', '[]', '[null]', '["vacant"]']) {
     assert.throws(() => parseDeckFromText(input));
   }
   assert.throws(() => parseDeckFromText(JSON.stringify([IMPORT_TEMPLATE[0], { meaning: "missing word" }])), /第 2 个词条.*缺少单词/);
+});
+
+test("a single outer code block is unwrapped before parsing", () => {
+  const deck = [{ term: "vacant", meaning: "empty" }];
+  for (const input of [
+    '```json\n' + JSON.stringify(deck) + '\n```',
+    '```\n' + JSON.stringify(deck, null, 2) + '\n```',
+    '\uFEFF```JSON\n' + JSON.stringify(deck) + '\n```\n',
+  ]) {
+    assert.deepEqual(parseDeckFromText(input), deck);
+  }
+  assert.throws(() => parseDeckFromText('```json\n' + JSON.stringify(deck)), /JSON 格式不正确/);
 });
 
 test("validates canonical fields, types, meanings and exact example focus", () => {
