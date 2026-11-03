@@ -36,7 +36,7 @@ export default function ImportView({
   onImport,
 }) {
   const [stage, setStage] = useState("input");
-  const [sourceMode, setSourceMode] = useState("file");
+  const [sourceMode, setSourceMode] = useState("paste");
   const [sourceText, setSourceText] = useState("");
   const [draft, setDraft] = useState(null);
   const [error, setError] = useState("");
@@ -55,6 +55,7 @@ export default function ImportView({
   const [failedFile, setFailedFile] = useState("");
   const headingRef = useRef(null);
   const pasteRef = useRef(null);
+  const fileRef = useRef(null);
 
   const entries = draft?.entries ?? EMPTY_ENTRIES;
   const missingMaterial = useMemo(() => entries.filter(needsFillMaterial), [entries]);
@@ -366,32 +367,66 @@ export default function ImportView({
           {canContinue ? <button type="button" className="text-button import-back" onClick={onContinue}>← 继续学习</button> : null}
           <h1 id="import-title" ref={headingRef} tabIndex="-1">{hasWaves ? "再加一组词。" : "单词表在哪？"}</h1>
 
+          <section className="conversion-guide" aria-labelledby="conversion-guide-title">
+            <h2 id="conversion-guide-title">词表还不是 JSON？让 AI 帮你转换</h2>
+            <ol className="conversion-steps">
+              <li className="fill-step conversion-copy-step">
+                <span>1</span>
+                <div className="conversion-copy-content">
+                  <div className="fill-actions">
+                    <button type="button" className="secondary-action" onClick={copyWorksheetPrompt}>复制转换提示词</button>
+                    {assistCopyNotice ? <span className="fill-note" role="status">{assistCopyNotice}</span> : null}
+                  </div>
+                  <p>把你的词表和提示词一起发给 <a className="text-button" href="https://chat.deepseek.com/" target="_blank" rel="noreferrer">DeepSeek</a> 或 <a className="text-button" href="https://chatgpt.com/" target="_blank" rel="noreferrer">ChatGPT</a>。</p>
+                </div>
+              </li>
+              <li className="fill-step">
+                <span>2</span>
+                <p>把 AI 返回的 JSON 粘贴到下方「粘贴」框，再点「识别单词」。</p>
+              </li>
+            </ol>
+            <details className="fill-prompt-details">
+              <summary>看看提示词</summary>
+              <textarea className="fill-prompt" readOnly rows="10" value={buildWorksheetPrompt()} onFocus={(event) => event.target.select()} aria-label="整理提示词" />
+            </details>
+            {failedFile ? (
+              <button type="button" className="text-button import-ai-fallback" onClick={openFailedFileAssist}>
+                也可以在这里粘贴 AI 回复
+              </button>
+            ) : null}
+          </section>
+          <p className="import-privacy">只保存在这台设备</p>
+
           <div className="source-tabs" role="group" aria-label="词表来源">
-            <button type="button" aria-pressed={sourceMode === "file"} disabled={parsing} onClick={() => { setSourceMode("file"); setError(""); setFailedFile(""); }}>
-              文件
-            </button>
             <button type="button" aria-pressed={sourceMode === "paste"} disabled={parsing} onClick={() => { setSourceMode("paste"); setError(""); setFailedFile(""); }}>
               粘贴
             </button>
+            <button type="button" aria-pressed={sourceMode === "file"} disabled={parsing} onClick={() => { setSourceMode("file"); setError(""); setFailedFile(""); fileRef.current?.click(); }}>
+              文件
+            </button>
           </div>
 
+          <input
+            ref={fileRef}
+            id="deck-file-input"
+            className="import-file-input"
+            type="file"
+            accept=".json,application/json"
+            disabled={parsing}
+            onChange={(event) => { handleFile(event.target.files?.[0]); event.target.value = ""; }}
+          />
           {sourceMode === "file" ? (
             <label
+              htmlFor="deck-file-input"
               className={`drop-card${dragActive ? " is-dragging" : ""}${parsing ? " is-busy" : ""}`}
               aria-busy={parsing || undefined}
               onDragOver={(event) => { event.preventDefault(); if (!parsing) setDragActive(true); }}
               onDragLeave={() => setDragActive(false)}
               onDrop={handleDrop}
             >
-              <input
-                type="file"
-                accept=".json,application/json"
-                disabled={parsing}
-                onChange={(event) => { handleFile(event.target.files?.[0]); event.target.value = ""; }}
-              />
               <span className="drop-icon"><FileIcon /></span>
-              <strong>{parsing ? "正在识别…" : dragActive ? "松手，开始识别" : "上传文件"}</strong>
-              <span>{parsing ? "马上就好" : "点击选择，或拖到这里"}</span>
+              <strong>{parsing ? "正在识别…" : dragActive ? "松手，开始识别" : "把 JSON 文件拖到这里"}</strong>
+              <span>{parsing ? "马上就好" : "或点击重新选择"}</span>
               <span className="drop-formats">只支持 JSON 词表</span>
               <span className="sr-only" role="status">{parsing ? "正在识别文件" : ""}</span>
             </label>
@@ -424,42 +459,11 @@ export default function ImportView({
           {error ? <p className="inline-error" role="alert">{error}</p> : null}
           {/* <p className="import-privacy"><a download="flashvocab-template.json" href={`data:application/json;charset=utf-8,${encodeURIComponent(MATERIAL_REPLY_PLACEHOLDER)}`}>下载 JSON 模板</a></p> */}
 
-          <section className="conversion-guide" aria-labelledby="conversion-guide-title">
-            <h2 id="conversion-guide-title">词表还不是 JSON？让 AI 帮你转换</h2>
-            <ol className="conversion-steps">
-              <li className="fill-step fill-step-action">
-                <span>1</span>
-                <div className="fill-actions">
-                  <button type="button" className="secondary-action" onClick={copyWorksheetPrompt}>复制转换提示词</button>
-                  {assistCopyNotice ? <span className="fill-note" role="status">{assistCopyNotice}</span> : null}
-                </div>
-              </li>
-              <li className="fill-step">
-                <span>2</span>
-                <p>把你的词表和提示词一起发给 <a className="text-button" href="https://chat.deepseek.com/" target="_blank" rel="noreferrer">DeepSeek</a> 或 <a className="text-button" href="https://chatgpt.com/" target="_blank" rel="noreferrer">ChatGPT</a>。</p>
-              </li>
-              <li className="fill-step">
-                <span>3</span>
-                <p>把 AI 返回的 JSON 粘贴到上方「粘贴」框，再点「识别单词」。</p>
-              </li>
-            </ol>
-            <details className="fill-prompt-details">
-              <summary>看看提示词</summary>
-              <textarea className="fill-prompt" readOnly rows="10" value={buildWorksheetPrompt()} onFocus={(event) => event.target.select()} aria-label="整理提示词" />
-            </details>
-            {failedFile ? (
-              <button type="button" className="text-button import-ai-fallback" onClick={openFailedFileAssist}>
-                也可以在这里粘贴 AI 回复
-              </button>
-            ) : null}
-          </section>
-
           {!hasWaves ? (
             <button type="button" className="text-button import-sample" disabled={parsing} onClick={onSample}>
               没有词表？用 24 个示例词试试
             </button>
           ) : null}
-          <p className="import-privacy">只保存在这台设备</p>
         </div>
       )}
     </section>

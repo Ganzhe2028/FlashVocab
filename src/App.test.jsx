@@ -728,7 +728,7 @@ describe("FlashVocab 3.0", () => {
     press("n", "KeyN");
     expect(screen.getByRole("textbox", { name: "输入英文拼写" })).toBeTruthy();
   });
-  test("fresh visits show a three-step wizard with one source picker and minimal chrome", () => {
+  test("fresh visits lead with the two-step AI guide and default to paste", () => {
     render(<App />);
     const steps = screen.getByRole("list", { name: "导入步骤" });
     expect(within(steps).getAllByRole("listitem")).toHaveLength(3);
@@ -736,15 +736,26 @@ describe("FlashVocab 3.0", () => {
     expect(within(steps).getByText("核对")).toBeTruthy();
     expect(within(steps).getByText("开始")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "单词表在哪？" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "文件" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "粘贴" })).toBeTruthy();
-    expect(screen.queryByRole("textbox", { name: "单词表内容" })).toBeNull();
+
+    const guide = document.querySelector(".conversion-guide");
+    const sourceTabs = screen.getByRole("group", { name: "词表来源" });
+    expect(guide.compareDocumentPosition(sourceTabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(guide.nextElementSibling.textContent).toBe("只保存在这台设备");
+    const sources = within(sourceTabs).getAllByRole("button");
+    expect(sources.map((button) => button.textContent)).toEqual(["粘贴", "文件"]);
+    expect(sources[0].getAttribute("aria-pressed")).toBe("true");
+    expect(sources[1].getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByRole("textbox", { name: "单词表内容" })).toBeTruthy();
+    expect(document.querySelectorAll(".conversion-steps li")).toHaveLength(2);
     expect(
       screen.getByRole("button", { name: /用 24 个示例词试试/ }),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "设置" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "粘贴" }));
-    expect(screen.getByRole("textbox", { name: "单词表内容" })).toBeTruthy();
+
+    const picker = vi.spyOn(document.querySelector("input[type=file]"), "click");
+    fireEvent.click(sources[1]);
+    expect(picker).toHaveBeenCalledTimes(1);
+    expect(sources[1].getAttribute("aria-pressed")).toBe("true");
   });
 
   test("adding a list shows the AI conversion handoff and accepts the returned JSON", async () => {
@@ -758,9 +769,10 @@ describe("FlashVocab 3.0", () => {
     const steps = [
       ...document.querySelectorAll(".conversion-steps li"),
     ].map((step) => step.textContent);
+    expect(steps).toHaveLength(2);
     expect(steps[0]).toContain("复制转换提示词");
-    expect(steps[1]).toContain("你的词表和提示词一起发给");
-    expect(steps[2]).toContain("粘贴到上方「粘贴」框");
+    expect(steps[0]).toContain("你的词表和提示词一起发给");
+    expect(steps[1]).toContain("粘贴到下方「粘贴」框");
     expect(screen.getByRole("link", { name: "DeepSeek" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "ChatGPT" })).toBeTruthy();
 
@@ -770,7 +782,6 @@ describe("FlashVocab 3.0", () => {
     );
     expect(await screen.findByText(/已复制。把它和你的词表一起发给/)).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "粘贴" }));
     fireEvent.change(screen.getByRole("textbox", { name: "单词表内容" }), {
       target: {
         value: JSON.stringify([

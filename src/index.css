@@ -630,13 +630,13 @@ textarea {
   background: var(--teal-soft);
   transform: translateY(-1px);
 }
-.drop-card input {
+.import-file-input {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
   opacity: 0;
-  cursor: pointer;
+  pointer-events: none;
 }
 .drop-card strong { margin-top: 5px; color: var(--ink); font-size: 1rem; }
 .drop-card > span:not(.drop-icon):not(.drop-formats) { color: var(--muted); font-size: 0.82rem; }
@@ -668,6 +668,7 @@ textarea {
 .conversion-steps { display: grid; gap: 10px; margin: 14px 0 10px; padding: 0; list-style: none; }
 .conversion-steps .fill-step { align-items: flex-start; margin: 0; }
 .conversion-steps .fill-step-action { align-items: center; }
+.conversion-copy-content { display: grid; gap: 10px; min-width: 0; }
 .conversion-steps p { margin: 0; }
 .conversion-steps .text-button { min-height: 0; padding: 0; font: inherit; vertical-align: baseline; }
 .conversion-guide .fill-prompt-details { margin-left: 30px; }

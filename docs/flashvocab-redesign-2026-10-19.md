@@ -496,3 +496,9 @@ E 展示真实生成的微画面、SVG 小图、用法标签和对位说明；im
 验证：`npm run check` 通过 97 项 Node 测试、74 项 UI 测试、ESLint 和生产构建。真实 Chrome 生产预览覆盖首次导入和学习中途添加词表，实测提示词复制内容、JSON 粘贴、核对和开始学习；390px 下 `documentWidth = viewportWidth = 390`。浏览器扩展的合成点击受系统剪贴板权限限制时，页面会显示手动复制降级提示；授予页面内捕获后验证了实际复制文本与成功反馈。桌面首屏截图已更新，窄屏证据见 [添加词表 390px](validation-2026-11-03/add-list-mobile.png)，检查日志见 [check.log](validation-2026-11-03/check.log)。
 
 Chapter 5 真实 worksheet 验收使用 `HTA Chapter 5 Vocabulary Worksheet Student Copy.docx`。首轮 25 词全部返回并导入，但 Have a blast、Enamor、Pitch、Boo、Culminate 只写变形例句，核对页显示 5 个缺资料；强化精确原形字符串与自然语法后，第二轮只剩 Dire 的辨析 answer 误用第三词 trivial。最终提示词同时要求 answer 只能属于 term/relatedWord，第三轮同一文件、新 DeepSeek 对话返回 25 词、0 个缺资料，生产核对页显示 25/25 中文释义并成功进入 1/25 认词。证据见 [DOCX 提示](validation-2026-11-03/chapter5-docx-notice.png) 和 [最终核对页](validation-2026-11-03/chapter5-final-preview.png)。
+
+### 导入阅读顺序与文件选择
+
+两步 AI 转换引导和隐私说明移到来源选择器上方。原复制、发送两步合并为第 1 步，让按钮与说明相邻；第 2 步指向下方粘贴框。来源顺序固定为「粘贴 / 文件」，组件初始状态为粘贴。文件 input 始终挂载，点击「文件」在同一用户事件中直接调用 `fileRef.current.click()` 打开系统选择器；drop-card 通过 `htmlFor` 支持重新选择，并保留拖放。UI 回归覆盖 DOM 阅读顺序、两步数量、默认粘贴、来源顺序和一次文件选择器调用。
+
+生产 Chrome 验证首屏阅读顺序和默认粘贴，点击「文件」一次立即出现 macOS 文件选择器，未选择文件即关闭；390px 下 `documentWidth = viewportWidth = 390`，证据见 [移动端首屏](validation-2026-11-03/import-mobile-390.png)。README 与指南首屏截图已按 1280×800、2× 重新捕获。

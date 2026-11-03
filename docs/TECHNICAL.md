@@ -155,13 +155,13 @@ AGENTS.md                 开发约定与当前行为契约（每次任务开始
 
 ## 6. 导入管线
 
-正式导入统一调用 `src/utils/jsonDeck.js` 的 `parseJsonDeck()`。上传只接受 `.json` 文件并调用 `file.text()`；粘贴和 AI 转换结果走同一校验。JSON 必须是非空数组，每项 term 是非空字符串，meaning / meaningZh 至少一个非空。模板由同模块的 `JSON_TEMPLATE` 提供下载并用于提示词，字段名固定，不接受别名、包装对象、代码围栏或说明文字。
+正式导入统一调用 `src/utils/jsonDeck.js` 的 `parseJsonDeck()`。上传只接受 `.json` 文件并调用 `file.text()`；粘贴和 AI 转换结果走同一校验。JSON 必须是非空数组，每项 term 是非空字符串，meaning / meaningZh 至少一个非空。同模块的 `JSON_TEMPLATE` 用于提示词与占位示例，字段名固定，不接受别名、包装对象、代码围栏或说明文字。
 
 可选文本字段必须是字符串，examples 必须是 sentence/focus 对象数组且 focus 在 sentence 中原样出现（允许空 focus）；distractors/usageTags 是字符串数组；contrastScenarios 是 scenario/answer/explanation 对象数组。未知自定义字段保留。校验整份通过才进入预览，一条有错就整份拒绝并指出序号和字段，不静默跳词。预览不保存，明确开始才提交。
 
 `deckImport.js` 保留历史文本/Office 工具和旧存储 normalization，不再供界面直接猜测导入格式。已有资产的兼容读取不变；旧数据中误作单个例句的英文定义仍会修复。非 JSON 材料可通过显式 AI 转换入口生成固定 JSON 后预览，不做 worksheet 猜测。
 
-导入第 1 步直接展示 AI 转换交接，不把入口藏进下一屏：用户点「复制转换提示词」复制 `buildWorksheetPrompt()`，把自己的词表文件或文字连同提示词发给 DeepSeek 或 ChatGPT，再切到「粘贴」提交返回的 JSON。提示词同时覆盖文件与文字材料，不要求应用上传源文件，也不需要 API key。折叠的「看看提示词」用于手动复制；文件读取失败时仍保留页内粘贴 AI 回复的备用面板。
+导入第 1 步先展示两步 AI 转换交接和隐私说明，再显示「粘贴 / 文件」选择器。第 1 步把复制按钮与发送说明放在一起：复制 `buildWorksheetPrompt()`，把自己的词表文件或文字连同提示词发给 DeepSeek 或 ChatGPT；第 2 步指向下方粘贴框。组件默认粘贴，文件 input 始终挂载，点击「文件」在同一用户事件中调用 `fileRef.current.click()` 立即打开系统选择器；drop-card 保留拖放和通过 `htmlFor` 重新选择。提示词同时覆盖文件与文字材料，不要求应用上传源文件，也不需要 API key。折叠的「看看提示词」用于手动复制；文件读取失败时仍保留页内粘贴 AI 回复的备用面板。
 
 ## 7. 导入时的 AI 补全
 
