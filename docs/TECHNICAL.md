@@ -236,7 +236,7 @@ npm run check       以上四步串联，交付门槛
 
 `.github/workflows/ci.yml`：push 与 PR 触发，ubuntu-latest + Node 22，`npm ci` 后跑 `npm run check`。
 
-行为改动光跑测试不够：涉及布局、发音、导入的改动要在真实 Chrome 里跑生产构建验证，并把截图和日志放进 `docs/validation-<date>/`。已有证据目录：`validation-2026-09-07`、`validation-2026-10-20`、`validation-2026-10-26`、`validation-2026-10-27`、`validation-2026-10-27-pronunciation`、`validation-2026-10-27-practice-fill`、`validation-2026-10-29`、`validation-2026-10-30-unknown`、`validation-2026-10-31`。
+行为改动光跑测试不够：涉及布局、发音、导入的改动要在真实浏览器里跑生产构建验证，并把截图和日志放进 `docs/validation-<date>/`。历史证据按日期与主题归档在该目录下；当前题目解析修复的浏览器记录见 [2026-11-06 验证](validation-2026-11-06-quiz-feedback/README.md)。
 
 ## 12. 构建、部署与维护
 
