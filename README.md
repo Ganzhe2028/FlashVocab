@@ -130,6 +130,10 @@ npm run build    # 产物在 dist/
 - 没有中文释义的词也能导入，但答案页的中文会是空的，预览会明确提示。
 - AI 补全的质量取决于你用的 AI 和那段提示词；很长的词表可分批，但每批必须是完整 JSON 数组，截断的内容不会导入。
 
+## 字体
+
+界面使用小米的 [MiSans](https://hyperos.mi.com/font) 可变字体（MiSans VF），按其许可协议免费使用。
+
 ## 反馈
 
 用着别扭、词表没认出来、想要什么功能，都欢迎开 [Issue](https://github.com/Ganzhe2028/FlashVocab/issues) 说一句。

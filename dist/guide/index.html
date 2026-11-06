@@ -7,6 +7,7 @@
     <title>闪词怎么用：把老师发的单词表变成三分钟练习｜闪词 FlashVocab</title>
     <meta name="description" content="闪词使用说明：适合哪些场景、怎么导入 JSON 词表、键盘快捷键、错词加练和专项练习怎么用，以及词表数据保存在哪里。" />
     <link rel="canonical" href="https://bdc.isaacbao.cn/guide/" />
+    <link rel="preload" href="/fonts/MiSansVF.woff2" as="font" type="font/woff2" crossorigin />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
     <meta name="theme-color" content="#f7f2e9" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#121918" media="(prefers-color-scheme: dark)" />
@@ -91,6 +92,13 @@
       }
     </script>
     <style>
+      @font-face {
+        font-family: "MiSans VF";
+        src: url("/fonts/MiSansVF.woff2") format("woff2");
+        font-weight: 150 700;
+        font-style: normal;
+        font-display: swap;
+      }
       :root {
         --ink: #193936;
         --ink-secondary: #455b56;
@@ -124,7 +132,7 @@
         padding: 0 24px 72px;
         color: var(--ink);
         background: var(--paper);
-        font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        font-family: "MiSans VF", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
         font-size: 17px;
         line-height: 1.8;
         -webkit-font-smoothing: antialiased;
