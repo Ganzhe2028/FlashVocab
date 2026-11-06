@@ -37,6 +37,7 @@ export default function ManagePanel({
   spellingMode,
   quickKnownEnabled,
   themePreference,
+  wordFontPreference,
   pronunciationSupported,
   message,
   initialConfirmAction,
@@ -49,6 +50,7 @@ export default function ManagePanel({
   onSetSpellingMode,
   onSetQuickKnown,
   onSetThemePreference,
+  onSetWordFontPreference,
   onRestoreRemoved,
   onReset,
   onSample,
@@ -311,6 +313,16 @@ export default function ManagePanel({
                   </label>
                 ))}
               </div>
+              <label className="switch-row word-font-setting">
+                <span><strong>单词大标题使用 Crimson Text</strong><small>关闭后恢复系统字体，只影响认词页大标题。</small></span>
+                <input
+                  className="switch-input"
+                  type="checkbox"
+                  role="switch"
+                  checked={wordFontPreference === "crimson"}
+                  onChange={(event) => onSetWordFontPreference(event.target.checked ? "crimson" : "system")}
+                />
+              </label>
             </section>
 
             <details className="panel-details advanced-settings">

@@ -509,3 +509,10 @@ Chapter 5 真实 worksheet 验收使用 `HTA Chapter 5 Vocabulary Worksheet Stud
 用户实测 Crunch 通用选择题的题干和选项都不含 skim，答后却显示整段 Crunch / skim 辨析。原因是 MCQ 把 `relatedWord` 作为最高优先级通用解析，情景题也固定追加它。本轮将 MCQ 解析改为目标词的中英文释义，情景题解析改为完整原句加目标词义；`relatedWord` 继续用于干扰项优先级和真正的对位辨析，词表数据无需迁移。
 
 新增 Crunch / skim 逻辑回归和答对、答错、「我不知道」三种 UI 回归。`npm run check` 通过 99 项 Node、78 项 UI、ESLint 与生产构建；本地生产浏览器实际验证通用选择、情景和辨析的解析边界，并重拍 README 练习截图。记录见 [验证目录](validation-2026-11-06-quiz-feedback/README.md)。
+
+<a id="title-font-2026-11-06"></a>
+## 2026-11-06：认词大标题字体测试
+
+认词页英文大标题默认使用本地自托管的 Crimson Text Bold，字体与 OFL 许可位于 `public/fonts/`；只有 `.word-heading` 使用该字体，释义、例句、拼写页和专项练习仍继承系统字体。「设置 → 外观」新增开关，可即时切回系统字体。`useWordFontPreference` 将 `crimson` / `system` 保存在 `flashvocab-word-font-v1`，首帧脚本同步恢复，重置学习进度不清除该外观选择。
+
+新增默认状态、切换与持久化 UI 回归。`npm run check` 通过 99 项 Node、79 项 UI、ESLint 与生产构建；生产浏览器确认两种字体的实际显示、刷新持久化、空格键操作及 390px 长单词布局，并重拍 README 与指南认词截图。记录见 [验证目录](validation-2026-11-06-title-font/README.md)。

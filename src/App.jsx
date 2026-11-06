@@ -14,6 +14,7 @@ import { useAppKeyboard } from "./hooks/useAppKeyboard.js";
 import { usePronunciation } from "./hooks/usePronunciation.js";
 import { useQuietChrome } from "./hooks/useQuietChrome.js";
 import { useThemePreference } from "./hooks/useThemePreference.js";
+import { useWordFontPreference } from "./hooks/useWordFontPreference.js";
 import deepUnderstandingPrompt from "./prompts/deep-understanding.md?raw";
 import {
   buildExportDeck,
@@ -87,6 +88,7 @@ export default function App() {
     message: pronunciationMessage,
   } = usePronunciation();
   const { themePreference, setThemePreference } = useThemePreference();
+  const { wordFontPreference, setWordFontPreference } = useWordFontPreference();
   const { quiet, showChrome, hideForLearning } = useQuietChrome({ heldOpen: panelOpen });
 
   const dispatch = useCallback((action) => {
@@ -488,6 +490,7 @@ export default function App() {
         spellingMode={state.spellingMode}
         quickKnownEnabled={state.quickKnownEnabled}
         themePreference={themePreference}
+        wordFontPreference={wordFontPreference}
         pronunciationSupported={pronunciationSupported}
         message={panelMessage}
         initialConfirmAction={panelConfirmRequest}
@@ -500,6 +503,7 @@ export default function App() {
         onSetSpellingMode={(value) => dispatch({ type: "SET_SPELLING_MODE", value })}
         onSetQuickKnown={(value) => dispatch({ type: "SET_QUICK_KNOWN", value })}
         onSetThemePreference={setThemePreference}
+        onSetWordFontPreference={setWordFontPreference}
         onRestoreRemoved={(cardId) => dispatch({ type: "RESTORE_REMOVED", cardId })}
         onReset={() => { dispatch({ type: "RESET_PROGRESS" }); setAiSettings({ apiKey: "", model: DEFAULT_PREPARATION_MODEL }); }}
         onSample={useSample}

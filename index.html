@@ -14,9 +14,12 @@
             : preference;
           document.documentElement.dataset.theme = resolved;
           document.documentElement.dataset.themePreference = preference;
+          const wordFont = localStorage.getItem("flashvocab-word-font-v1");
+          document.documentElement.dataset.wordFont = ["crimson", "system"].includes(wordFont) ? wordFont : "crimson";
         } catch {
           document.documentElement.dataset.theme = "light";
           document.documentElement.dataset.themePreference = "system";
+          document.documentElement.dataset.wordFont = "crimson";
         }
       })();
     </script>

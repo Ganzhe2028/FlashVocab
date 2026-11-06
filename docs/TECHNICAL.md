@@ -51,7 +51,8 @@ src/
     useAppKeyboard.js     全局快捷键
     useQuietChrome.js     周边元素自动隐退
     usePronunciation.js   Web Speech 发音
-    useThemePreference.js 外观偏好
+    useThemePreference.js 明暗外观偏好
+    useWordFontPreference.js 认词大标题字体偏好
   storage/
     learningStorage.js    词表与移出记录的持久化与校验
     masteryStorage.js     掌握度的持久化与校验
@@ -66,6 +67,7 @@ public/
   sitemap.xml             首页与 /guide/ 的站点地图
   favicon.svg             闪电标记图标（另有 192/512 PNG 与 apple-touch-icon）
   og.png                  1200×630 社交分享图
+  fonts/                  Crimson Text Bold WOFF2 与 SIL OFL 许可
   guide/index.html        静态使用说明页（自带样式、canonical、FAQ 结构化数据）
   guide/images/           说明页复用的两张界面截图
 docs/                     规格、设计、以及每次改版的验证证据
@@ -112,12 +114,13 @@ AGENTS.md                 开发约定与当前行为契约（每次任务开始
 | `flashvocab-3-assets-v1` | `{ version, sourceDeck, removedCardIds, waves }` | schema `2` |
 | `flashvocab-mastery-v1` | 每词 `{ streak, mistakes, fuzzy, lastSeen }` | — |
 | `flashvocab-theme-v1` | `system` / `light` / `dark` | — |
+| `flashvocab-word-font-v1` | `crimson` / `system`，认词大标题字体，默认 `crimson` | — |
 | `vocab2-learning-v1` | 旧版词表与移出记录，只读、不删 | legacy |
 
 - schema `1` 读入时迁移成无日期的 W1 波次，ID 与移出记录不变。
 - 当前键不存在时才回退读 legacy 键；两个键都不写回旧键。
 - 写入前都经过 `normalize*` 校验，损坏的数据整体丢弃并给出提示，不做部分修补。
-- 刷新页面会重置会话态（队列、当前卡、答案展开、拼写输入、偏好、Undo、API key），但保留上述三个键。
+- 刷新页面会重置会话态（队列、当前卡、答案展开、拼写输入、学习偏好、Undo、API key），但保留词表、掌握度、明暗外观和认词标题字体偏好。
 
 ## 5. 学习算法
 
@@ -230,7 +233,7 @@ npm run build       Vite 生产构建
 npm run check       以上四步串联，交付门槛
 ```
 
-当前基线：**99 项 Node 测试、78 项 UI 测试、ESLint、生产构建全绿**（2026-11-06 通用选择题与情景题解析不再追加无关对应词，新增 Crunch / skim 逻辑回归和答对、答错、「我不知道」UI 回归，完整输出见 [检查日志](validation-2026-11-06-quiz-feedback/check.log)）。
+当前基线：**99 项 Node 测试、79 项 UI 测试、ESLint、生产构建全绿**（2026-11-06 认词大标题 Crimson Text 测试，新增字体开关与持久化 UI 回归，完整输出见 [检查日志](validation-2026-11-06-title-font/check.log)）。
 
 测试与模块同目录（`*.test.js` / `*.test.jsx`），UI 环境配置在 `src/test/setup.js`。逻辑测试注入固定 `random` 和固定时间，不依赖真实随机数。
 
@@ -242,7 +245,7 @@ npm run check       以上四步串联，交付门槛
 
 - `npm run build` 生成 `dist/`，该目录**被 git 跟踪**；改了 `src/` 就要重新构建并一起提交，否则线上和仓库不一致。
 - 深度理解提示词模板在 `src/prompts/deep-understanding.md`，由 `App.jsx` 以 `?raw` 打进 JS bundle；复制时应用只在模板后追加 `当前单词：<term>`，模板本身不含词条。改模板后重新构建并提交 `dist/`，推送后托管平台从源码重新构建，线上才生效；只改提示词不需要动应用代码。
-- 线上是纯静态托管 `bdc.isaacbao.cn`，没有服务端，也没有环境变量；`index.html` 内联一段读取 `flashvocab-theme-v1` 的脚本，在首帧前定好主题，避免闪白。
+- 线上是纯静态托管 `bdc.isaacbao.cn`，没有服务端，也没有环境变量；`index.html` 内联脚本在首帧前读取 `flashvocab-theme-v1` 与 `flashvocab-word-font-v1`，恢复明暗和认词标题字体，避免主题闪白与偏好跳变。
 - 文档纪律（见 [AGENTS.md](../AGENTS.md)）：任何行为改动都要同步更新对应规格文档、`Updates.md` 与本文件的测试基线；带着过时的数字提交等于制造假证据。
 - 文档里有编号摘要时，每个编号都要锚到对应详述段落。
 
