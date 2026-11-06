@@ -1,5 +1,12 @@
 # Updates
 
+## 2026-11-06 — 深度理解提示词：收敛讲解风格并补图片指令
+
+- `src/prompts/deep-understanding.md` 末尾新增输出约束：平铺直叙、直接陈述、最小化讲解，每一句都要有用；最后给一张能强烈传达核心意思的图片，能出图就出图，不能出图就退回「可直接搜索的图片关键词 + 一句画面描述」，避免模型把「找图片」执行成编造图片链接。
+- Shift＋单击复制流程不变：应用仍把整段模板与 `当前单词：<term>` 拼在一起写入剪贴板；模板通过 `?raw` 打进 JS bundle，只改模板即可，不需要动应用代码。
+- `docs/TECHNICAL.md` 补充维护路径：编辑模板 → `npm run build`（更新被跟踪的 `dist/`）→ 提交并推送，托管平台从源码重新构建后线上生效。此前 `dist/` 仍是 11-03 的构建，线上不会自动读到未提交的模板。
+- `npm run check` 通过 98 项 Node、75 项 UI、ESLint 与生产构建。
+
 ## 2026-10-31 — Google 收录基线：结构化数据、sitemap 与静态说明页
 
 - 首页 `index.html` 补全 SEO head：title/description、canonical、robots、Open Graph/Twitter、图标、主题色，以及 `WebSite` + `Organization` + `WebApplication` 的 JSON-LD；无 JavaScript 时显示一段简要说明和进入方式。

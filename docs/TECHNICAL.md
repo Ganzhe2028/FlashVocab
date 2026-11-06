@@ -241,6 +241,7 @@ npm run check       以上四步串联，交付门槛
 ## 12. 构建、部署与维护
 
 - `npm run build` 生成 `dist/`，该目录**被 git 跟踪**；改了 `src/` 就要重新构建并一起提交，否则线上和仓库不一致。
+- 深度理解提示词模板在 `src/prompts/deep-understanding.md`，由 `App.jsx` 以 `?raw` 打进 JS bundle；复制时应用只在模板后追加 `当前单词：<term>`，模板本身不含词条。改模板后重新构建并提交 `dist/`，推送后托管平台从源码重新构建，线上才生效；只改提示词不需要动应用代码。
 - 线上是纯静态托管 `bdc.isaacbao.cn`，没有服务端，也没有环境变量；`index.html` 内联一段读取 `flashvocab-theme-v1` 的脚本，在首帧前定好主题，避免闪白。
 - 文档纪律（见 [AGENTS.md](../AGENTS.md)）：任何行为改动都要同步更新对应规格文档、`Updates.md` 与本文件的测试基线；带着过时的数字提交等于制造假证据。
 - 文档里有编号摘要时，每个编号都要锚到对应详述段落。
@@ -265,6 +266,7 @@ npm run check       以上四步串联，交付门槛
 | 改休整、毕业、排序规则 | `learningAlgorithm.js` 的 `recordReview` / `buildRoundCardIds`、`mastery.js` |
 | 支持一种新的文件格式 | `utils/deckImport.js` 的文件层 + 文本层，配套 `deckImport.test.js` |
 | 改 AI 补全的提示词或解析 | `utils/importFill.js`，校验规则是硬约束，放松前先想清楚会不会写入坏数据 |
+| 改深度理解提示词（Shift＋单击复制） | `src/prompts/deep-understanding.md`；复制时自动追加当前单词。改完 `npm run build` 并提交 `dist/`，推送后托管平台重新构建才会生效 |
 | 加一种题型 | `questionBuilder.js` 加构造器 + `QuestionView` 加渲染 + 结算页入口 |
 | 改文案 / 布局 | 组件 + `index.css`，注意 390px、280px、200% 放大和减少动态效果四种状态 |
 | 改 SEO / 收录相关 | `index.html` 的 head、`public/` 的 `robots.txt`/`sitemap.xml`/`guide/`，按 12.1 本地验证；功能变化时同步说明页与 sitemap `lastmod` |
