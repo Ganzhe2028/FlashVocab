@@ -646,6 +646,31 @@ describe("FlashVocab 3.0", () => {
     fireEvent.click(screen.getByRole("button", { name: "回到刚才的学习" }));
     expect(currentWordButton().textContent).toBe(before);
   });
+  test.each(["correct", "incorrect", "unknown"])(
+    "MCQ %s feedback shows the target meaning without unrelated counterpart material",
+    (selection) => {
+      saveAssets([alpha, beta]);
+      render(<App />);
+      openPractice("看释义选词");
+      if (document.querySelector(".question-prompt").textContent !== alpha.meaning) {
+        fireEvent.click(screen.getByRole("button", { name: /^Beta/ }));
+        press("n", "KeyN");
+      }
+      expect(document.querySelector(".question-prompt").textContent).toBe(alpha.meaning);
+      if (selection === "correct") {
+        fireEvent.click(screen.getByRole("button", { name: /^Alpha/ }));
+      } else if (selection === "incorrect") {
+        fireEvent.click(screen.getByRole("button", { name: /^Beta/ }));
+      } else {
+        fireEvent.click(screen.getByRole("button", { name: /我不知道/ }));
+      }
+      const feedback = screen.getByRole("status").textContent;
+      expect(feedback).toContain(alpha.meaningZh);
+      expect(feedback).toContain(alpha.meaning);
+      expect(feedback).not.toContain(alpha.relatedWord);
+      expect(feedback).not.toContain("omega");
+    },
+  );
   test("spelling is optional and defaults to a recognition summary", () => {
     saveAssets();
     render(<App />);

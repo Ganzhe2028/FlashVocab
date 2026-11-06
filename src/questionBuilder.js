@@ -16,6 +16,11 @@ const shuffled = (values, random) => {
 export const getCounterpartTerm = (entry) =>
   String(entry?.relatedWord ?? "").split(/\s*[—–]\s*|\s+-\s+/)[0].trim();
 
+const meaningExplanation = (entry) => [entry?.meaningZh, entry?.meaning]
+  .map((value) => String(value ?? "").trim())
+  .filter(Boolean)
+  .join("\n");
+
 export const buildMCQ = ({ entry, sourceDeck, random = Math.random }) => {
   const prompt = String(entry?.miniScenario || entry?.meaning || entry?.meaningZh || "").trim();
   if (!prompt || !key(entry?.term)) return null;
@@ -36,7 +41,7 @@ export const buildMCQ = ({ entry, sourceDeck, random = Math.random }) => {
     prompt,
     answer: entry.term,
     options: shuffled([entry.term, ...distractors], random),
-    explanation: entry.relatedWord || entry.meaning || entry.meaningZh,
+    explanation: meaningExplanation(entry),
   };
 };
 
@@ -56,7 +61,7 @@ export const buildScenario = ({ entry, sourceDeck, random = Math.random }) => {
   if (!examples.length) return null;
   const example = examples[Math.floor(random() * examples.length)];
   const question = buildMCQ({ entry: { ...entry, miniScenario: example.prompt }, sourceDeck, random });
-  return question ? { ...question, kind: "scenario", explanation: [example.sentence, entry.relatedWord].filter(Boolean).join("\n") } : null;
+  return question ? { ...question, kind: "scenario", explanation: [example.sentence, meaningExplanation(entry)].filter(Boolean).join("\n") } : null;
 };
 
 export const buildWordBank = ({ entry, sourceDeck, extraDeck = [], extraCount = 3, random = Math.random }) => {

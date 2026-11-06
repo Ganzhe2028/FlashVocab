@@ -23,6 +23,27 @@ test("MCQ rebuilds combinations and answer positions at each encounter", () => {
   assert.notEqual(first.options.indexOf(entry.term), second.options.indexOf(entry.term));
 });
 
+test("MCQ and scenario explanations exclude counterpart material absent from the question", () => {
+  const target = {
+    term: "Crunch",
+    miniScenario: "A researcher uses a computer to analyze thousands of survey responses and calculate important results.",
+    meaning: "to process large amounts of information",
+    meaningZh: "深入计算和处理",
+    relatedWord: "skim — 快速浏览；Crunch 强调深入计算和处理，skim 强调略读。",
+    examples: [{ sentence: "Researchers crunch the survey results.", focus: "crunch" }],
+  };
+  const deck = ["Boo", "Full-fledged", target, "Utter"].map((item) =>
+    typeof item === "string" ? { term: item, meaning: `meaning of ${item}` } : item);
+  const mcq = buildMCQ({ entry: target, sourceDeck: deck, random: () => 0.99 });
+  const expectedMeaning = `${target.meaningZh}\n${target.meaning}`;
+  assert.equal(mcq.explanation, expectedMeaning);
+  assert.ok(!mcq.options.includes("skim"));
+  assert.ok(!mcq.explanation.includes("skim"));
+  const scenario = buildScenario({ entry: target, sourceDeck: deck, random: () => 0.99 });
+  assert.equal(scenario.explanation, `${target.examples[0].sentence}\n${expectedMeaning}`);
+  assert.ok(!scenario.explanation.includes("skim"));
+});
+
 test("small decks use available distinct options and cannot fabricate a one-word quiz", () => {
   assert.equal(buildMCQ({ entry, sourceDeck: [entry] }), null);
   const question = buildMCQ({ entry, sourceDeck: [entry, sourceDeck[1], { ...entry, term: "DEVISE" }] });

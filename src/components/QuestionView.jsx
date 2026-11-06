@@ -55,7 +55,7 @@ export default function QuestionView({ quiz, onAnswer, onNext, onEnd, onRestart 
       {answered ? (
         <div className="question-feedback" role="status">
           <strong>{quiz.selected === question.answer ? "答对了" : `正确答案：${question.answer}`}</strong>
-          <p>{question.explanation}</p>
+          {question.explanation ? <p>{question.explanation}</p> : null}
           <button type="button" className="primary-action" onClick={onNext}><span>下一题</span><kbd>N</kbd></button>
         </div>
       ) : null}
