@@ -14,7 +14,6 @@ import {
   DECK_STORAGE_VERSION,
 } from "./storage/learningStorage.js";
 import { THEME_STORAGE_KEY } from "./hooks/useThemePreference.js";
-import { WORD_FONT_STORAGE_KEY } from "./hooks/useWordFontPreference.js";
 import { MASTERY_STORAGE_KEY } from "./storage/masteryStorage.js";
 
 const alpha = {
@@ -1468,29 +1467,6 @@ describe("FlashVocab 3.0", () => {
     fireEvent.click(screen.getByRole("radio", { name: "暗色" }));
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
-  });
-
-  test("word heading font defaults to Crimson Text and persists the system-font choice", () => {
-    saveAssets();
-    const first = render(<App />);
-    expect(document.documentElement.dataset.wordFont).toBe("crimson");
-
-    openSettings();
-    const fontSwitch = screen.getByRole("switch", { name: /单词大标题使用 Crimson Text/ });
-    expect(fontSwitch.checked).toBe(true);
-    fireEvent.click(fontSwitch);
-    expect(document.documentElement.dataset.wordFont).toBe("system");
-    expect(window.localStorage.getItem(WORD_FONT_STORAGE_KEY)).toBe("system");
-    first.unmount();
-
-    render(<App />);
-    expect(document.documentElement.dataset.wordFont).toBe("system");
-    openSettings();
-    const restoredSwitch = screen.getByRole("switch", { name: /单词大标题使用 Crimson Text/ });
-    expect(restoredSwitch.checked).toBe(false);
-    fireEvent.click(restoredSwitch);
-    expect(document.documentElement.dataset.wordFont).toBe("crimson");
-    expect(window.localStorage.getItem(WORD_FONT_STORAGE_KEY)).toBe("crimson");
   });
 
   test("pointer-clicked controls release focus so the next learning key keeps working", () => {

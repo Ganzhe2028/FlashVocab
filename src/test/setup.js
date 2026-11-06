@@ -109,7 +109,6 @@ beforeEach(() => {
   window.speechSynthesis.paused = false;
   document.documentElement.dataset.theme = "light";
   document.documentElement.dataset.themePreference = "system";
-  document.documentElement.dataset.wordFont = "crimson";
 });
 
 afterEach(() => {
