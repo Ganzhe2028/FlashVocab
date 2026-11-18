@@ -32,12 +32,11 @@ export default function SpellView({
 
   return (
     <section className="spell-view" aria-labelledby="spell-heading">
-      <p className="eyebrow">拼写</p>
       <h1 id="spell-heading" className="spell-heading">
         {item?.meaningZh || "未提供中文释义"}
       </h1>
       <p className="meaning-en spell-en">{item?.meaning || "未提供释义"}</p>
-      <p className="word-meta">{item?.pos || "词性未提供"}</p>
+      {item?.pos ? <p className="word-meta">{item.pos}</p> : null}
 
       <label className={`spell-field${hasError ? " has-error" : ""}${finished ? " is-correct" : ""}`}>
         <span className="sr-only">输入英文拼写</span>

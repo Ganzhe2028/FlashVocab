@@ -61,7 +61,6 @@ export default function ImportView({
   const missingMaterial = useMemo(() => entries.filter(needsFillMaterial), [entries]);
   const withZh = entries.filter((entry) => entry.meaningZh).length;
   const skipped = draft?.skipped?.filter((line) => line.reason !== "heading") ?? [];
-  const skippedHeadings = draft?.skipped?.filter((line) => line.reason === "heading") ?? [];
   const activeStep = stage === "preview" ? 1 : 0;
 
   useEffect(() => {
@@ -104,7 +103,7 @@ export default function ImportView({
     setFailedFile("");
     setParsing(true);
     try {
-      if (!file.name.toLowerCase().endsWith(".json")) throw new Error("只支持 .json 词表。请先用下方提示词把原材料转成 JSON。");
+      if (!file.name.toLowerCase().endsWith(".json")) throw new Error("只支持 .json 词表。其他格式先用「用 AI 转成 JSON」转换。");
       acceptText(await file.text(), file.name);
     } catch (fileError) {
       setError(fileError?.message || "无法读取这个文件。");
@@ -153,18 +152,18 @@ export default function ImportView({
   const copyFillPrompt = async () => {
     try {
       await navigator.clipboard.writeText(buildFillPrompt(entries));
-      setCopyNotice("已复制。发给 AI 后，把完整 JSON 数组粘贴到下面。");
+      setCopyNotice("已复制。把回复粘到下面。");
     } catch {
-      setCopyNotice("复制失败，请展开「看看这段话」手动复制。");
+      setCopyNotice("复制失败，请展开「查看提示词」手动复制。");
     }
   };
 
   const copyWorksheetPrompt = async () => {
     try {
       await navigator.clipboard.writeText(buildWorksheetPrompt());
-      setAssistCopyNotice("已复制。把它和你的词表一起发给 DeepSeek 或 ChatGPT。");
+      setAssistCopyNotice("已复制，发给 AI 即可。");
     } catch {
-      setAssistCopyNotice("复制失败，请展开提示词手动复制。");
+      setAssistCopyNotice("复制失败，请展开「查看提示词」手动复制。");
     }
   };
 
@@ -237,8 +236,8 @@ export default function ImportView({
             <h1 id="import-title" ref={headingRef} tabIndex="-1">先转成 JSON 词表。</h1>
             <p className="import-summary">
               {entries.length
-                ? "它像是匹配/填空题：单词和释义分开放，闪词猜不出谁配谁。"
-                : "把原文件或文字交给 AI，按模板转成 JSON 后再导入。"}
+                ? "单词和释义分开了，交给 AI 配对更稳。"
+                : "把原文件或文字交给 AI，转成 JSON 后再导入。"}
             </p>
             {draft.sourceName ? <p className="assist-source">{draft.sourceName}</p> : null}
 
@@ -297,7 +296,7 @@ export default function ImportView({
                 <h2 id="fill-panel-title">让 AI 一次补齐</h2>
                 <button type="button" className="text-button" onClick={() => { setFillOpen(false); setCopyNotice(""); }}>收起</button>
               </div>
-              <p className="fill-hint">会补上中文释义、词性、英文释义、词源、对应词、例句和辨析情景；已有的不会被覆盖。</p>
+              <p className="fill-hint">只补缺的字段，已有的不会覆盖。</p>
               <div className="fill-step fill-step-action">
                 <span>1</span>
                 <div className="fill-actions">
@@ -309,7 +308,7 @@ export default function ImportView({
                 <summary>看看这段话</summary>
                 <textarea className="fill-prompt" readOnly rows="10" value={buildFillPrompt(entries)} onFocus={(event) => event.target.select()} aria-label="补全提示词" />
               </details>
-              <p className="fill-step"><span>2</span>把 AI 返回的整段回复粘进来，带代码块也行。</p>
+              <p className="fill-step"><span>2</span>粘贴 AI 的整段回复。</p>
               <textarea
                 className="fill-reply"
                 rows="7"
@@ -318,7 +317,7 @@ export default function ImportView({
                 placeholder={MATERIAL_REPLY_PLACEHOLDER}
                 aria-label="AI 回复"
               />
-              <p className="fill-hint">词多可分批补全，但每批必须是完整 JSON 数组；截断的回复不会导入。</p>
+              <p className="fill-hint">可分批发；每批要是完整 JSON 数组。</p>
               {fillError ? <p className="inline-error" role="alert">{fillError}</p> : null}
               <button type="button" className="primary-action" onClick={applyFill}>识别并补全</button>
             </section>
@@ -349,12 +348,9 @@ export default function ImportView({
                   </li>
                 ))}
               </ul>
-              <p>可以不管，或者回上一步改一下原文。</p>
             </details>
           ) : null}
-          {skippedHeadings.length ? <p className="import-skip-note">已忽略 {skippedHeadings.length} 行标题或日期。</p> : null}
 
-          {hasWaves ? <p className="import-keep-note">会加进「词表」，原来的不会丢。</p> : null}
           {error ? <p className="inline-error" role="alert">{error}</p> : null}
 
           <button type="button" className="primary-action import-start" disabled={busy} onClick={startImport}>
@@ -366,36 +362,6 @@ export default function ImportView({
         <div className="import-step-body">
           {canContinue ? <button type="button" className="text-button import-back" onClick={onContinue}>← 继续学习</button> : null}
           <h1 id="import-title" ref={headingRef} tabIndex="-1">{hasWaves ? "再加一组词。" : "单词表在哪？"}</h1>
-
-          <section className="conversion-guide" aria-labelledby="conversion-guide-title">
-            <h2 id="conversion-guide-title">词表还不是 JSON？让 AI 帮你转换</h2>
-            <ol className="conversion-steps">
-              <li className="fill-step conversion-copy-step">
-                <span>1</span>
-                <div className="conversion-copy-content">
-                  <div className="fill-actions">
-                    <button type="button" className="secondary-action" onClick={copyWorksheetPrompt}>复制转换提示词</button>
-                    {assistCopyNotice ? <span className="fill-note" role="status">{assistCopyNotice}</span> : null}
-                  </div>
-                  <p>把你的词表和提示词一起发给 <a className="text-button" href="https://chat.deepseek.com/" target="_blank" rel="noreferrer">DeepSeek</a> 或 <a className="text-button" href="https://chatgpt.com/" target="_blank" rel="noreferrer">ChatGPT</a>。</p>
-                </div>
-              </li>
-              <li className="fill-step">
-                <span>2</span>
-                <p>把 AI 返回的 JSON 粘贴到下方「粘贴」框，再点「识别单词」。</p>
-              </li>
-            </ol>
-            <details className="fill-prompt-details">
-              <summary>看看提示词</summary>
-              <textarea className="fill-prompt" readOnly rows="10" value={buildWorksheetPrompt()} onFocus={(event) => event.target.select()} aria-label="整理提示词" />
-            </details>
-            {failedFile ? (
-              <button type="button" className="text-button import-ai-fallback" onClick={openFailedFileAssist}>
-                也可以在这里粘贴 AI 回复
-              </button>
-            ) : null}
-          </section>
-          <p className="import-privacy">只保存在这台设备</p>
 
           <div className="source-tabs" role="group" aria-label="词表来源">
             <button type="button" aria-pressed={sourceMode === "paste"} disabled={parsing} onClick={() => { setSourceMode("paste"); setError(""); setFailedFile(""); }}>
@@ -425,14 +391,11 @@ export default function ImportView({
               onDrop={handleDrop}
             >
               <span className="drop-icon"><FileIcon /></span>
-              <strong>{parsing ? "正在识别…" : dragActive ? "松手，开始识别" : "把 JSON 文件拖到这里"}</strong>
-              <span>{parsing ? "马上就好" : "或点击重新选择"}</span>
-              <span className="drop-formats">只支持 JSON 词表</span>
+              <strong>{parsing ? "正在识别…" : dragActive ? "松手，开始识别" : "拖入或点击选择 JSON 文件"}</strong>
               <span className="sr-only" role="status">{parsing ? "正在识别文件" : ""}</span>
             </label>
           ) : (
             <div className="paste-panel">
-              <p className="paste-hint">粘贴 JSON 数组；外面带代码块也行，但别混入说明文字。</p>
               <textarea
                 ref={pasteRef}
                 value={sourceText}
@@ -457,11 +420,28 @@ export default function ImportView({
           )}
 
           {error ? <p className="inline-error" role="alert">{error}</p> : null}
-          {/* <p className="import-privacy"><a download="flashvocab-template.json" href={`data:application/json;charset=utf-8,${encodeURIComponent(MATERIAL_REPLY_PLACEHOLDER)}`}>下载 JSON 模板</a></p> */}
+
+          <details className="import-format-help">
+            <summary>用 AI 转成 JSON</summary>
+            <p>把词表和提示词一起发给 <a className="text-button" href="https://chat.deepseek.com/" target="_blank" rel="noreferrer">DeepSeek</a> 或 <a className="text-button" href="https://chatgpt.com/" target="_blank" rel="noreferrer">ChatGPT</a>，再把返回的 JSON 粘到上面。</p>
+            <div className="fill-actions">
+              <button type="button" className="secondary-action" onClick={copyWorksheetPrompt}>复制转换提示词</button>
+              {assistCopyNotice ? <span className="fill-note" role="status">{assistCopyNotice}</span> : null}
+            </div>
+            <details className="fill-prompt-details">
+              <summary>查看提示词</summary>
+              <textarea className="fill-prompt" readOnly rows="10" value={buildWorksheetPrompt()} onFocus={(event) => event.target.select()} aria-label="整理提示词" />
+            </details>
+            {failedFile ? (
+              <button type="button" className="text-button import-ai-fallback" onClick={openFailedFileAssist}>
+                直接粘贴 AI 的回复
+              </button>
+            ) : null}
+          </details>
 
           {!hasWaves ? (
             <button type="button" className="text-button import-sample" disabled={parsing} onClick={onSample}>
-              没有词表？用 24 个示例词试试
+              用 24 个示例词试试
             </button>
           ) : null}
         </div>

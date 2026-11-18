@@ -5,9 +5,8 @@ export default function QuestionView({ quiz, onAnswer, onNext, onEnd, onRestart 
     const correct = quiz.results.filter((result) => result.correct).length;
     return (
       <section className="status-view" aria-labelledby="quiz-summary-title">
-        <p className="eyebrow">{quiz.kind === "scenario" ? "情景题" : quiz.kind === "bank" ? "填搭配" : quiz.kind === "contrast" ? "辨析近义词" : "选择题"}结算</p>
         <h1 id="quiz-summary-title">这组题练完了。</h1>
-        <p role="status">共 {quiz.results.length} 题，答对 {correct}，答错 {quiz.results.length - correct}。</p>
+        <p role="status" className="status-lead">共 {quiz.results.length} 题，答对 {correct}，答错 {quiz.results.length - correct}。</p>
         <div className="status-actions">
           <button type="button" className="primary-action" onClick={onRestart}>再练一组</button>
           <button type="button" className="secondary-action" onClick={onEnd}>回到刚才的学习</button>
@@ -19,11 +18,11 @@ export default function QuestionView({ quiz, onAnswer, onNext, onEnd, onRestart 
   const answered = quiz.selected !== null;
   return (
     <section className="question-view" aria-labelledby="question-title">
-      <p className="eyebrow">练习 · {quiz.index + 1} / {quiz.queueIds.length}</p>
-      <h1 id="question-title">{quiz.kind === "scenario" ? "根据情景选词。" : quiz.kind === "bank" ? "从词库找回搭配。" : quiz.kind === "contrast" ? "这次更接近哪个词？" : "选最贴切的词。"}</h1>
+      <div className="question-header">
+        <h1 id="question-title">{quiz.kind === "scenario" ? "根据情景选词。" : quiz.kind === "bank" ? "从词库找回搭配。" : quiz.kind === "contrast" ? "这次更接近哪个词？" : "选最贴切的词。"}</h1>
+        <span className="question-count">{quiz.index + 1} / {quiz.queueIds.length}</span>
+      </div>
       <p className="question-prompt">{question.prompt}</p>
-      {quiz.kind === "bank" ? <p>选择空缺搭配里的词。词库含当前词表全部词，另有 {question.extraCount} 个额外词。</p> : null}
-      {quiz.kind === "bank" ? <p className="option-help">前九项可按 1–9；所有选项也能点击，或用 Tab 选中后按 Enter。</p> : null}
       <div className={`question-options${quiz.kind === "bank" ? " word-bank-options" : ""}`} role="group" aria-label="选择答案">
         {question.options.map((option, index) => (
           <button

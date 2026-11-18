@@ -376,7 +376,6 @@ export default function App() {
       ) : null}
 
       <main className={`reading-column${state.mode === "prepare" ? " is-importing" : ""}`}>
-        {state.mode !== "prepare" && state.waves.length ? <p className="learning-context">{state.waves.filter((wave) => wave.status === "active").map((wave) => wave.name).join(" · ")} · {getActiveCardIds(state).length} 个词</p> : null}
         {state.notice && !undoToastVisible ? <p className="page-notice" role="status">{state.notice}</p> : null}
         {state.mode === "prepare" ? (
           <ImportView
@@ -390,10 +389,8 @@ export default function App() {
         {state.mode === "study" && currentStudyItem ? (
           <StudyView
             item={currentStudyItem}
-            isPractice={Boolean(state.studyPracticeId)}
             revealed={state.revealed}
             studyResult={state.studyResult}
-            quickKnownEnabled={state.quickKnownEnabled}
             insightsExpanded={state.insightsExpanded}
             pronunciationSupported={pronunciationSupported}
             pronunciationSpeaking={pronunciationSpeaking}

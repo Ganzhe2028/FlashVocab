@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import InfoTip from "./InfoTip.jsx";
 
 const FOCUSABLE_SELECTOR = [
   "button:not([disabled])",
@@ -16,9 +17,9 @@ const PANEL_TITLES = {
 };
 
 const SPELLING_OPTIONS = [
-  ["off", "纯刷词", "大量多次地过完所有单词"],
-  ["mistakes", "刷词+拼写错词", "刷完后拼一遍不认识的词"],
-  ["all", "刷词+拼写全部", "每轮结束后全部拼一遍"],
+  ["off", "纯刷词"],
+  ["mistakes", "刷词+拼写错词"],
+  ["all", "刷词+拼写全部"],
 ];
 
 export default function ManagePanel({
@@ -104,10 +105,7 @@ export default function ManagePanel({
       <aside ref={panelRef} className="manage-panel" role="dialog" aria-modal="true" aria-labelledby="manage-title">
         <header className="panel-header">
           <div className="panel-heading-row">
-            <div>
-              <p className="eyebrow">{section === "deck" ? "词表" : section === "settings" ? "偏好" : "帮助"}</p>
-              <h2 id="manage-title">{PANEL_TITLES[section]}</h2>
-            </div>
+            <h2 id="manage-title">{PANEL_TITLES[section]}</h2>
             <button type="button" className="icon-button close-button" onClick={onClose} aria-label="关闭管理面板">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
             </button>
@@ -136,7 +134,7 @@ export default function ManagePanel({
               <p className="deck-summary">
                 {activeWaves.length
                   ? <><strong>{activeWaves.map((wave) => wave.name).join("、")}</strong><span>{totalActive} 个词</span></>
-                  : <><strong>没有在学的词表</strong><span>选一组继续，或添加新的</span></>}
+                  : <strong>没有在学的词表</strong>}
               </p>
               <button type="button" className="primary-action add-deck-action" onClick={onAddDeck}>
                 <span>＋</span> 添加新词表
@@ -182,7 +180,6 @@ export default function ManagePanel({
                                 改名
                               </button>
                             </div>
-                            <span className="wave-status">{wave.status === "active" ? "在学" : "已收起"}</span>
                           </>
                         )}
                       </div>
@@ -201,7 +198,6 @@ export default function ManagePanel({
 
             <details className="panel-details">
               <summary>专项练习</summary>
-              <p>不改变认词进度，练完回到刚才的学习。</p>
               <div className="panel-practice-grid">
                 {[["mcq", "看释义选词"], ["scenario", "看情景选词"], ["bank", "填搭配"], ["contrast", "辨析近义词"]].map(([kind, label]) => (
                   <button key={kind} type="button" className="secondary-action" onClick={() => onQuiz(kind)}>{label}</button>
@@ -211,7 +207,6 @@ export default function ManagePanel({
 
             <details className="panel-details">
               <summary>备份与导出</summary>
-              <p>{sourceDeck.length} 个词，{removedEntries.length} 个已移出。导出文件可以留着换电脑用。</p>
               <div className="button-grid">
                 <button type="button" className="tertiary-action" onClick={onExportJson} disabled={!sourceDeck.length}>导出 JSON</button>
                 <button type="button" className="tertiary-action" onClick={onExportMarkdown} disabled={!sourceDeck.length}>导出 Markdown</button>
@@ -220,7 +215,7 @@ export default function ManagePanel({
 
             <details className="panel-details">
               <summary>用 DeepSeek 补全资料（进阶）</summary>
-              <p>导入时已经可以让 AI 一次补齐；这里是用自己的 key 直接写回词表。key 只留在这个页面，刷新就清空。</p>
+              <p>用自己的 key 直接写回词表，key 只留在这个页面。</p>
               {aiControls}
             </details>
 
@@ -238,7 +233,6 @@ export default function ManagePanel({
             {graduatedCount ? (
               <section className="panel-section" aria-labelledby="graduated-title">
                 <h3 id="graduated-title">已毕业 {graduatedCount} 词</h3>
-                <p>连续三次首答正确后离开主队列；需要时再找回。</p>
                 <button type="button" className="secondary-action" onClick={onRestoreGraduated}>找回毕业词</button>
               </section>
             ) : null}
@@ -254,11 +248,13 @@ export default function ManagePanel({
         {section === "settings" ? (
           <div className="panel-content">
             <section className="panel-section panel-section-first" aria-labelledby="practice-settings-title">
-              <h3 id="practice-settings-title">练习方式</h3>
-              <p>下一轮按这个方式练。</p>
+              <div className="section-heading-row">
+                <h3 id="practice-settings-title">练习方式</h3>
+                <InfoTip label="练习方式说明">改动从下一轮开始生效。</InfoTip>
+              </div>
               <fieldset className="setting-choice-list">
                 <legend className="sr-only">拼写练习</legend>
-                {SPELLING_OPTIONS.map(([value, title, description]) => (
+                {SPELLING_OPTIONS.map(([value, title]) => (
                   <label key={value} className={`setting-choice${spellingMode === value ? " is-selected" : ""}`}>
                     <input
                       type="radio"
@@ -267,10 +263,7 @@ export default function ManagePanel({
                       onChange={() => onSetSpellingMode(value)}
                     />
                     <span className="setting-choice-mark" aria-hidden="true" />
-                    <span>
-                      <strong>{title}</strong>
-                      <small>{description}</small>
-                    </span>
+                    <strong>{title}</strong>
                   </label>
                 ))}
               </fieldset>
@@ -279,7 +272,10 @@ export default function ManagePanel({
             <section className="panel-section" aria-labelledby="voice-settings-title">
               <h3 id="voice-settings-title">发音</h3>
               <label className="switch-row">
-                <span><strong>自动读单词</strong><small>{pronunciationSupported ? "翻开答案、进入下一词时自动读" : "当前浏览器不支持朗读，按钮仍可手动点"}</small></span>
+                <span>
+                  <strong>自动读单词</strong>
+                  {!pronunciationSupported ? <small>当前浏览器不支持朗读。</small> : null}
+                </span>
                 <input
                   className="switch-input"
                   type="checkbox"
@@ -316,7 +312,7 @@ export default function ManagePanel({
             <details className="panel-details advanced-settings">
               <summary>进阶</summary>
               <label className="switch-row quick-known-setting">
-                <span><strong>认识的词直接前进</strong><small>按 Q 直接记为认识，不再展开答案。默认关闭。</small></span>
+                <span><strong>认识的词直接前进</strong></span>
                 <input
                   className="switch-input"
                   type="checkbox"
@@ -333,8 +329,8 @@ export default function ManagePanel({
           <div className="panel-content">
             <section className="panel-section panel-section-first" aria-labelledby="help-import-title">
               <h3 id="help-import-title">导入</h3>
-              <p>导入只接受 JSON 文件或纯 JSON 数组，页面可下载固定模板。Word、Excel、Markdown 等材料先点「把其他格式转成 JSON」，用提示词转换后再导入。</p>
-              <p>如果某一行没被认出，导入预览会单独列出来，回到上一步改一下原文即可。</p>
+              <p>只接受 .json 文件或 JSON 数组；其他格式用导入页的「用 AI 转成 JSON」。</p>
+              <p>没认出的行会在预览里单独列出，其余照常导入。</p>
             </section>
 
             <section className="panel-section" aria-labelledby="shortcuts-title">
@@ -350,7 +346,12 @@ export default function ManagePanel({
 
             <section className="panel-section" aria-labelledby="help-ai-title">
               <h3 id="help-ai-title">AI 补全</h3>
-              <p>导入核对页会给出「让 AI 补全」：复制那段话给任意 AI，能把中文释义、词性、词源、对应词、例句和辨析情景一次补齐，专项练习导入后就能直接练；AI 回复整段粘回来即可，代码块会自动拆掉；格式错误会指出位置。</p>
+              <p>核对页的「让 AI 补全」会补齐中文释义、词性、词源、对应词、例句和辨析情景；整段回复粘回来即可，格式错误会指出位置。</p>
+            </section>
+
+            <section className="panel-section" aria-labelledby="help-data-title">
+              <h3 id="help-data-title">数据</h3>
+              <p>词表和进度只保存在这台设备；换设备前用「备份与导出」保存一份 JSON。</p>
             </section>
           </div>
         ) : null}

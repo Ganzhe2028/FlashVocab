@@ -1,12 +1,15 @@
 import { getHighlightedSentence } from "./highlightSentence.js";
 import { selectExamples } from "../learningAlgorithm.js";
 
-const Meaning = ({ item }) => (
-  <div className="meaning-block">
-    <p className="meaning-zh">{item?.meaningZh || "未提供中文释义"}</p>
-    <p className="meaning-en">{item?.meaning || "未提供释义"}</p>
-  </div>
-);
+const Meaning = ({ item }) => {
+  if (!item?.meaningZh && !item?.meaning) return null;
+  return (
+    <div className="meaning-block">
+      {item.meaningZh ? <p className="meaning-zh">{item.meaningZh}</p> : null}
+      {item.meaning ? <p className="meaning-en">{item.meaning}</p> : null}
+    </div>
+  );
+};
 
 const formatStudyHeading = (word) => {
   if (!word || word === word.toLocaleUpperCase()) return word;
@@ -15,10 +18,8 @@ const formatStudyHeading = (word) => {
 
 export default function StudyView({
   item,
-  isPractice,
   revealed,
   studyResult,
-  quickKnownEnabled,
   insightsExpanded,
   pronunciationSupported,
   pronunciationSpeaking,
@@ -35,7 +36,6 @@ export default function StudyView({
 
   return (
     <section className="study-view" aria-labelledby="study-term">
-      <p className="eyebrow">{isPractice ? "认词 · 再遇见" : "认词"}</p>
       <div className="word-heading-row">
         <h1 id="study-term" className="word-heading">
           <button
@@ -131,7 +131,6 @@ export default function StudyView({
         </div>
       ) : (
         <div className="study-prompt">
-          <p>{quickKnownEnabled ? "认识按 Q 直接前进；不认识按 E 展开答案。" : "凭记忆判断，然后看答案。"}</p>
           <div className="study-actions study-choice-actions" aria-label="认词选择">
             <button type="button" className="choice-action" onClick={() => onChoose(true)}>
               <span>认识</span><kbd>Q</kbd>
