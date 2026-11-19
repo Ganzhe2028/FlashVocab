@@ -1,7 +1,7 @@
 export function MasteredView({ onRestore, onQuiz }) {
   return (
     <section className="status-view" aria-labelledby="mastered-title">
-      <h1 id="mastered-title">这份词表的词都稳了。</h1>
+      <h1 id="mastered-title">都毕业了。</h1>
       <div className="status-actions">
         <button type="button" className="primary-action" onClick={onRestore}>找回毕业词</button>
         <button type="button" className="secondary-action" onClick={onQuiz}>看释义选词</button>
@@ -38,7 +38,7 @@ export function SummaryView({ summary, onContinue, onPrepare, onQuiz }) {
 export function PauseView({ onResume, onStudy }) {
   return (
     <section className="status-view" aria-labelledby="pause-title">
-      <h1 id="pause-title">停一下，答案不会丢。</h1>
+      <h1 id="pause-title">拼写暂停。</h1>
       <div className="status-actions">
         <button className="primary-action" type="button" onClick={onResume}>
           <span>继续拼写</span><kbd>Enter</kbd>

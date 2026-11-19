@@ -56,10 +56,10 @@ export default function SpellView({
 
       <div id="spell-feedback" className="spell-feedback" aria-live="polite">
         {result === "wrong" ? (
-          <p className="feedback-error">第一次没拼对：<strong>{item?.term}</strong>。重新正确输入一次。</p>
+          <p className="feedback-error">没拼对：<strong>{item?.term}</strong>。再输入一次。</p>
         ) : null}
         {result === "retrying" ? (
-          <p className="feedback-error">按正确拼写再提交一次；首次结果不会被覆盖。</p>
+          <p className="feedback-error">再拼一次，首次结果保留。</p>
         ) : null}
         {result === "correct" ? (
           <p className="feedback-success">拼对了：<strong>{syllables}</strong></p>

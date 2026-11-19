@@ -45,7 +45,7 @@ src/
     QuestionView.jsx      专项练习
     StatusView.jsx        结算页 / 毕业页
     ManagePanel.jsx       词表 / 设置 / 帮助三段式面板
-    InfoTip.jsx           info 图标 + hover/focus tooltip（唯一按需说明控件）
+    InfoTip.jsx           统一的 info 图标 + 按需 tooltip
     AIPreparationControls.jsx
     MemoryPicture.jsx     本地 SVG 记忆图渲染器（当前未挂载）
   hooks/
@@ -162,7 +162,7 @@ AGENTS.md                 开发约定与当前行为契约（每次任务开始
 
 `deckImport.js` 保留历史文本/Office 工具和旧存储 normalization，不再供界面直接猜测导入格式。已有资产的兼容读取不变；旧数据中误作单个例句的英文定义仍会修复。非 JSON 材料可通过显式 AI 转换入口生成固定 JSON 后预览，不做 worksheet 猜测。
 
-导入第 1 步先显示「粘贴 / 文件」选择器、对应输入区和主按钮；AI 转换交接收在下面的折叠区「用 AI 转成 JSON」里：一行说明、复制 `buildWorksheetPrompt()` 的按钮、手动查看提示词和文件失败时的备用入口。返回的 JSON 粘回上方输入框。组件默认粘贴，文件 input 始终挂载，点击「文件」在同一用户事件中调用 `fileRef.current.click()` 立即打开系统选择器；drop-card 保留拖放和通过 `htmlFor` 重新选择。提示词同时覆盖文件与文字材料，不要求应用上传源文件，也不需要 API key。首屏不再显示隐私说明，该说明放在帮助面板的「数据」段。
+导入第 1 步先显示「粘贴 / 文件」选择器，再显示默认收起的「用 AI 把其他格式转成 JSON」交接项；隐私事实收进标题旁的 `InfoTip`（词表和进度只保存在本机，不上传）。展开交接项后只有复制按钮、DeepSeek / ChatGPT 链接和「看看提示词」折叠：复制 `buildWorksheetPrompt()`，把自己的词表文件或文字连同提示词发给 AI，再把返回的 JSON 粘贴到上方输入框。组件默认粘贴，文件 input 始终挂载，点击「文件」在同一用户事件中调用 `fileRef.current.click()` 立即打开系统选择器；drop-card 保留拖放和通过 `htmlFor` 重新选择。提示词同时覆盖文件与文字材料，不要求应用上传源文件，也不需要 API key。文件读取失败时仍保留页内粘贴 AI 回复的备用面板。
 
 ## 7. 导入时的 AI 补全
 
@@ -231,7 +231,7 @@ npm run build       Vite 生产构建
 npm run check       以上四步串联，交付门槛
 ```
 
-当前基线：**99 项 Node 测试、80 项 UI 测试、ESLint、生产构建全绿**（2026-11-18 界面文案瘦身，新增认词页无 eyebrow/提示、设置卡只有标题且 tooltip 可访问两条 UI 回归；完整输出见 [检查日志](validation-2026-11-18/check.log)）。
+当前基线：**99 项 Node 测试、78 项 UI 测试、ESLint、生产构建全绿**（2026-11-19 界面文案精简后复核；UI 旧断言同步改为折叠交接、`InfoTip` 与「答对 X / N」结算标题，完整输出见 [检查日志](validation-2026-11-19/check.log)）。
 
 测试与模块同目录（`*.test.js` / `*.test.jsx`），UI 环境配置在 `src/test/setup.js`。逻辑测试注入固定 `random` 和固定时间，不依赖真实随机数。
 
@@ -252,7 +252,7 @@ npm run check       以上四步串联，交付门槛
 静态 SEO 面由三部分组成：首页 `index.html` 的 head、`public/` 下的抓取文件、以及独立的 `/guide/` 说明页。
 
 - **首页 head**：`title` 用「闪词 FlashVocab｜把单词表丢进来，三分钟开始背单词」，`description` 说清场景和「只保存在本机」；`canonical` 固定 `https://bdc.isaacbao.cn/`；`robots` 为 `index, follow` 并放开大图预览；OG/Twitter 共用 `/og.png`。JSON-LD 用 `@graph` 声明 `WebSite`、`Organization`、`WebApplication`，`@id` 分别是 `https://bdc.isaacbao.cn/#website`、`#publisher`、`#app`，改结构时保持这些锚点稳定，别让实体引用断掉。
-- **抓取文件**：`robots.txt` 允许全部抓取并声明 sitemap；`sitemap.xml` 只列首页与 `/guide/`。改动首页或说明页内容后同步 bump `lastmod`（当前 2026-11-18），不要加不存在或有重定向的 URL。
+- **抓取文件**：`robots.txt` 允许全部抓取并声明 sitemap；`sitemap.xml` 只列首页与 `/guide/`。改动首页或说明页内容后同步 bump `lastmod`（当前 2026-11-03），不要加不存在或有重定向的 URL。
 - **`/guide/` 说明页**：纯静态 HTML，不依赖 JS；有独立的 title/description/canonical/OG、`WebPage` + `BreadcrumbList` + `FAQPage` JSON-LD，正文覆盖适用场景、导入、词表格式、键位、复习、专项练习、数据存放和 FAQ。页面文案必须与当前行为一致；功能变化时先改说明页，再 bump sitemap。站内链接指回首页；线上 `/guide/` 与 `/guide` 都直接返回说明页（Vercel 静态托管），canonical 固定为带斜杠的 `https://bdc.isaacbao.cn/guide/`。
 - **图标与分享图**：`favicon.svg` 与 192/512 PNG 是闪电标记，`og.png` 是 1200×630 的社交卡；品牌或 slogan 变化时重新生成，并同步 OG 的 `og:image:width/height`。
 - **搜索引擎收录**：代码只负责可抓取与结构化数据；Google Search Console 的域名验证、提交 sitemap、请求编入需要站点所有者操作。验证 token 的 `google-site-verification` meta 标签尚未加入仓库，验证后按需补到 `index.html`。

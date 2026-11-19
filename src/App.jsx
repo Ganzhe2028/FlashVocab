@@ -31,7 +31,7 @@ import {
 } from "./utils/deckImport.js";
 
 const POINTER_FOCUS_SELECTOR =
-  'button, a[href], input[type="checkbox"], input[type="radio"], [role="button"]';
+  'button:not(.info-tip-button), a[href], input[type="checkbox"], input[type="radio"], [role="button"]';
 
 const downloadText = (content, type, filename) => {
   const url = URL.createObjectURL(new Blob([content], { type }));

@@ -1,15 +1,12 @@
 import { getHighlightedSentence } from "./highlightSentence.js";
 import { selectExamples } from "../learningAlgorithm.js";
 
-const Meaning = ({ item }) => {
-  if (!item?.meaningZh && !item?.meaning) return null;
-  return (
-    <div className="meaning-block">
-      {item.meaningZh ? <p className="meaning-zh">{item.meaningZh}</p> : null}
-      {item.meaning ? <p className="meaning-en">{item.meaning}</p> : null}
-    </div>
-  );
-};
+const Meaning = ({ item }) => (
+  <div className="meaning-block">
+    <p className="meaning-zh">{item?.meaningZh || "未提供中文释义"}</p>
+    <p className="meaning-en">{item?.meaning || "未提供释义"}</p>
+  </div>
+);
 
 const formatStudyHeading = (word) => {
   if (!word || word === word.toLocaleUpperCase()) return word;

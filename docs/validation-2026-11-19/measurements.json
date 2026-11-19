@@ -1,0 +1,30 @@
+{
+  "practiceTitle": "选最贴切的词。",
+  "w390": {
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "innerWidth": 390
+  },
+  "w280": {
+    "scrollWidth": 280,
+    "clientWidth": 280,
+    "innerWidth": 280
+  },
+  "w640": {
+    "scrollWidth": 640,
+    "clientWidth": 640,
+    "innerWidth": 640
+  },
+  "import390": {
+    "scrollWidth": 390,
+    "clientWidth": 390
+  },
+  "import280": {
+    "scrollWidth": 280,
+    "clientWidth": 280
+  },
+  "import640": {
+    "scrollWidth": 640,
+    "clientWidth": 640
+  }
+}

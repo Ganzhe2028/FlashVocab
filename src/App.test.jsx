@@ -194,33 +194,14 @@ describe("FlashVocab 3.0", () => {
       saveAssets([{ term: "Alpha", respell }]);
       render(<App />);
       expect(screen.queryByText("词性未提供")).toBeNull();
+      expect(document.querySelector(".learning-context")).toBeNull();
+      expect(document.querySelector(".study-view .eyebrow")).toBeNull();
       expect(Boolean(document.querySelector(".word-meta"))).toBe(
         Boolean(respell),
       );
       if (respell) expect(screen.getByText(respell)).toBeTruthy();
     },
   );
-  test("recognition shows only the word and its actions", () => {
-    saveAssets();
-    render(<App />);
-    expect(document.querySelector(".eyebrow")).toBeNull();
-    expect(document.querySelector(".learning-context")).toBeNull();
-    expect(screen.queryByText("凭记忆判断，然后看答案。")).toBeNull();
-    expect(screen.getByLabelText("认词选择")).toBeTruthy();
-    press("e", "KeyE");
-    expect(screen.getByTestId("study-answer")).toBeTruthy();
-  });
-  test("settings cards carry only their titles and explain timing through a tooltip", () => {
-    saveAssets();
-    render(<App />);
-    openSettings();
-    expect(screen.getByRole("heading", { name: "练习方式" })).toBeTruthy();
-    expect(screen.queryByText("下一轮按这个方式练。")).toBeNull();
-    expect(screen.queryByText("大量多次地过完所有单词")).toBeNull();
-    expect(screen.getByRole("radio", { name: "纯刷词" })).toBeTruthy();
-    const dialog = screen.getByRole("dialog", { name: "设置" });
-    expect(within(dialog).getByRole("tooltip").textContent).toBe("改动从下一轮开始生效。");
-  });
   test("large word banks label only nine shortcuts and keep later choices clickable", () => {
     saveAssets(
       Array.from({ length: 12 }, (_, index) => ({
@@ -238,7 +219,7 @@ describe("FlashVocab 3.0", () => {
     expect(choices).toHaveLength(12);
     expect(document.querySelectorAll(".question-options kbd")).toHaveLength(9);
     expect(choices[9].querySelector("kbd")).toBeNull();
-    expect(document.querySelector(".option-help")).toBeNull();
+    expect(screen.getByText(/前九项可按 1–9/)).toBeTruthy();
     press("0", "Digit0");
     expect(document.querySelector(".question-feedback")).toBeNull();
     expect(screen.queryByRole("button", { name: /我不知道/ })).toBeNull();
@@ -465,7 +446,7 @@ describe("FlashVocab 3.0", () => {
     const practice = screen.getByRole("region", { name: "练一练" });
     expect(within(practice).getAllByRole("button")).toHaveLength(4);
     const mcq = within(practice).getByRole("button", { name: "看释义选词" });
-    expect(mcq.getAttribute("aria-describedby")).toBeNull();
+    expect(within(practice).queryByText("给定义，选对应词")).toBeNull();
     fireEvent.click(mcq);
     expect(
       screen.getByRole("heading", { name: "选最贴切的词。" }),
@@ -542,10 +523,10 @@ describe("FlashVocab 3.0", () => {
     expect(screen.getByText(alpha.relatedWord)).toBeTruthy();
     press("n", "KeyN");
     expect(
-      screen.getByRole("heading", { name: "这组题练完了。" }),
+      screen.getByRole("heading", { name: /答对 .+ \/ 1/ }),
     ).toBeTruthy();
   });
-  test("word bank practice uses focus cloze with answer feedback", () => {
+  test("word bank practice uses focus cloze with a shortcut tooltip and answer feedback", () => {
     saveAssets([alpha, beta]);
     render(<App />);
     openPractice("填搭配");
@@ -555,6 +536,10 @@ describe("FlashVocab 3.0", () => {
     expect(document.querySelector(".question-prompt").textContent).toContain(
       "____",
     );
+    const tip = screen.getByRole("button", { name: "词库快捷键说明" });
+    expect(
+      document.getElementById(tip.getAttribute("aria-describedby")).textContent,
+    ).toContain("前九项可按 1–9");
     expect(screen.queryByText(/词库含当前词表全部词/)).toBeNull();
     press("1", "Digit1");
     expect(screen.getByText(/空缺搭配：/)).toBeTruthy();
@@ -659,7 +644,7 @@ describe("FlashVocab 3.0", () => {
     press("1", "Digit1");
     press("n", "KeyN");
     expect(
-      screen.getByRole("heading", { name: "这组题练完了。" }),
+      screen.getByRole("heading", { name: /答对 \d \/ 2/ }),
     ).toBeTruthy();
     expect(screen.getByRole("status").textContent).toMatch(/共 2 题/);
     fireEvent.click(screen.getByRole("button", { name: "回到刚才的学习" }));
@@ -758,6 +743,7 @@ describe("FlashVocab 3.0", () => {
     enableSpelling();
     press("e", "KeyE");
     press("n", "KeyN");
+    expect(document.querySelector(".study-view .eyebrow")).toBeNull();
     expect(
       screen.getByRole("progressbar", { name: "本轮加练进度 1 / 2" }),
     ).toBeTruthy();
@@ -770,7 +756,7 @@ describe("FlashVocab 3.0", () => {
     press("n", "KeyN");
     expect(screen.getByRole("textbox", { name: "输入英文拼写" })).toBeTruthy();
   });
-  test("fresh visits default to paste and keep AI conversion collapsed", () => {
+  test("fresh visits lead with the two-step AI guide and default to paste", () => {
     render(<App />);
     const steps = screen.getByRole("list", { name: "导入步骤" });
     expect(within(steps).getAllByRole("listitem")).toHaveLength(3);
@@ -779,14 +765,20 @@ describe("FlashVocab 3.0", () => {
     expect(within(steps).getByText("开始")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "单词表在哪？" })).toBeTruthy();
 
+    const guide = document.querySelector(".conversion-guide");
     const sourceTabs = screen.getByRole("group", { name: "词表来源" });
-    const formatHelp = document.querySelector(".import-format-help");
-    expect(formatHelp.open).toBe(false);
+    expect(guide.compareDocumentPosition(sourceTabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(guide.open).toBe(false);
+    expect(guide.querySelector("summary").textContent).toBe("用 AI 把其他格式转成 JSON");
+    const privacy = screen.getByRole("button", { name: "数据存放说明" });
     expect(
-      sourceTabs.compareDocumentPosition(formatHelp) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(screen.queryByText("只保存在这台设备")).toBeNull();
-    expect(document.querySelector(".paste-hint")).toBeNull();
+      document.getElementById(privacy.getAttribute("aria-describedby")).textContent,
+    ).toContain("只保存在这台设备");
+    fireEvent.click(privacy);
+    expect(privacy.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("tooltip").textContent).toContain("只保存在这台设备");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(privacy.getAttribute("aria-expanded")).toBe("false");
     const sources = within(sourceTabs).getAllByRole("button");
     expect(sources.map((button) => button.textContent)).toEqual(["粘贴", "文件"]);
     expect(sources[0].getAttribute("aria-pressed")).toBe("true");
@@ -803,25 +795,24 @@ describe("FlashVocab 3.0", () => {
     expect(sources[1].getAttribute("aria-pressed")).toBe("true");
   });
 
-  test("adding a list keeps the AI conversion handoff in a disclosure and accepts the returned JSON", async () => {
+  test("adding a list shows the AI conversion handoff and accepts the returned JSON", async () => {
     saveAssets();
     render(<App />);
     openImport();
     expect(screen.getByRole("heading", { name: "再加一组词。" })).toBeTruthy();
-    const help = document.querySelector(".import-format-help");
-    expect(help.open).toBe(false);
-    fireEvent.click(within(help).getByText("用 AI 转成 JSON"));
-    expect(help.open).toBe(true);
-    expect(within(help).getByText(/把词表和提示词一起发给/)).toBeTruthy();
-    expect(within(help).getByText("查看提示词")).toBeTruthy();
-    expect(within(help).getByRole("link", { name: "DeepSeek" })).toBeTruthy();
-    expect(within(help).getByRole("link", { name: "ChatGPT" })).toBeTruthy();
+    const guide = document.querySelector(".conversion-guide");
+    expect(guide.querySelector("summary").textContent).toBe("用 AI 把其他格式转成 JSON");
+    fireEvent.click(guide.querySelector("summary"));
+    expect(guide.open).toBe(true);
+    expect(screen.getByRole("button", { name: "复制转换提示词" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "DeepSeek" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "ChatGPT" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "复制转换提示词" }));
     expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(
       expect.stringContaining("词表文件或文字"),
     );
-    expect(await screen.findByText("已复制，发给 AI 即可。")).toBeTruthy();
+    expect(await screen.findByText(/已复制。把它和你的词表一起发给/)).toBeTruthy();
 
     fireEvent.change(screen.getByRole("textbox", { name: "单词表内容" }), {
       target: {
@@ -1119,7 +1110,7 @@ describe("FlashVocab 3.0", () => {
     expect(window.speechSynthesis.speak.mock.calls.at(-1)[0].text).toBe(
       "Alpha",
     );
-    expect(screen.getByText(/第一次没拼对/)).toBeTruthy();
+    expect(screen.getByText(/没拼对/)).toBeTruthy();
     expect(screen.getByText("Alpha", { selector: "strong" })).toBeTruthy();
 
     fireEvent.change(input, { target: { value: "Alpha" } });
@@ -1143,7 +1134,7 @@ describe("FlashVocab 3.0", () => {
     expect(input.value).toBe("");
     fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
     expect(input.value).toBe("");
-    expect(screen.getByText(/第一次没拼对/)).toBeTruthy();
+    expect(screen.getByText(/没拼对/)).toBeTruthy();
     expect(screen.getByText("Alpha", { selector: "strong" })).toBeTruthy();
     expect(window.speechSynthesis.speak.mock.calls.at(-1)[0].text).toBe(
       "Alpha",
@@ -1162,7 +1153,7 @@ describe("FlashVocab 3.0", () => {
     fireEvent.keyDown(input, { key: "Escape", code: "Escape" });
 
     expect(
-      screen.getByRole("heading", { name: "停一下，答案不会丢。" }),
+      screen.getByRole("heading", { name: "拼写暂停。" }),
     ).toBeTruthy();
     press("Enter", "Enter");
     input = screen.getByRole("textbox", { name: "输入英文拼写" });

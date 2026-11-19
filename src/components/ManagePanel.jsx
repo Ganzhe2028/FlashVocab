@@ -207,6 +207,7 @@ export default function ManagePanel({
 
             <details className="panel-details">
               <summary>备份与导出</summary>
+              <p>{sourceDeck.length} 个词，{removedEntries.length} 个已移出。</p>
               <div className="button-grid">
                 <button type="button" className="tertiary-action" onClick={onExportJson} disabled={!sourceDeck.length}>导出 JSON</button>
                 <button type="button" className="tertiary-action" onClick={onExportMarkdown} disabled={!sourceDeck.length}>导出 Markdown</button>
@@ -215,7 +216,7 @@ export default function ManagePanel({
 
             <details className="panel-details">
               <summary>用 DeepSeek 补全资料（进阶）</summary>
-              <p>用自己的 key 直接写回词表，key 只留在这个页面。</p>
+              <p>key 只留在当前页面，刷新即清空。</p>
               {aiControls}
             </details>
 
@@ -248,10 +249,7 @@ export default function ManagePanel({
         {section === "settings" ? (
           <div className="panel-content">
             <section className="panel-section panel-section-first" aria-labelledby="practice-settings-title">
-              <div className="section-heading-row">
-                <h3 id="practice-settings-title">练习方式</h3>
-                <InfoTip label="练习方式说明">改动从下一轮开始生效。</InfoTip>
-              </div>
+              <h3 id="practice-settings-title">练习方式</h3>
               <fieldset className="setting-choice-list">
                 <legend className="sr-only">拼写练习</legend>
                 {SPELLING_OPTIONS.map(([value, title]) => (
@@ -263,7 +261,9 @@ export default function ManagePanel({
                       onChange={() => onSetSpellingMode(value)}
                     />
                     <span className="setting-choice-mark" aria-hidden="true" />
-                    <strong>{title}</strong>
+                    <span>
+                      <strong>{title}</strong>
+                    </span>
                   </label>
                 ))}
               </fieldset>
@@ -274,7 +274,7 @@ export default function ManagePanel({
               <label className="switch-row">
                 <span>
                   <strong>自动读单词</strong>
-                  {!pronunciationSupported ? <small>当前浏览器不支持朗读。</small> : null}
+                  {pronunciationSupported ? null : <small>当前浏览器不支持朗读。</small>}
                 </span>
                 <input
                   className="switch-input"
@@ -311,16 +311,20 @@ export default function ManagePanel({
 
             <details className="panel-details advanced-settings">
               <summary>进阶</summary>
-              <label className="switch-row quick-known-setting">
-                <span><strong>认识的词直接前进</strong></span>
+              <div className="switch-row quick-known-setting">
+                <span className="switch-copy">
+                  <label htmlFor="quick-known-toggle"><strong>认识的词直接前进</strong></label>
+                  <InfoTip label="认识的词直接前进说明">按 Q 记为认识并直接到下一词，不展开答案。</InfoTip>
+                </span>
                 <input
+                  id="quick-known-toggle"
                   className="switch-input"
                   type="checkbox"
                   role="switch"
                   checked={quickKnownEnabled}
                   onChange={(event) => onSetQuickKnown(event.target.checked)}
                 />
-              </label>
+              </div>
             </details>
           </div>
         ) : null}
@@ -329,8 +333,8 @@ export default function ManagePanel({
           <div className="panel-content">
             <section className="panel-section panel-section-first" aria-labelledby="help-import-title">
               <h3 id="help-import-title">导入</h3>
-              <p>只接受 .json 文件或 JSON 数组；其他格式用导入页的「用 AI 转成 JSON」。</p>
-              <p>没认出的行会在预览里单独列出，其余照常导入。</p>
+              <p>导入只接受 JSON 文件或纯 JSON 数组，页面可下载固定模板。Word、Excel、Markdown 等材料先点「把其他格式转成 JSON」，用提示词转换后再导入。</p>
+              <p>如果某一行没被认出，导入预览会单独列出来，回到上一步改一下原文即可。</p>
             </section>
 
             <section className="panel-section" aria-labelledby="shortcuts-title">
@@ -346,12 +350,7 @@ export default function ManagePanel({
 
             <section className="panel-section" aria-labelledby="help-ai-title">
               <h3 id="help-ai-title">AI 补全</h3>
-              <p>核对页的「让 AI 补全」会补齐中文释义、词性、词源、对应词、例句和辨析情景；整段回复粘回来即可，格式错误会指出位置。</p>
-            </section>
-
-            <section className="panel-section" aria-labelledby="help-data-title">
-              <h3 id="help-data-title">数据</h3>
-              <p>词表和进度只保存在这台设备；换设备前用「备份与导出」保存一份 JSON。</p>
+              <p>导入核对页会给出「让 AI 补全」：复制那段话给任意 AI，能把中文释义、词性、词源、对应词、例句和辨析情景一次补齐，专项练习导入后就能直接练；AI 回复整段粘回来即可，代码块会自动拆掉；格式错误会指出位置。</p>
             </section>
           </div>
         ) : null}

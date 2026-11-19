@@ -1,12 +1,13 @@
 import { allowsUnknownAnswer, UNKNOWN_ANSWER } from "../questionBuilder.js";
+import InfoTip from "./InfoTip.jsx";
 
 export default function QuestionView({ quiz, onAnswer, onNext, onEnd, onRestart }) {
   if (quiz.finished) {
     const correct = quiz.results.filter((result) => result.correct).length;
     return (
       <section className="status-view" aria-labelledby="quiz-summary-title">
-        <h1 id="quiz-summary-title">这组题练完了。</h1>
-        <p role="status" className="status-lead">共 {quiz.results.length} 题，答对 {correct}，答错 {quiz.results.length - correct}。</p>
+        <h1 id="quiz-summary-title">答对 {correct} / {quiz.results.length}</h1>
+        <p className="sr-only" role="status">共 {quiz.results.length} 题，答对 {correct}，答错 {quiz.results.length - correct}。</p>
         <div className="status-actions">
           <button type="button" className="primary-action" onClick={onRestart}>再练一组</button>
           <button type="button" className="secondary-action" onClick={onEnd}>回到刚才的学习</button>
@@ -18,9 +19,12 @@ export default function QuestionView({ quiz, onAnswer, onNext, onEnd, onRestart 
   const answered = quiz.selected !== null;
   return (
     <section className="question-view" aria-labelledby="question-title">
-      <div className="question-header">
+      <p className="quiz-progress">{quiz.index + 1} / {quiz.queueIds.length}</p>
+      <div className="question-heading-row">
         <h1 id="question-title">{quiz.kind === "scenario" ? "根据情景选词。" : quiz.kind === "bank" ? "从词库找回搭配。" : quiz.kind === "contrast" ? "这次更接近哪个词？" : "选最贴切的词。"}</h1>
-        <span className="question-count">{quiz.index + 1} / {quiz.queueIds.length}</span>
+        {quiz.kind === "bank" ? (
+          <InfoTip label="词库快捷键说明">前九项可按 1–9；其余选项用 Tab 选中后按 Enter。</InfoTip>
+        ) : null}
       </div>
       <p className="question-prompt">{question.prompt}</p>
       <div className={`question-options${quiz.kind === "bank" ? " word-bank-options" : ""}`} role="group" aria-label="选择答案">
