@@ -187,6 +187,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   align-self: start;
 }
 
+@media (min-width: 701px) and (min-height: 701px) {
+  .reading-column.is-learning { padding-top: clamp(64px, 14vh, 120px); }
+}
+
 .word-heading-row { display: flex; align-items: center; gap: 16px; }
 .word-heading { margin: 0; font-size: clamp(3rem, 6vw, 4rem); line-height: 1; letter-spacing: -0.055em; }
 .word-copy {

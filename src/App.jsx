@@ -375,7 +375,7 @@ export default function App() {
         </div>
       ) : null}
 
-      <main className={`reading-column${state.mode === "prepare" ? " is-importing" : ""}`}>
+      <main className={`reading-column${state.mode === "prepare" ? " is-importing" : ""}${state.mode === "study" || state.mode === "spell" ? " is-learning" : ""}`}>
         {state.notice && !undoToastVisible ? <p className="page-notice" role="status">{state.notice}</p> : null}
         {state.mode === "prepare" ? (
           <ImportView

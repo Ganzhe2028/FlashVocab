@@ -1,0 +1,26 @@
+{
+  "desktop": {
+    "viewport": [
+      1280,
+      800
+    ],
+    "paddingTop": "112px",
+    "headingYBefore": 184,
+    "headingYAfter": 184
+  },
+  "w390h844": {
+    "paddingTop": "40px",
+    "clientWidth": 390,
+    "scrollWidth": 390
+  },
+  "w280h653": {
+    "paddingTop": "40px",
+    "clientWidth": 280,
+    "scrollWidth": 280
+  },
+  "w1280h650": {
+    "paddingTop": "39px",
+    "clientWidth": 1280,
+    "scrollWidth": 1280
+  }
+}
