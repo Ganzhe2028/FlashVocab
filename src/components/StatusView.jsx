@@ -11,20 +11,33 @@ export function MasteredView({ onRestore, onQuiz }) {
 }
 
 export function SummaryView({ summary, onContinue, onPrepare, onQuiz }) {
+  const masteryNote = summary.mastery?.weak
+    ? `${summary.mastery.weak} 个词需要多练，其他词接着巩固。`
+    : summary.mastery?.unseen
+      ? `还有 ${summary.mastery.unseen} 个词没练到，接着练就会遇到。`
+      : "这组词正在逐步掌握。";
   return (
     <section className="status-view" aria-labelledby="summary-title">
       <h1 id="summary-title">这一轮练完了。</h1>
       <dl className="shortcut-list">
-        <div><dt>认词</dt><dd>{summary.study.total} 个词，认识 {summary.study.correct}，不认识 {summary.study.unknown}</dd></div>
-        {summary.spell.total ? <div><dt>拼写</dt><dd>{summary.spell.total} 个词，首次写对 {summary.spell.correct}，需重拼 {summary.spell.unknown}</dd></div> : null}
-        {summary.mastery ? <div><dt>掌握度</dt><dd>待巩固 {summary.mastery.weak}，未见 {summary.mastery.unseen}，渐稳 {summary.mastery.steady}，毕业 {summary.mastery.graduated}</dd></div> : null}
+        <div><dt>认词</dt><dd>认识 {summary.study.correct} · 不认识 {summary.study.unknown}</dd></div>
+        {summary.spell.total ? <div><dt>拼写</dt><dd>首次写对 {summary.spell.correct} · 需重拼 {summary.spell.unknown}</dd></div> : null}
       </dl>
+      {summary.mastery ? (
+        <div className="mastery-overview">
+          <p>{masteryNote}</p>
+          <details>
+            <summary>看看具体数字</summary>
+            <p>待巩固 {summary.mastery.weak} · 未见 {summary.mastery.unseen} · 渐稳 {summary.mastery.steady} · 毕业 {summary.mastery.graduated}</p>
+          </details>
+        </div>
+      ) : null}
       <div className="status-actions summary-actions" role="group" aria-label="轮次操作">
-        <button className="primary-action" type="button" onClick={onContinue}><span>继续下一轮</span><kbd>Enter</kbd></button>
+        <button className="primary-action" type="button" onClick={onContinue}><span>再练一轮</span><kbd>Enter</kbd></button>
         <button className="secondary-action" type="button" onClick={onPrepare}>换一组词</button>
       </div>
       <section className="summary-practice" aria-labelledby="summary-practice-title">
-        <h2 id="summary-practice-title">练一练</h2>
+        <h2 id="summary-practice-title">小练习</h2>
         <div className="summary-practice-grid">
           {[["mcq", "看释义选词"], ["scenario", "看情景选词"], ["bank", "填搭配"], ["contrast", "辨析近义词"]].map(([kind, label]) => (
             <button key={kind} className="secondary-action summary-practice-button" type="button" onClick={() => onQuiz(kind)}>{label}</button>

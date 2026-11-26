@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   buildFillPrompt,
+  buildRevisionPrompt,
   buildWorksheetPrompt,
   detectWorksheetMismatch,
   mergeFilledEntries,
@@ -60,6 +61,16 @@ test("both prompts require the same fixed JSON schema", () => {
   }
   assert.match(buildFillPrompt([{ ...completeEntry, examples: [] }]), /abandon（已有对应词：quit，请沿用）/);
   assert.ok(!buildFillPrompt([completeEntry]).endsWith("abandon"));
+});
+
+test("revision prompt returns the original reply, exact issue, and unchanged output rules", () => {
+  const original = '[{"term":"abandon","meaningZh":"放弃"},]';
+  const prompt = buildRevisionPrompt(original, "JSON 格式不正确");
+  assert.ok(prompt.includes(original));
+  assert.ok(prompt.includes("JSON 格式不正确"));
+  assert.ok(prompt.includes("不要漏词或新增词条"));
+  assert.ok(prompt.includes("sentence 和 focus 必须原样包含 term 的精确字符串"));
+  assert.ok(prompt.includes("代码块里输出"));
 });
 
 test("JSON reply fills practice fields and never overwrites supplied meanings", () => {

@@ -303,6 +303,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .study-prompt { margin-top: 34px; }
 
 .study-prompt { margin-top: clamp(62px, 11vh, 110px); }
+.study-guide { margin: 0 0 18px; color: var(--muted); font-size: 0.92rem; line-height: 1.5; }
 .question-view { padding-block: 34px; }
 .quiz-progress { margin: 0 0 10px; color: var(--muted); font-size: 0.8rem; font-weight: 650; letter-spacing: 0.04em; }
 .question-view h1 { font-size: clamp(1.8rem, 5vw, 2.6rem); }
@@ -504,6 +505,11 @@ textarea {
 .shortcut-list div { display: grid; grid-template-columns: 54px 1fr; gap: 10px; }
 .shortcut-list dt { color: var(--ink); font-weight: 700; font-size: 0.82rem; }
 .shortcut-list dd { margin: 0; color: var(--muted); font-size: 0.8rem; line-height: 1.45; }
+.mastery-overview { margin-top: 18px; color: var(--muted); font-size: 0.86rem; line-height: 1.5; }
+.mastery-overview > p { margin: 0; color: var(--ink-soft); }
+.mastery-overview details { margin-top: 8px; }
+.mastery-overview summary { display: inline-flex; cursor: pointer; color: var(--muted); font-size: 0.78rem; }
+.mastery-overview details p { margin: 8px 0 0; }
 .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .switch-row span { display: grid; gap: 3px; }
 .switch-row .switch-copy { display: flex; align-items: center; gap: 6px; }
@@ -753,6 +759,9 @@ textarea {
 .fill-actions .secondary-action { min-height: 40px; padding: 8px 14px; }
 .fill-note { color: var(--teal-dark); font-size: 0.78rem; }
 .fill-panel > .primary-action { justify-self: start; margin-top: 4px; }
+.revision-assist { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; width: min(100%, 620px); margin-top: 12px; }
+.revision-assist .fill-prompt-details { flex-basis: 100%; }
+.fill-panel .revision-assist, .assist-panel .revision-assist { width: 100%; margin-top: 0; }
 
 .preview-list {
   list-style: none;
@@ -770,7 +779,7 @@ textarea {
 }
 .preview-list strong { color: var(--ink); font-size: 0.92rem; overflow-wrap: anywhere; }
 .preview-meaning { color: var(--ink-secondary); font-size: 0.84rem; line-height: 1.45; overflow-wrap: anywhere; }
-.preview-list li.is-missing .preview-meaning { color: var(--coral-ink); }
+.preview-meaning small { display: block; margin-top: 2px; color: var(--coral-ink); font-size: 0.74rem; }
 .preview-more { margin-top: 10px; font-size: 0.8rem; }
 .skipped-details {
   margin-top: 20px;

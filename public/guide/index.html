@@ -68,7 +68,7 @@
               {
                 "@type": "Question",
                 "name": "支持 Word、Excel、PDF 吗？",
-                "acceptedAnswer": { "@type": "Answer", "text": "闪词的导入只接受 .json 文件或纯 JSON 数组。Word、Excel、Markdown、PDF 等材料先用页面里的「复制转换提示词」复制提示词，交给任意 AI 转成 JSON 数组，再粘贴回来导入。" }
+                "acceptedAnswer": { "@type": "Answer", "text": "闪词的导入只接受 .json 文件或纯 JSON 数组。Word、Excel、Markdown、PDF 等材料先用页面里的「复制给 AI 的话」复制提示词，交给任意 AI 转成 JSON 数组，再粘贴回来导入。" }
               },
               {
                 "@type": "Question",
@@ -339,19 +339,19 @@
         <figcaption>首次打开：放入 → 核对 → 开始。</figcaption>
       </figure>
       <h3>1 放入</h3>
-      <p>页面先显示「粘贴 / 文件」选择器。默认是粘贴，直接放入纯 JSON 数组；点「文件」会立即打开系统文件选择器，也可以拖入 <code>.json</code> 文件。如果手上的材料是 Word、Excel、Markdown 或 PDF，展开「用 AI 把其他格式转成 JSON」，复制提示词并和你的词表文件或文字一起发给 DeepSeek 或 ChatGPT，再把返回的 JSON 放进输入框并点「识别单词」。发送材料和复制结果都由你手动完成。</p>
+      <p>页面默认展开「用 AI 整理词表」：先复制提示词，和你的 Word 词表一起发给 DeepSeek 或 ChatGPT，再把 AI 生成的内容复制回来，贴到下面。默认是粘贴；点「文件」会立即打开系统文件选择器，也可以拖入 <code>.json</code> 文件。发送材料和复制结果都由你手动完成。</p>
       <h3>2 核对</h3>
-      <p>先看一眼识别结果：多少个词、多少个有中文释义、前五个词长什么样。有词缺资料时，这一页会多出一行「N 个词还没补全资料 · 让 AI 补全」。补全是可选项，不补也能直接开始背。</p>
+      <p>先看一眼识别结果：多少个词、多少个有中文释义、前五个词长什么样，缺中文或英文释义会直接标明。有词缺资料时，这一页会多出一行「N 个词还没补全资料 · 让 AI 帮忙补全」。补全是可选项，不补也能直接开始练。</p>
       <h3>3 开始</h3>
-      <p>确认后点「开始背这 N 个词」，直接进入认词，不用再点一次确认。</p>
+      <p>确认后点「开始练这 N 个词」，直接进入认词，不用再点一次确认。新词表第一张卡会提醒你先在心里想一想，第一次选择后提示和导入通知就会收起。</p>
 
       <h2 id="format">词表格式：一个 JSON 数组</h2>
       <p>闪词的导入边界只接受一个 JSON 数组：可以直接粘数组，也可以粘外面包了一层 <code>```json</code> 的代码块，代码块以外的说明文字会被拒绝。每个词条必须有 <code>term</code>，并且 <code>meaning</code>（英文释义）和 <code>meaningZh</code>（中文释义）至少填一个。</p>
       <p>可选的字段包括词性、音节、注音、词源、对应词、例句和练习情景。例句写成 <code>{ "sentence": "...", "focus": "..." }</code>，其中 <code>focus</code> 必须原样出现在 <code>sentence</code> 里，它决定认词页高亮哪个搭配。AI 转换提示词还会要求例句与重点包含词条的精确原形字符串，辨析答案只能属于目标词和对应词这一对。</p>
       <div class="callout">
-        <p>字段名必须用模板里的写法：<code>term</code>、<code>meaning</code>、<code>meaningZh</code> 等。写成 <code>word</code>、<code>definition</code> 这类别名会被拒绝，并指出是第几个词条。格式错误时整批不导入，不会悄悄丢词。</p>
+        <p>字段名必须用模板里的写法：<code>term</code>、<code>meaning</code>、<code>meaningZh</code> 等。写成 <code>word</code>、<code>definition</code> 这类别名会被拒绝，并指出是第几个词条。格式错误时整批不导入，不会悄悄丢词。页面会用人话说明问题，点「复制给 AI 重改」可以带上原回复和问题，让 AI 修正后再贴回来。</p>
       </div>
-      <p>页面提供固定模板和「复制转换提示词」的提示词，照着填或者交给 AI 转都可以。模板下载、字段校验和提示词都在导入页第 1 步。</p>
+      <p>页面提供固定模板和「复制给 AI 的话」提示词，照着填或者交给 AI 转都可以。字段校验和提示词都在导入页第 1 步。</p>
 
       <h2 id="keys">背的时候手不用离开键盘</h2>
       <figure>
@@ -382,7 +382,7 @@
         <li>同一个词<strong>连续两轮都答对</strong>，会<strong>歇一整轮</strong>（下一轮先不出现），再下一轮回来；回来还答对就继续歇，答错就回到正常队列。</li>
         <li><strong>连续三次</strong>独立答对，这个词毕业，从认词里消失。毕业的词还能在词表里找回来。</li>
       </ul>
-      <p>每一轮结束会有一张结算页，分开统计你第一次判断里认识和不认识的词，以及掌握度的分布。结算页可以直接继续下一轮，也可以进入专项练习。</p>
+      <p>每一轮结束会有一张结算页，先显示「认识 X · 不认识 Y」，掌握情况只有一句概况，具体数字想看再展开。接下来可以「再练一轮」、做「小练习」，或点「换一组词」直接打开词表面板；关闭面板后仍回到这张结算页。</p>
 
       <h2 id="practice">结算页和四种专项练习</h2>
       <p>专项练习从结算页或词表面板的「专项练习」进入，共有四种：</p>
@@ -420,7 +420,7 @@
       </details>
       <details>
         <summary>支持 Word、Excel、PDF 吗？</summary>
-        <p>闪词的导入只接受 <code>.json</code> 文件或纯 JSON 数组。Word、Excel、Markdown、PDF 等材料先用页面里的「复制转换提示词」复制提示词，交给任意 AI 转成 JSON 数组，再粘贴回来导入。</p>
+        <p>闪词的导入只接受 <code>.json</code> 文件或纯 JSON 数组。Word、Excel、Markdown、PDF 等材料先用页面里的「复制给 AI 的话」复制提示词，交给任意 AI 转成 JSON 数组，再粘贴回来导入。</p>
       </details>
       <details>
         <summary>手机上能用吗？</summary>

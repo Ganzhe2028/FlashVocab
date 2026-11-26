@@ -76,6 +76,7 @@ export default function App() {
   const [copyFeedback, setCopyFeedback] = useState("");
   const [manualCopy, setManualCopy] = useState("");
   const [undoToastVisible, setUndoToastVisible] = useState(false);
+  const [studyGuideVisible, setStudyGuideVisible] = useState(false);
   const panelRef = useRef(null);
   const spellInputRef = useRef(null);
   const headerUndoRef = useRef(null);
@@ -94,7 +95,10 @@ export default function App() {
     const next = learningReducer(previous, action);
     if (next === previous) return;
     latestStateRef.current = next;
-    if (action.type === "UNDO") setPanelMessage("");
+    if (action.type === "UNDO") {
+      setPanelMessage("");
+      setStudyGuideVisible(false);
+    }
     if (next.autoPronounceEnabled && !["ADD_WAVE", "APPLY_PREPARATION"].includes(action.type)) {
       const quickAdvance = action.type === "CHOOSE_STUDY" && previous.quickKnownEnabled && action.correct === true;
       let cardId = null;
@@ -231,8 +235,10 @@ export default function App() {
   );
 
   const chooseStudy = useCallback((correct) => {
+    if (studyGuideVisible) setUndoToastVisible(false);
+    setStudyGuideVisible(false);
     dispatch({ type: "CHOOSE_STUDY", correct });
-  }, [dispatch]);
+  }, [dispatch, studyGuideVisible]);
 
   const advanceStudy = useCallback(
     (correctOverride) => {
@@ -277,6 +283,7 @@ export default function App() {
   const importDeck = useCallback(async (rawDeck) => {
     const normalized = normalizeDeck(rawDeck);
     if (!normalized.length) throw new Error("内容中没有有效的单词。");
+    setStudyGuideVisible(true);
     dispatch({ type: "ADD_WAVE", sourceDeck: normalized });
   }, [dispatch]);
 
@@ -295,6 +302,7 @@ export default function App() {
   }, [dispatch, prepareMaterial]);
 
   const useSample = useCallback(() => {
+    setStudyGuideVisible(true);
     dispatch({ type: "USE_SAMPLE", sourceDeck: cloneDeck() });
     setPanelMessage(latestStateRef.current.notice);
   }, [dispatch]);
@@ -336,7 +344,7 @@ export default function App() {
   const progress =
     state.mode === "study"
       ? state.studyPracticeId
-        ? { current: 3 - state.studyPractices.find((practice) => practice.cardId === state.studyPracticeId).remaining, total: 2, label: "本轮加练" }
+        ? { current: 3 - state.studyPractices.find((practice) => practice.cardId === state.studyPracticeId).remaining, total: 2, label: "再练一遍" }
         : { current: state.studyIndex + 1, total: state.studyQueueIds.length, label: "认词" }
       : state.mode === "spell"
         ? { current: state.spellIndex + 1, total: state.spellQueueIds.length, label: "拼写" }
@@ -396,6 +404,8 @@ export default function App() {
             pronunciationSpeaking={pronunciationSpeaking}
             pronunciationMessage={pronunciationMessage}
             copyFeedback={copyFeedback}
+            showIntro={studyGuideVisible && state.studySteps === 0}
+            isPractice={Boolean(state.studyPracticeId)}
             onCopy={copyCurrentWord}
             onPronounce={() => speak(currentStudyItem.term)}
             onChoose={chooseStudy}
@@ -425,7 +435,7 @@ export default function App() {
           <SummaryView
             summary={state.roundSummary}
             onContinue={() => dispatch({ type: "CONTINUE_ROUND" })}
-            onPrepare={() => dispatch({ type: "OPEN_PREPARE" })}
+            onPrepare={() => openPanel("deck")}
             onQuiz={(kind) => dispatch({ type: "START_QUIZ", kind })}
           />
         ) : null}

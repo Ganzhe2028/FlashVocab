@@ -96,7 +96,7 @@ const previewImport = (text) => {
 
 const importViaPaste = (text) => {
   previewImport(text);
-  fireEvent.click(screen.getByRole("button", { name: /开始背这/ }));
+  fireEvent.click(screen.getByRole("button", { name: /开始练这/ }));
 };
 
 const openPractice = (label) => {
@@ -272,7 +272,7 @@ describe("FlashVocab 3.0", () => {
       },
     });
     expect((await screen.findByRole("alert")).textContent).toContain(
-      "只支持 .json",
+      "这个文件还不能直接读取",
     );
     fireEvent.change(fileInput, {
       target: {
@@ -288,20 +288,30 @@ describe("FlashVocab 3.0", () => {
     expect(
       JSON.parse(window.localStorage.getItem(DECK_STORAGE_KEY)).sourceDeck,
     ).toHaveLength(0);
-    fireEvent.click(screen.getByRole("button", { name: "开始背这 2 个词" }));
+    fireEvent.click(screen.getByRole("button", { name: "开始练这 2 个词" }));
     expect(
       JSON.parse(window.localStorage.getItem(DECK_STORAGE_KEY)).sourceDeck,
     ).toHaveLength(2);
   });
 
-  test("a bad second JSON entry cannot silently import the valid first entry", () => {
+  test("a bad second JSON entry cannot silently import the valid first entry", async () => {
     render(<App />);
-    previewImport(JSON.stringify([alpha, { meaningZh: "缺单词" }]));
-    expect(screen.getByRole("alert").textContent).toContain("第 2 个词条");
+    const reply = JSON.stringify([alpha, { meaningZh: "缺单词" }]);
+    previewImport(reply);
+    expect(screen.getByRole("alert").textContent).toContain("第 2 个词条缺少单词");
+    expect(screen.getByRole("alert").textContent).not.toContain("term");
     expect(
       JSON.parse(window.localStorage.getItem(DECK_STORAGE_KEY)).sourceDeck,
     ).toHaveLength(0);
-    expect(screen.queryByRole("button", { name: /开始背这/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /开始练这/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "复制给 AI 重改" }));
+    await screen.findByText(/已复制，发给 AI 后把新回复贴回来/);
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(
+      expect.stringContaining(reply),
+    );
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(
+      expect.stringContaining("缺少单词"),
+    );
   });
 
   test("a fixed JSON word list previews and starts learning", () => {
@@ -321,13 +331,18 @@ describe("FlashVocab 3.0", () => {
         .getAttribute("aria-current"),
     ).toBe("step");
     expect(screen.getByText(/2 个有中文释义/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "开始背这 2 个词" }));
+    fireEvent.click(screen.getByRole("button", { name: "开始练这 2 个词" }));
     expect(currentWordButton()).toBeTruthy();
     expect(document.querySelector(".undo-toast").textContent).toContain(
-      "已新增",
+      "已加入 2 个词",
     );
+    expect(document.querySelector(".undo-toast").textContent).not.toContain("W1");
+    expect(screen.getByText("先在心里想一想，再选认识或不认识。")).toBeTruthy();
     press("q", "KeyQ");
     expect(screen.getByTestId("study-answer")).toBeTruthy();
+    expect(screen.queryByText("先在心里想一想，再选认识或不认识。")).toBeNull();
+    expect(document.querySelector(".undo-toast")).toBeNull();
+    expect(screen.getByRole("button", { name: "撤销新增词表" })).toBeTruthy();
   });
   test("word banks display title-cased terms while scoring and saving original values", () => {
     saveAssets([{ ...alpha, term: "alpha" }]);
@@ -373,7 +388,7 @@ describe("FlashVocab 3.0", () => {
         );
       expect(
         screen.getByText(
-          existing ? "已换成 24 个词。" : "已装入 24 个示例词。",
+          existing ? "已换成 24 个示例词。" : "已加入 24 个示例词。",
         ),
       ).toBeTruthy();
     },
@@ -443,10 +458,15 @@ describe("FlashVocab 3.0", () => {
     }
     const actions = screen.getByRole("group", { name: "轮次操作" });
     expect(within(actions).getAllByRole("button")).toHaveLength(2);
-    const practice = screen.getByRole("region", { name: "练一练" });
+    const practice = screen.getByRole("region", { name: "小练习" });
     expect(within(practice).getAllByRole("button")).toHaveLength(4);
     const mcq = within(practice).getByRole("button", { name: "看释义选词" });
     expect(within(practice).queryByText("给定义，选对应词")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "换一组词" }));
+    expect(screen.getByRole("dialog", { name: "我的词表" })).toBeTruthy();
+    expect(document.querySelector(".import-view")).toBeNull();
+    closePanel();
+    expect(screen.getByRole("heading", { name: "这一轮练完了。" })).toBeTruthy();
     fireEvent.click(mcq);
     expect(
       screen.getByRole("heading", { name: "选最贴切的词。" }),
@@ -585,9 +605,14 @@ describe("FlashVocab 3.0", () => {
       press("q", "KeyQ");
       press("n", "KeyN");
     }
-    expect(screen.getByText("1 个词，认识 0，不认识 1")).toBeTruthy();
+    expect(screen.getByText("认识 0 · 不认识 1")).toBeTruthy();
     expect(screen.queryByText(/模糊/)).toBeNull();
-    expect(screen.getByText("待巩固 1，未见 0，渐稳 0，毕业 0")).toBeTruthy();
+    expect(screen.getByText("1 个词需要多练，其他词接着巩固。")).toBeTruthy();
+    const details = screen.getByText("看看具体数字").closest("details");
+    expect(details.open).toBe(false);
+    fireEvent.click(screen.getByText("看看具体数字"));
+    expect(details.open).toBe(true);
+    expect(screen.getByText("待巩固 1 · 未见 0 · 渐稳 0 · 毕业 0")).toBeTruthy();
     const [cardId] = createCardIds([alpha]);
     const stored = JSON.parse(window.localStorage.getItem(MASTERY_STORAGE_KEY));
     expect(stored.mastery[cardId].fuzzy).toBe(0);
@@ -684,7 +709,7 @@ describe("FlashVocab 3.0", () => {
       screen.getByRole("heading", { name: "这一轮练完了。" }),
     ).toBeTruthy();
     expect(screen.queryByRole("textbox", { name: "输入英文拼写" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /继续下一轮/ }));
+    fireEvent.click(screen.getByRole("button", { name: /再练一轮/ }));
     expect(screen.getByRole("button", { name: "alpha" })).toBeTruthy();
   });
   test.each([
@@ -745,12 +770,14 @@ describe("FlashVocab 3.0", () => {
     press("n", "KeyN");
     expect(document.querySelector(".study-view .eyebrow")).toBeNull();
     expect(
-      screen.getByRole("progressbar", { name: "本轮加练进度 1 / 2" }),
+      screen.getByRole("progressbar", { name: "再练一遍进度 1 / 2" }),
     ).toBeTruthy();
+    expect(screen.getByText("这轮没记住，再顺带练一遍。")).toBeTruthy();
     press("q", "KeyQ");
+    expect(screen.queryByText("这轮没记住，再顺带练一遍。")).toBeNull();
     press("n", "KeyN");
     expect(
-      screen.getByRole("progressbar", { name: "本轮加练进度 2 / 2" }),
+      screen.getByRole("progressbar", { name: "再练一遍进度 2 / 2" }),
     ).toBeTruthy();
     press("q", "KeyQ");
     press("n", "KeyN");
@@ -768,8 +795,8 @@ describe("FlashVocab 3.0", () => {
     const guide = document.querySelector(".conversion-guide");
     const sourceTabs = screen.getByRole("group", { name: "词表来源" });
     expect(guide.compareDocumentPosition(sourceTabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(guide.open).toBe(false);
-    expect(guide.querySelector("summary").textContent).toBe("用 AI 把其他格式转成 JSON");
+    expect(guide.open).toBe(true);
+    expect(guide.querySelector("summary").textContent).toBe("用 AI 整理词表");
     const privacy = screen.getByRole("button", { name: "数据存放说明" });
     expect(
       document.getElementById(privacy.getAttribute("aria-describedby")).textContent,
@@ -783,7 +810,7 @@ describe("FlashVocab 3.0", () => {
     expect(sources.map((button) => button.textContent)).toEqual(["粘贴", "文件"]);
     expect(sources[0].getAttribute("aria-pressed")).toBe("true");
     expect(sources[1].getAttribute("aria-pressed")).toBe("false");
-    expect(screen.getByRole("textbox", { name: "单词表内容" })).toBeTruthy();
+    expect(screen.getByRole("textbox", { name: "单词表内容" }).placeholder).toBe("把 AI 生成的内容粘贴到这里");
     expect(
       screen.getByRole("button", { name: /用 24 个示例词试试/ }),
     ).toBeTruthy();
@@ -801,14 +828,13 @@ describe("FlashVocab 3.0", () => {
     openImport();
     expect(screen.getByRole("heading", { name: "再加一组词。" })).toBeTruthy();
     const guide = document.querySelector(".conversion-guide");
-    expect(guide.querySelector("summary").textContent).toBe("用 AI 把其他格式转成 JSON");
-    fireEvent.click(guide.querySelector("summary"));
+    expect(guide.querySelector("summary").textContent).toBe("用 AI 整理词表");
     expect(guide.open).toBe(true);
-    expect(screen.getByRole("button", { name: "复制转换提示词" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "复制给 AI 的话" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "DeepSeek" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "ChatGPT" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "复制转换提示词" }));
+    fireEvent.click(screen.getByRole("button", { name: "复制给 AI 的话" }));
     expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(
       expect.stringContaining("词表文件或文字"),
     );
@@ -825,7 +851,7 @@ describe("FlashVocab 3.0", () => {
     fireEvent.click(screen.getByRole("button", { name: "识别单词" }));
     expect(screen.getByRole("heading", { name: "这些词对吗？" })).toBeTruthy();
     expect(screen.getByText(/2 个有中文释义/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "开始背这 2 个词" }));
+    fireEvent.click(screen.getByRole("button", { name: "开始练这 2 个词" }));
     expect(currentWordButton()).not.toBeNull();
   });
 
@@ -901,9 +927,9 @@ describe("FlashVocab 3.0", () => {
       ]),
     );
     expect(screen.getByText("2 个词还没补全资料")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "让 AI 补全" }));
+    fireEvent.click(screen.getByRole("button", { name: "让 AI 帮忙补全" }));
     expect(
-      screen.getByRole("heading", { name: "让 AI 一次补齐" }),
+      screen.getByRole("heading", { name: "让 AI 帮忙补全" }),
     ).toBeTruthy();
     fireEvent.click(screen.getByText("看看这段话"));
     const prompt = screen.getByRole("textbox", { name: "补全提示词" }).value;
@@ -996,9 +1022,9 @@ describe("FlashVocab 3.0", () => {
     ).toBeTruthy();
     expect(screen.queryByText(/还没补全资料/)).toBeNull();
     expect(
-      screen.queryByRole("heading", { name: "让 AI 一次补齐" }),
+      screen.queryByRole("heading", { name: "让 AI 帮忙补全" }),
     ).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /开始背这 2 个词/ }));
+    fireEvent.click(screen.getByRole("button", { name: /开始练这 2 个词/ }));
     expect(currentWordButton()).toBeTruthy();
     for (const [label, heading] of [
       ["看释义选词", "选最贴切的词。"],
@@ -1021,7 +1047,7 @@ describe("FlashVocab 3.0", () => {
         { term: "quit", meaningZh: "停止" },
       ]),
     );
-    fireEvent.click(screen.getByRole("button", { name: "让 AI 补全" }));
+    fireEvent.click(screen.getByRole("button", { name: "让 AI 帮忙补全" }));
     fireEvent.change(screen.getByRole("textbox", { name: "AI 回复" }), {
       target: {
         value: JSON.stringify([
@@ -1042,7 +1068,7 @@ describe("FlashVocab 3.0", () => {
     fireEvent.click(screen.getByRole("button", { name: "识别并补全" }));
     expect(screen.getByText(/还有 2 个词没补完/)).toBeTruthy();
     expect(
-      screen.getByRole("heading", { name: "让 AI 一次补齐" }),
+      screen.getByRole("heading", { name: "让 AI 帮忙补全" }),
     ).toBeTruthy();
   });
 
@@ -1120,7 +1146,7 @@ describe("FlashVocab 3.0", () => {
     expect(
       screen.getByRole("heading", { name: "这一轮练完了。" }),
     ).toBeTruthy();
-    expect(screen.getByText("1 个词，首次写对 0，需重拼 1")).toBeTruthy();
+    expect(screen.getByText("首次写对 0 · 需重拼 1")).toBeTruthy();
     press("Enter", "Enter");
     expect(screen.getByRole("progressbar", { name: /认词进度/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: "alpha" })).toBeTruthy();
@@ -1173,14 +1199,15 @@ describe("FlashVocab 3.0", () => {
 
     fireEvent.change(paste, { target: { value: "not a deck" } });
     fireEvent.click(screen.getByRole("button", { name: "识别单词" }));
-    expect(screen.getByRole("alert").textContent).toContain("JSON 格式不正确");
+    expect(screen.getByRole("alert").textContent).toContain("内容没有完整识别");
+    expect(screen.getByRole("alert").textContent).not.toContain("JSON");
     expect(document.querySelector(".import-view")).toBeTruthy();
 
     fireEvent.change(paste, {
       target: { value: JSON.stringify([{ ...beta, extraField: "preserved" }]) },
     });
     fireEvent.click(screen.getByRole("button", { name: "识别单词" }));
-    fireEvent.click(screen.getByRole("button", { name: /开始背这/ }));
+    fireEvent.click(screen.getByRole("button", { name: /开始练这/ }));
     expect(screen.getByRole("button", { name: "beta" })).toBeTruthy();
     fireEvent.click(screen.getAllByRole("button", { name: "撤销新增词表" })[0]);
     expect(screen.getByRole("button", { name: "alpha" })).toBeTruthy();

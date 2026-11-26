@@ -140,7 +140,9 @@ AGENTS.md                 开发约定与当前行为契约（每次任务开始
 - 答错：`streak = 0`，清掉休整与 `dueRound`，只释放当前模式。
 - 同一轮内同一张卡重复出现不会重复计分（`lastScoredRound` 拦截）。
 
-加练（第一遍标「不认识」后本轮内的两次额外曝光）走另一条路径，**不计分、不影响休整**，所以刷两遍不会把词刷成「掌握」。
+加练（第一遍标「不认识」后本轮内的两次额外曝光）走另一条路径，**不计分、不影响休整**，所以刷两遍不会把词刷成「掌握」。加练卡未翻开时显示「这轮没记住，再顺带练一遍。」，底部进度称为「再练一遍」。新导入或载入示例词后的第一张卡显示一次「先在心里想一想，再选认识或不认识。」；该提示由 `App` 内存状态控制，第一次选择后与新导入通知一起收起，不进 reducer 学习数据、不持久化，Undo 会清掉该提示。
+
+轮末结算只把首判结果显示为「认识 X · 不认识 Y」和可选拼写结果；掌握度默认给一句动态概况，四档原数字放在 `details` 中，计算不变。「换一组词」由 `App` 直接打开词表面板，不进入导入 reducer 分支，关闭面板仍回到原结算页。
 
 ### 掌握度与毕业
 
@@ -156,13 +158,15 @@ AGENTS.md                 开发约定与当前行为契约（每次任务开始
 
 ## 6. 导入管线
 
-正式导入统一调用 `src/utils/jsonDeck.js` 的 `parseJsonDeck()`。上传只接受 `.json` 文件并调用 `file.text()`；粘贴和 AI 转换结果走同一校验。JSON 必须是非空数组，每项 term 是非空字符串，meaning / meaningZh 至少一个非空。解析前会先拆掉**一层**最外层代码块：AI 回复常用 ` ```json ` 包住数组，粘贴整段即可；代码块外仍夹带说明文字会被拒绝。同模块的 `JSON_TEMPLATE` 用于提示词与占位示例，字段名固定，不接受别名或包装对象。
+正式导入统一调用 `src/utils/jsonDeck.js` 的 `parseJsonDeck()`。上传只接受 `.json` 文件并调用 `file.text()`；粘贴和 AI 转换结果走同一校验。JSON 必须是非空数组，每项 term 是非空字符串，meaning / meaningZh 至少一个非空。解析前会先拆掉**一层**最外层代码块：AI 回复常用 ` ```json ` 包住数组，粘贴整段即可；代码块外仍夹带说明文字会被拒绝。同模块的 `JSON_TEMPLATE` 用于 AI 提示词模板，字段名固定，不接受别名或包装对象。
 
 可选文本字段必须是字符串，examples 必须是 sentence/focus 对象数组且 focus 在 sentence 中原样出现（允许空 focus）；distractors/usageTags 是字符串数组；contrastScenarios 是 scenario/answer/explanation 对象数组。未知自定义字段保留。校验整份通过才进入预览，一条有错就整份拒绝并指出序号和字段，不静默跳词。预览不保存，明确开始才提交。
 
 `deckImport.js` 保留历史文本/Office 工具和旧存储 normalization，不再供界面直接猜测导入格式。已有资产的兼容读取不变；旧数据中误作单个例句的英文定义仍会修复。非 JSON 材料可通过显式 AI 转换入口生成固定 JSON 后预览，不做 worksheet 猜测。
 
-导入第 1 步先显示「粘贴 / 文件」选择器，再显示默认收起的「用 AI 把其他格式转成 JSON」交接项；隐私事实收进标题旁的 `InfoTip`（词表和进度只保存在本机，不上传）。展开交接项后只有复制按钮、DeepSeek / ChatGPT 链接和「看看提示词」折叠：复制 `buildWorksheetPrompt()`，把自己的词表文件或文字连同提示词发给 AI，再把返回的 JSON 粘贴到上方输入框。组件默认粘贴，文件 input 始终挂载，点击「文件」在同一用户事件中调用 `fileRef.current.click()` 立即打开系统选择器；drop-card 保留拖放和通过 `htmlFor` 重新选择。提示词同时覆盖文件与文字材料，不要求应用上传源文件，也不需要 API key。文件读取失败时仍保留页内粘贴 AI 回复的备用面板。
+导入第 1 步默认展开「用 AI 整理词表」，先给两步人话动作，再显示「粘贴 / 文件」选择器；粘贴占位只写「把 AI 生成的内容粘贴到这里」。复制 `buildWorksheetPrompt()`，把自己的词表文件或文字连同提示词发给 AI，再把返回内容贴回下方。隐私事实收进标题旁的 `InfoTip`。文件 input 始终挂载，点击「文件」在同一用户事件中调用 `fileRef.current.click()` 立即打开系统选择器；drop-card 保留拖放和重新选择，文案不要求学生理解 JSON，但文件限制不变。提示词同时覆盖文件与文字材料，不要求应用上传源文件，也不需要 API key。文件读取失败时仍保留页内粘贴 AI 回复的备用面板。
+
+`ImportView` 的 `learnerError()` 只把原始校验错误映射成带词条位置的人话，不修改 `parseJsonDeck()`。主导入、补全和备用回复失败后，`RevisionAssist` 调 `buildRevisionPrompt(reply, issue)`，把上次回复、原始问题和同一套输出规则复制给 AI；剪贴板失败时可展开手动复制。核对页、认词和拼写统一显示「缺中文释义」「缺英文释义」。
 
 ## 7. 导入时的 AI 补全
 
@@ -173,6 +177,7 @@ AGENTS.md                 开发约定与当前行为契约（每次任务开始
 | `needsFillMaterial(entry)` | 判断一个词是否缺「中文 / 英文释义、可出题的例句、对应词、辨析材料」 |
 | `buildFillPrompt(entries)` | 只列缺资料的词，要求 AI 把固定 JSON 数组放进一层代码块输出（词义、词源、对应词、两组原形例句/重点、情景、辨析） |
 | `buildWorksheetPrompt()` | 支持文件或文字材料：先要求 AI 完成配对，再按同一套字段输出；sentence/focus 必须包含 term 的精确字符串，并给出 Boo、Have a blast、Enamor 示例，防止只写变形或牺牲语法；辨析 answer 只能属于 term/relatedWord 这一对 |
+| `buildRevisionPrompt(reply, issue)` | 带回上次回复与原始问题，要求保留原词和正确资料、完整重改，仍使用同一 JSON 模板和规则 |
 | `parseMaterialReply(text)` | 调用 parseJsonDeck，同正式导入使用一套严格 JSON 校验 |
 | `mergeFilledEntries()` | 按词（大小写不敏感）只填缺失字段，不覆盖已有内容 |
 | `detectWorksheetMismatch()` | 历史检测工具；当前导入界面不再猜测 |
@@ -231,7 +236,7 @@ npm run build       Vite 生产构建
 npm run check       以上四步串联，交付门槛
 ```
 
-当前基线：**99 项 Node 测试、78 项 UI 测试、ESLint、生产构建全绿**（2026-11-19 界面文案精简后复核；UI 旧断言同步改为折叠交接、`InfoTip` 与「答对 X / N」结算标题，完整输出见 [检查日志](validation-2026-11-19/check.log)）。
+当前基线：**100 项 Node 测试、78 项 UI 测试、ESLint、生产构建全绿**（2026-11-26 首次上手收尾后复核；新增重改提示词及首卡/加练/结算/换组回归，完整输出见 [检查日志](validation-2026-11-26-first-run/check.log)，桌面前后截图与视频见 [验证目录](validation-2026-11-26-first-run/)）。
 
 测试与模块同目录（`*.test.js` / `*.test.jsx`），UI 环境配置在 `src/test/setup.js`。逻辑测试注入固定 `random` 和固定时间，不依赖真实随机数。
 

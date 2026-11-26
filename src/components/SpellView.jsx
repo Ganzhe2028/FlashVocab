@@ -33,9 +33,9 @@ export default function SpellView({
   return (
     <section className="spell-view" aria-labelledby="spell-heading">
       <h1 id="spell-heading" className="spell-heading">
-        {item?.meaningZh || "未提供中文释义"}
+        {item?.meaningZh || "缺中文释义"}
       </h1>
-      <p className="meaning-en spell-en">{item?.meaning || "未提供释义"}</p>
+      <p className="meaning-en spell-en">{item?.meaning || "缺英文释义"}</p>
       {item?.pos ? <p className="word-meta">{item.pos}</p> : null}
 
       <label className={`spell-field${hasError ? " has-error" : ""}${finished ? " is-correct" : ""}`}>

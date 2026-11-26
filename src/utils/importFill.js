@@ -122,6 +122,19 @@ ${MATERIAL_RULES}
 
 只输出原表里的词，不要输出页码、题号或解释。`;
 
+export const buildRevisionPrompt = (reply, issue) => `你是我的英语词表助手。下面是你上次整理给我的词表，但闪词检查时发现了问题：
+${text(issue) || "内容没有通过检查"}
+
+请修正问题，保留原来的单词和所有正确资料，不要漏词或新增词条，并重新输出完整词表。
+严格按这个 JSON 数组格式输出：
+
+${MATERIAL_FORMAT}
+
+${MATERIAL_RULES}
+
+你上次输出的内容：
+${text(reply)}`;
+
 export const parseMaterialReply = (reply) => normalizeDeck(parseJsonDeck(reply));
 
 const fillMissingText = (target, patch, field) => {

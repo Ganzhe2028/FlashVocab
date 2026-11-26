@@ -411,7 +411,7 @@ const replaceWithDeck = (state, sourceDeck, random, label) => {
   return {
     ...replacement,
     undo: { label, snapshot: snapshotForUndo(state) },
-    notice: state.sourceDeck.length ? `已换成 ${sourceDeck.length} 个词。` : `已装入 ${sourceDeck.length} 个示例词。`,
+    notice: state.sourceDeck.length ? `已换成 ${sourceDeck.length} 个示例词。` : `已加入 ${sourceDeck.length} 个示例词。`,
   };
 };
 
@@ -650,8 +650,8 @@ export const learningReducer = (state, action) => {
         ...startWaveSession({ sourceDeck, waves, removedCardIds: state.removedCardIds, mastery: state.mastery, random }, action.now ?? Date.now()),
         undo: { label: "撤销新增词表", snapshot: snapshotForUndo(state) },
         notice: state.waves.length
-          ? `已新增 ${wave.name}，${action.sourceDeck.length} 个词；之前的词表已收起，可随时切回。`
-          : `已新增 ${wave.name}，${action.sourceDeck.length} 个词。`,
+          ? `已加入 ${action.sourceDeck.length} 个词；之前的词表已收起，可随时切回。`
+          : `已加入 ${action.sourceDeck.length} 个词。`,
       };
     }
     case "APPLY_PREPARATION": {

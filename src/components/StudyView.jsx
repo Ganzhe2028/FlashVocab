@@ -3,8 +3,8 @@ import { selectExamples } from "../learningAlgorithm.js";
 
 const Meaning = ({ item }) => (
   <div className="meaning-block">
-    <p className="meaning-zh">{item?.meaningZh || "未提供中文释义"}</p>
-    <p className="meaning-en">{item?.meaning || "未提供释义"}</p>
+    <p className="meaning-zh">{item?.meaningZh || "缺中文释义"}</p>
+    <p className="meaning-en">{item?.meaning || "缺英文释义"}</p>
   </div>
 );
 
@@ -22,6 +22,8 @@ export default function StudyView({
   pronunciationSpeaking,
   pronunciationMessage,
   copyFeedback,
+  showIntro,
+  isPractice,
   onCopy,
   onPronounce,
   onChoose,
@@ -128,6 +130,8 @@ export default function StudyView({
         </div>
       ) : (
         <div className="study-prompt">
+          {isPractice ? <p className="study-guide">这轮没记住，再顺带练一遍。</p> : null}
+          {!isPractice && showIntro ? <p className="study-guide">先在心里想一想，再选认识或不认识。</p> : null}
           <div className="study-actions study-choice-actions" aria-label="认词选择">
             <button type="button" className="choice-action" onClick={() => onChoose(true)}>
               <span>认识</span><kbd>Q</kbd>

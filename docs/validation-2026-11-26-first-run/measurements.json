@@ -1,0 +1,26 @@
+[
+  {
+    "page": "import",
+    "label": "390",
+    "clientWidth": 390,
+    "scrollWidth": 390
+  },
+  {
+    "page": "import",
+    "label": "280",
+    "clientWidth": 280,
+    "scrollWidth": 280
+  },
+  {
+    "page": "import",
+    "label": "200pct",
+    "clientWidth": 640,
+    "scrollWidth": 640
+  },
+  {
+    "page": "import-dark",
+    "label": "1280",
+    "clientWidth": 1280,
+    "scrollWidth": 1280
+  }
+]
