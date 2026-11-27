@@ -1346,7 +1346,7 @@ describe("FlashVocab 3.0", () => {
         expect(screen.queryByRole("button", { name: /M/ })).toBeNull();
       } else {
         expect(
-          screen.getByRole("button", { name: /记错了，下一词/ }),
+          screen.getByRole("button", { name: /忘记了/ }),
         ).toBeTruthy();
       }
       speech = window.speechSynthesis.speak.mock.calls.map(
@@ -1389,7 +1389,7 @@ describe("FlashVocab 3.0", () => {
     enableAutomaticPronunciation();
     const firstTerm = window.speechSynthesis.speak.mock.calls.at(-1)[0].text;
     press("q", "KeyQ");
-    expect(screen.getByRole("button", { name: /记错了，下一词/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /忘记了/ })).toBeTruthy();
     press("m", "KeyM");
     const nextTerm = window.speechSynthesis.speak.mock.calls.at(-1)[0].text;
     expect(nextTerm).not.toBe(firstTerm);

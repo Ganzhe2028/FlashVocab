@@ -389,6 +389,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .secondary-action { border: 1px solid var(--control-border); background: var(--surface); color: var(--ink); }
 .secondary-action:hover:not(:disabled) { border-color: var(--teal); }
 .secondary-action.coral { border-color: var(--coral-border); color: var(--coral-ink); background: var(--coral-surface); }
+.secondary-action.coral:hover:not(:disabled) { border-color: var(--coral); }
 .tertiary-action { border: 1px solid transparent; background: transparent; color: var(--muted); }
 .tertiary-action:hover:not(:disabled) { background: var(--surface-hover-soft); color: var(--ink); }
 .danger-action { border: 1px solid var(--coral); background: var(--coral); color: var(--on-coral); }

@@ -130,7 +130,7 @@ export function StudyActions({ revealed, studyResult, onChoose, onAdvance }) {
       </button>
       {studyResult === true ? (
         <button type="button" className="secondary-action coral" onClick={() => onAdvance(false)}>
-          <span>记错了，下一词</span><kbd>M</kbd>
+          <span>忘记了</span><kbd>M</kbd>
         </button>
       ) : null}
     </div>
