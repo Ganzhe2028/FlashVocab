@@ -48,6 +48,8 @@ The completed rewrite is recorded in `docs/flashvocab-3-rewrite-plan.md`; its ar
 
 ### Current learning behavior
 
+Recognition keeps its actions above the progress bar in two equal columns. A lone Next spans both. Only the reading area scrolls, with a 64px bottom fade while more content remains. Each new encounter starts at the top.
+
 - Spelling defaults to the current recognition round's unknown words. Settings also offer recognition alone or all-word spelling. Deck changes retain the selected mode. Reload and progress reset restore mistakes-only spelling. An already started or paused spelling queue is retained. In each mode, two correct results in distinct rounds hide a word for exactly the next complete round (`dueRound = scoredRound + 2`). A successful return rests it again; a failed return releases only that mode. Every due word returns, and all-empty scheduling is bounded.
 - After a cycle, a summary separates known/unknown first judgments, any first-attempt spelling results, and weak/unseen/steady/graduated mastery counts from the same learning state. Practice repeats and retries never inflate counts or replace a first failure. Enter continues the already scheduled next round.
 - Summary actions have two levels: continue/switch-list first, then a labelled two-by-two practice grid; each practice button carries only its title. Practice-button layout overrides generic button alignment and spacing. The deck panel's collapsed "专项练习" section opens the same four modes without changing learning state.

@@ -16,7 +16,6 @@ const formatStudyHeading = (word) => {
 export default function StudyView({
   item,
   revealed,
-  studyResult,
   insightsExpanded,
   pronunciationSupported,
   pronunciationSpeaking,
@@ -26,8 +25,6 @@ export default function StudyView({
   isPractice,
   onCopy,
   onPronounce,
-  onChoose,
-  onAdvance,
   onToggleInsights,
 }) {
   const examples = selectExamples(item?.examples);
@@ -117,30 +114,34 @@ export default function StudyView({
             </div>
           ) : null}
 
-          <div className="study-actions" aria-label="认词结果">
-            <button type="button" className="primary-action" onClick={() => onAdvance()}>
-              <span>下一个</span><kbd>N</kbd>
-            </button>
-            {studyResult === true ? (
-              <button type="button" className="secondary-action coral" onClick={() => onAdvance(false)}>
-                <span>记错了，下一词</span><kbd>M</kbd>
-              </button>
-            ) : null}
-          </div>
         </div>
-      ) : (
-        <div className="study-prompt">
-          {!isPractice && showIntro ? <p className="study-guide">先在心里想一想，再选认识或不认识。</p> : null}
-          <div className="study-actions study-choice-actions" aria-label="认词选择">
-            <button type="button" className="choice-action" onClick={() => onChoose(true)}>
-              <span>认识</span><kbd>Q</kbd>
-            </button>
-            <button type="button" className="choice-action" onClick={() => onChoose(false)}>
-              <span>不认识</span><kbd>E</kbd>
-            </button>
-          </div>
-        </div>
-      )}
+      ) : !isPractice && showIntro ? (
+        <p className="study-guide">先在心里想一想，再选认识或不认识。</p>
+      ) : null}
     </section>
+  );
+}
+
+export function StudyActions({ revealed, studyResult, onChoose, onAdvance }) {
+  return revealed ? (
+    <div className="study-actions" aria-label="认词结果">
+      <button type="button" className="primary-action" onClick={() => onAdvance()}>
+        <span>下一个</span><kbd>N</kbd>
+      </button>
+      {studyResult === true ? (
+        <button type="button" className="secondary-action coral" onClick={() => onAdvance(false)}>
+          <span>记错了，下一词</span><kbd>M</kbd>
+        </button>
+      ) : null}
+    </div>
+  ) : (
+    <div className="study-actions study-choice-actions" aria-label="认词选择">
+      <button type="button" className="choice-action" onClick={() => onChoose(true)}>
+        <span>认识</span><kbd>Q</kbd>
+      </button>
+      <button type="button" className="choice-action" onClick={() => onChoose(false)}>
+        <span>不认识</span><kbd>E</kbd>
+      </button>
+    </div>
   );
 }

@@ -517,3 +517,7 @@ Chapter 5 真实 worksheet 验收使用 `HTA Chapter 5 Vocabulary Worksheet Stud
 用户实测 Crunch 通用选择题的题干和选项都不含 skim，答后却显示整段 Crunch / skim 辨析。原因是 MCQ 把 `relatedWord` 作为最高优先级通用解析，情景题也固定追加它。本轮将 MCQ 解析改为目标词的中英文释义，情景题解析改为完整原句加目标词义；`relatedWord` 继续用于干扰项优先级和真正的对位辨析，词表数据无需迁移。
 
 新增 Crunch / skim 逻辑回归和答对、答错、「我不知道」三种 UI 回归。`npm run check` 通过 99 项 Node、78 项 UI、ESLint 与生产构建；本地生产浏览器实际验证通用选择、情景和辨析的解析边界，并重拍 README 练习截图。记录见 [验证目录](validation-2026-11-06-quiz-feedback/README.md)。
+
+### 2026-11-27 认词页固定按钮
+
+判断和翻词使用进度条上方的同一行。长释义、例句和词源在上方滚动，下沿以 64px 渐隐提示还有内容，读到底后渐隐消失。

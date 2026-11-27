@@ -4,8 +4,9 @@ import AIPreparationControls from "./components/AIPreparationControls.jsx";
 import { DEFAULT_PREPARATION_MODEL, prepareDeckWithAI } from "./aiPreparation.js";
 import ImportView from "./components/ImportView.jsx";
 import QuestionView from "./components/QuestionView.jsx";
+import StudyReadingArea from "./components/StudyReadingArea.jsx";
 import SpellView from "./components/SpellView.jsx";
-import StudyView from "./components/StudyView.jsx";
+import StudyView, { StudyActions } from "./components/StudyView.jsx";
 import { EmptyView, MasteredView, PauseView, SummaryView } from "./components/StatusView.jsx";
 import { isGraduated } from "./mastery.js";
 import { getEntryWaveId } from "./waveModel.js";
@@ -341,6 +342,8 @@ export default function App() {
     onNextQuiz: () => dispatch({ type: "NEXT_QUIZ" }),
   });
 
+  const studying = state.mode === "study" && Boolean(currentStudyItem);
+  const ReadingArea = studying ? StudyReadingArea : "main";
   const progress =
     state.mode === "study"
       ? state.studyPracticeId
@@ -352,7 +355,7 @@ export default function App() {
 
   return (
     <div
-      className={`app-shell${quiet ? " is-quiet" : ""}`}
+      className={`app-shell${studying ? " is-studying" : ""}${quiet ? " is-quiet" : ""}`}
       onClick={releasePointerFocus}
     >
       <header className="app-header" onFocusCapture={showChrome}>
@@ -383,7 +386,7 @@ export default function App() {
         </div>
       ) : null}
 
-      <main className={`reading-column${state.mode === "prepare" ? " is-importing" : ""}${state.mode === "study" || state.mode === "spell" ? " is-learning" : ""}`}>
+      <ReadingArea {...(studying ? { cardId: currentStudyId, step: state.studySteps } : {})} className={`reading-column${state.mode === "prepare" ? " is-importing" : ""}${state.mode === "study" || state.mode === "spell" ? " is-learning" : ""}`}>
         {state.notice && !undoToastVisible ? <p className="page-notice" role="status">{state.notice}</p> : null}
         {state.mode === "prepare" ? (
           <ImportView
@@ -398,7 +401,6 @@ export default function App() {
           <StudyView
             item={currentStudyItem}
             revealed={state.revealed}
-            studyResult={state.studyResult}
             insightsExpanded={state.insightsExpanded}
             pronunciationSupported={pronunciationSupported}
             pronunciationSpeaking={pronunciationSpeaking}
@@ -408,8 +410,6 @@ export default function App() {
             isPractice={Boolean(state.studyPracticeId)}
             onCopy={copyCurrentWord}
             onPronounce={() => speak(currentStudyItem.term)}
-            onChoose={chooseStudy}
-            onAdvance={advanceStudy}
             onToggleInsights={() => dispatch({ type: "TOGGLE_INSIGHTS" })}
           />
         ) : null}
@@ -467,10 +467,11 @@ export default function App() {
             <textarea readOnly value={manualCopy} rows="6" onFocus={(event) => event.target.select()} />
           </section>
         ) : null}
-      </main>
+      </ReadingArea>
 
       {progress ? (
         <footer className="progress-footer">
+          {studying && <StudyActions revealed={state.revealed} studyResult={state.studyResult} onChoose={chooseStudy} onAdvance={advanceStudy} />}
           <div className="progress-meta"><span>{progress.label}</span><span>{progress.current} / {progress.total}</span></div>
           <div className="progress-track" aria-label={`${progress.label}进度 ${progress.current} / ${progress.total}`} role="progressbar" aria-valuemin="1" aria-valuemax={progress.total} aria-valuenow={progress.current}>
             <span style={{ width: `${(progress.current / progress.total) * 100}%` }} />

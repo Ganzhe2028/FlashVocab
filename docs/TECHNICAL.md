@@ -278,3 +278,7 @@ npm run check       以上四步串联，交付门槛
 | 改文案 / 布局 | 组件 + `index.css`，注意 390px、280px、200% 放大和减少动态效果四种状态 |
 | 改 SEO / 收录相关 | `index.html` 的 head、`public/` 的 `robots.txt`/`sitemap.xml`/`guide/`，按 12.1 本地验证；功能变化时同步说明页与 sitemap `lastmod` |
 | 换存储结构 | `storage/*` 与 `AGENTS.md` 的持久化段；必须写迁移，并且不能改卡片 ID 的签名 |
+
+### 认词页布局
+
+认词页由 StudyReadingArea 管理正文滚动。ResizeObserver 观察窗口和正文尺寸，结合滚动位置决定是否显示底部 64px 渐隐。切换词条或进入下一次加练时回到顶部。StudyActions 位于进度条上方，两按钮平分宽度，单按钮占满整行。
