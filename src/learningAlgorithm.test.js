@@ -23,6 +23,7 @@ const deck = [
 test("quick-known is opt-in and commits once through normal scoring, rest, and summary paths", () => {
   let state = createInitialState({ assets: { sourceDeck: deck }, random: almostOne });
   assert.equal(state.quickKnownEnabled, false);
+  state = learningReducer(state, { type: "SET_SPELLING_MODE", value: "off" });
   state = learningReducer(state, { type: "SET_QUICK_KNOWN", value: true });
   const first = getCurrentStudyCardId(state);
   state = learningReducer(state, { type: "CHOOSE_STUDY", correct: true, now: 100, random: almostOne });
@@ -39,12 +40,14 @@ test("quick-known is opt-in and commits once through normal scoring, rest, and s
   assert.equal(state.mode, "summary");
   assert.equal(state.roundSummary.study.correct, 1);
   assert.equal(state.roundSummary.study.unknown, 1);
-  assert.equal(learningReducer(state, { type: "RESET_PROGRESS", random: almostOne }).quickKnownEnabled, false);
+  const reset = learningReducer(state, { type: "RESET_PROGRESS", random: almostOne });
+  assert.equal(reset.quickKnownEnabled, false);
+  assert.equal(reset.spellingMode, "mistakes");
 });
 
-test("spelling defaults off and recognition ends at a summary before another study round", () => {
+test("default spelling skips a round with no unknown words", () => {
   let state = createInitialState({ assets: { sourceDeck: [deck[0]] }, random: almostOne });
-  assert.equal(state.spellingMode, "off");
+  assert.equal(state.spellingMode, "mistakes");
   state = learningReducer(state, { type: "CHOOSE_STUDY", correct: true });
   state = learningReducer(state, { type: "ADVANCE_STUDY", random: almostOne });
   assert.equal(state.mode, "summary");
@@ -56,7 +59,6 @@ test("spelling defaults off and recognition ends at a summary before another stu
 test("mistakes-only spelling includes unknown words while excluding known words", () => {
   const sourceDeck = [...deck, { term: "Gamma" }];
   let state = createInitialState({ assets: { sourceDeck }, random: almostOne });
-  state = learningReducer(state, { type: "SET_SPELLING_MODE", value: "mistakes" });
   const ids = createCardIds(sourceDeck);
   const results = new Map([[ids[0], true], [ids[1], false], [ids[2], false]]);
   for (let attempt = 0; attempt < 10 && state.mode === "study"; attempt += 1) {
@@ -449,6 +451,7 @@ test("ordinary answers do not overwrite the one management undo slot", () => {
 
 test("reviewing a scored word preserves the first unknown judgment in round statistics", () => {
   let state = createInitialState({ assets: { sourceDeck: deck }, random: almostOne });
+  state = learningReducer(state, { type: "SET_SPELLING_MODE", value: "off" });
   const choose = (correct) => {
     state = learningReducer(state, { type: "CHOOSE_STUDY", correct });
     state = learningReducer(state, { type: "ADVANCE_STUDY", random: almostOne });

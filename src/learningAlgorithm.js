@@ -203,6 +203,7 @@ const createLearningSession = ({
   removedCardIds = [],
   mastery = {},
   waves: rawWaves,
+  spellingMode = "mistakes",
   random = Math.random,
   modeWhenEmpty = "empty",
 }) => {
@@ -240,7 +241,7 @@ const createLearningSession = ({
     spellResult: null,
     pausedSpell: false,
     autoPronounceEnabled: false,
-    spellingMode: "off",
+    spellingMode,
     quickKnownEnabled: false,
     insightsExpanded: false,
     undo: null,
@@ -407,7 +408,7 @@ const moveToNextPlayableRound = (state, completedMode, random) => {
 };
 
 const replaceWithDeck = (state, sourceDeck, random, label) => {
-  const replacement = createLearningSession({ sourceDeck, mastery: state.mastery, random });
+  const replacement = createLearningSession({ sourceDeck, mastery: state.mastery, spellingMode: state.spellingMode, random });
   return {
     ...replacement,
     undo: { label, snapshot: snapshotForUndo(state) },
@@ -647,7 +648,7 @@ export const learningReducer = (state, action) => {
       const sourceDeck = [...state.sourceDeck, ...action.sourceDeck.map((entry) => ({ ...entry, waveId: wave.id }))];
       const waves = [...state.waves.map((previous) => ({ ...previous, status: "cold" })), wave];
       return {
-        ...startWaveSession({ sourceDeck, waves, removedCardIds: state.removedCardIds, mastery: state.mastery, random }, action.now ?? Date.now()),
+        ...startWaveSession({ sourceDeck, waves, removedCardIds: state.removedCardIds, mastery: state.mastery, spellingMode: state.spellingMode, random }, action.now ?? Date.now()),
         undo: { label: "撤销新增词表", snapshot: snapshotForUndo(state) },
         notice: state.waves.length
           ? `已加入 ${action.sourceDeck.length} 个词；之前的词表已收起，可随时切回。`
@@ -695,7 +696,7 @@ export const learningReducer = (state, action) => {
         }
       }
       return {
-        ...createLearningSession({ sourceDeck: state.sourceDeck, waves, removedCardIds: state.removedCardIds, mastery, random }),
+        ...createLearningSession({ sourceDeck: state.sourceDeck, waves, removedCardIds: state.removedCardIds, mastery, spellingMode: state.spellingMode, random }),
         undo: { label: "撤销切换词表", snapshot: snapshotForUndo(state) },
         notice: action.type === "REVIVE_ALL_WAVES" ? "全部词表已恢复，开始总复习。" : "词表已更新，掌握度保留。",
       };

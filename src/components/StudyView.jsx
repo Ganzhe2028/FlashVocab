@@ -130,7 +130,6 @@ export default function StudyView({
         </div>
       ) : (
         <div className="study-prompt">
-          {isPractice ? <p className="study-guide">这轮没记住，再顺带练一遍。</p> : null}
           {!isPractice && showIntro ? <p className="study-guide">先在心里想一想，再选认识或不认识。</p> : null}
           <div className="study-actions study-choice-actions" aria-label="认词选择">
             <button type="button" className="choice-action" onClick={() => onChoose(true)}>

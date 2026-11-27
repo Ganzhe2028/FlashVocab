@@ -235,6 +235,7 @@ describe("FlashVocab 3.0", () => {
     saveAssets([alpha, beta]);
     render(<App />);
     openSettings();
+    fireEvent.click(screen.getByRole("radio", { name: "纯刷词" }));
     fireEvent.click(screen.getByText("进阶"));
     const setting = screen.getByRole("switch", { name: /认识的词直接前进/ });
     expect(setting.checked).toBe(false);
@@ -582,6 +583,7 @@ describe("FlashVocab 3.0", () => {
   test("adding a second wave retains old words and allows switching or full review", () => {
     saveAssets();
     render(<App />);
+    enableSpelling();
     importViaPaste(JSON.stringify([beta]));
     expect(currentWordButton().textContent).toBe("beta");
     const stored = JSON.parse(window.localStorage.getItem(DECK_STORAGE_KEY));
@@ -592,6 +594,9 @@ describe("FlashVocab 3.0", () => {
     expect(currentWordButton().textContent).toBe("alpha");
     openDeck();
     fireEvent.click(screen.getByRole("button", { name: "全部一起复习" }));
+    openSettings();
+    expect(screen.getByRole("radio", { name: "刷词+拼写全部" }).checked).toBe(true);
+    closePanel();
     expect(screen.getByRole("progressbar").getAttribute("aria-valuemax")).toBe(
       "2",
     );
@@ -605,6 +610,10 @@ describe("FlashVocab 3.0", () => {
       press("q", "KeyQ");
       press("n", "KeyN");
     }
+    const input = screen.getByRole("textbox", { name: "输入英文拼写" });
+    fireEvent.change(input, { target: { value: "alpha" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    fireEvent.keyDown(input, { key: "Enter" });
     expect(screen.getByText("认识 0 · 不认识 1")).toBeTruthy();
     expect(screen.queryByText(/模糊/)).toBeNull();
     expect(screen.getByText("1 个词需要多练，其他词接着巩固。")).toBeTruthy();
@@ -700,7 +709,7 @@ describe("FlashVocab 3.0", () => {
       expect(feedback).not.toContain("omega");
     },
   );
-  test("spelling is optional and defaults to a recognition summary", () => {
+  test("the default mode skips spelling when every word is known", () => {
     saveAssets();
     render(<App />);
     press("q", "KeyQ");
@@ -772,9 +781,8 @@ describe("FlashVocab 3.0", () => {
     expect(
       screen.getByRole("progressbar", { name: "再练一遍进度 1 / 2" }),
     ).toBeTruthy();
-    expect(screen.getByText("这轮没记住，再顺带练一遍。")).toBeTruthy();
-    press("q", "KeyQ");
     expect(screen.queryByText("这轮没记住，再顺带练一遍。")).toBeNull();
+    press("q", "KeyQ");
     press("n", "KeyN");
     expect(
       screen.getByRole("progressbar", { name: "再练一遍进度 2 / 2" }),
